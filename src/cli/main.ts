@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util'
-import { findRepoRoot } from '../core/paths.ts'
-import { buildNow, closeMaps, ensureFresh, openMap, status } from '../map/indexer.ts'
-import { fileApi, find, langCounts, overview, search, trace } from '../map/query.ts'
-import { runMcp } from '../mcp/server.ts'
-import { providerOf, type ProviderId } from '../router/catalog.ts'
-import { advise } from '../router/route.ts'
 import { VERSION } from '../version.ts'
 import { ago, bad, bold, dim, good, header, n, progress, rows, warn } from './ui.ts'
 
+// The map engine, the tool server and the router load only when a command needs them, so quick commands
+// (the status line runs many times a minute) start fast.
+
 const HELP = `${header('Map your code. Shift to the right model.')}
-${bold('Usage')}
+${bold('Get started')}
+  mapshift setup                Add Mapshift to your coding agents  ${dim('(--agents codex,grok · --yes · --dry-run · --home <folder>)')}
+  mapshift report               Map, savings and limits as text  ${dim('(--agent codex · --project <folder>)')}
+  mapshift dash                 Open the local dashboard in your browser  ${dim('(--port <n> · --no-open)')}
+  mapshift off | on             Pause Mapshift in every agent, or bring it back
+  mapshift uninstall            Take out everything setup added
+
+${bold('The map')}
   mapshift map build            Build or update the map of this project
   mapshift map status           What the map holds and how fresh it is
   mapshift map find <words>     Find code by plain words or by name
@@ -18,8 +22,11 @@ ${bold('Usage')}
   mapshift map file <path>      A file's outline: every definition and its lines
   mapshift map overview         The whole project at a glance
   mapshift map search <text>    Every matching line  ${dim('(--regex · --case · --path <folder>)')}
+
+${bold('For agents')}
   mapshift route <request>      Which model and effort a request needs  ${dim('(--model <id> · --provider <name> · --json)')}
   mapshift mcp                  Run the tool server that coding agents connect to
+  mapshift statusline --agent   One status line for agy or grok ${dim('(reads the agent\'s JSON on stdin)')}
 
 ${bold('Options')}
   --project <folder>            Use another project folder ${dim('(default: the current one)')}
@@ -49,20 +56,54 @@ async function main(argv: string[]): Promise<number> {
       model: { type: 'string' },
       json: { type: 'boolean' },
       frontier: { type: 'boolean' },
+      home: { type: 'string' },
+      agents: { type: 'string' },
+      agent: { type: 'string' },
+      yes: { type: 'boolean', short: 'y' },
+      'dry-run': { type: 'boolean' },
+      port: { type: 'string' },
+      'no-open': { type: 'boolean' },
     },
   })
+  const opt = (k: string): string | undefined => (typeof values[k] === 'string' ? (values[k] as string) : undefined)
   if (values.version) {
     console.log(VERSION)
     return 0
   }
   const [cmd, sub, ...rest] = positionals
+
+  // the status line first and on its own: it must answer within a blink and never fail
+  if (cmd === 'statusline') {
+    const agent = opt('agent') ?? sub
+    if (agent !== 'agy' && agent !== 'grok') {
+      console.error(`${bad('✗')} Say which agent: ${bold('mapshift statusline --agent grok')} (or agy).`)
+      return 2
+    }
+    const { runStatusline } = await import('../agents/statusline.ts')
+    await runStatusline(agent)
+    return 0
+  }
+
   if (values.help || !cmd || cmd === 'help') {
     console.log(HELP)
     return 0
   }
-  const root = findRepoRoot(typeof values.project === 'string' ? values.project : process.cwd())
+
+  if (cmd === 'setup' || cmd === 'off' || cmd === 'on' || cmd === 'uninstall') {
+    const s = await import('../setup/setup.ts')
+    const o = { home: opt('home'), agents: opt('agents'), yes: !!values.yes, dryRun: !!values['dry-run'] }
+    return cmd === 'setup' ? s.runSetup(o) : cmd === 'off' ? s.runOff(o) : cmd === 'on' ? s.runOn(o) : s.runUninstall(o)
+  }
+
+  if (cmd === 'report') return report(opt('agent'), opt('project'), opt('home'))
+  if (cmd === 'dash') return dash(opt('port'), !values['no-open'], opt('project'))
+
+  const { findRepoRoot } = await import('../core/paths.ts')
+  const root = findRepoRoot(opt('project') ?? process.cwd())
 
   if (cmd === 'mcp') {
+    await indexer()
+    const { runMcp } = await import('../mcp/server.ts')
     await runMcp()
     return 0
   }
@@ -73,8 +114,11 @@ async function main(argv: string[]): Promise<number> {
       console.error(`${bad('✗')} Give the request to judge, for example: ${bold('mapshift route "fix the login race condition"')}`)
       return 2
     }
-    const model = typeof values.model === 'string' ? values.model : undefined
-    const provider = (typeof values.provider === 'string' ? values.provider : model ? providerOf(model) : null) ?? 'anthropic'
+    const { providerOf } = await import('../router/catalog.ts')
+    const { advise } = await import('../router/route.ts')
+    const { openMap, status } = await indexer()
+    const model = opt('model')
+    const provider = opt('provider') ?? (model ? providerOf(model) : null) ?? 'anthropic'
     if (!['anthropic', 'openai', 'google', 'xai'].includes(provider)) {
       console.error(`${bad('✗')} Unknown provider "${provider}". Use anthropic, openai, google or xai.`)
       return 2
@@ -85,7 +129,7 @@ async function main(argv: string[]): Promise<number> {
     } catch {
       store = null // no map here: judge by wording alone
     }
-    const a = advise({ text, provider: provider as ProviderId, currentModel: model, store, allowFrontier: !!values.frontier })
+    const a = advise({ text, provider: provider as 'anthropic', currentModel: model, store, allowFrontier: !!values.frontier })
     if (values.json) {
       console.log(
         JSON.stringify({
@@ -118,6 +162,27 @@ async function main(argv: string[]): Promise<number> {
   if (cmd !== 'map') {
     console.error(`${bad('✗')} Unknown command "${cmd}". Run ${bold('mapshift help')} to see what is available.`)
     return 2
+  }
+
+  const { buildNow, ensureFresh, openMap, status } = await indexer()
+  const { fileApi, find, langCounts, overview, search, trace } = await import('../map/query.ts')
+  const printStatus = (st: ReturnType<typeof status>): void => {
+    const state = st.state === 'ready' ? good('Ready') : st.state === 'building' ? warn(`Building · ${st.percent}%`) : dim('Not built yet')
+    const langs = langCounts(openMap(st.root)).slice(0, 6)
+    const pairs: [string, string][] = [
+      ['Map', state],
+      ['Files', n(st.files)],
+      ['Definitions', n(st.symbols)],
+      ['Call links', n(st.links)],
+      ['Languages', langs.map(l => `${l.label} ${n(l.n)}`).join(' · ') || dim('none')],
+      ['Updated', ago(st.builtAt)],
+    ]
+    if (st.skipped.length) {
+      const by = new Map<string, number>()
+      for (const s of st.skipped) by.set(s.reason, (by.get(s.reason) ?? 0) + 1)
+      pairs.push(['Not mapped', [...by.entries()].map(([r, c]) => `${n(c)} ${r}`).join(' · ')])
+    }
+    console.log(`${rows(pairs)}\n`)
   }
 
   const words = rest.join(' ').trim()
@@ -173,17 +238,17 @@ async function main(argv: string[]): Promise<number> {
       }
       await ensureFresh(root, 60_000)
       const store = openMap(root)
-      const depth = typeof values.depth === 'string' ? Number(values.depth) : undefined
+      const depth = opt('depth') !== undefined ? Number(opt('depth')) : undefined
       const answer =
         sub === 'find'
-          ? find(store, root, words, { limit: typeof values.limit === 'string' ? Number(values.limit) : undefined })
+          ? find(store, root, words, { limit: opt('limit') !== undefined ? Number(opt('limit')) : undefined })
           : sub === 'trace'
             ? trace(store, root, words, { direction: values.impact ? 'impact' : values.out ? 'out' : 'in', depth })
             : sub === 'file'
               ? fileApi(store, root, words)
               : sub === 'overview'
                 ? overview(store, root)
-                : search(store, root, words, { regex: !!values.regex, ignoreCase: !values.case, path: typeof values.path === 'string' ? values.path : undefined })
+                : search(store, root, words, { regex: !!values.regex, ignoreCase: !values.case, path: opt('path') })
       console.log(answer.text)
       return 0
     }
@@ -193,32 +258,72 @@ async function main(argv: string[]): Promise<number> {
   }
 }
 
-function printStatus(st: ReturnType<typeof status>): void {
-  const state = st.state === 'ready' ? good('Ready') : st.state === 'building' ? warn(`Building · ${st.percent}%`) : dim('Not built yet')
-  const langs = langCounts(openMap(st.root)).slice(0, 6)
-  const pairs: [string, string][] = [
-    ['Map', state],
-    ['Files', n(st.files)],
-    ['Definitions', n(st.symbols)],
-    ['Call links', n(st.links)],
-    ['Languages', langs.map(l => `${l.label} ${n(l.n)}`).join(' · ') || dim('none')],
-    ['Updated', ago(st.builtAt)],
-  ]
-  if (st.skipped.length) {
-    const by = new Map<string, number>()
-    for (const s of st.skipped) by.set(s.reason, (by.get(s.reason) ?? 0) + 1)
-    pairs.push(['Not mapped', [...by.entries()].map(([r, c]) => `${n(c)} ${r}`).join(' · ')])
+/** `mapshift report`: the text dashboard the agents' `/mapshift` commands show. */
+async function report(agent: string | undefined, project: string | undefined, home: string | undefined): Promise<number> {
+  const { REPORT_AGENTS, renderReport } = await import('../agents/report.ts')
+  if (agent && !(REPORT_AGENTS as readonly string[]).includes(agent)) {
+    console.error(`${bad('✗')} Unknown agent "${agent}". Choose from: ${REPORT_AGENTS.join(', ')}.`)
+    return 2
   }
-  console.log(`${rows(pairs)}\n`)
+  const { snapshot } = await import('../dashboard/snapshot.ts')
+  const { targets } = await import('../setup/env.ts')
+  const t = targets({ home })
+  const s = snapshot({ root: project ?? process.cwd(), codexHome: t.codex })
+  let advice = null
+  const last = s.codex?.lastRequest
+  if (last && (!agent || agent === 'codex')) {
+    try {
+      const { advise } = await import('../router/route.ts')
+      let store = null
+      if (s.map.state === 'ready') store = (await indexer()).openMap(s.map.root)
+      advice = advise({ text: last.slice(0, 4000), provider: 'openai', currentModel: s.codex?.model ?? undefined, store })
+    } catch {
+      advice = null
+    }
+  }
+  console.log(renderReport(s, { agent: agent as 'codex' | undefined, advice }))
+  return 0
+}
+
+/** `mapshift dash`: the local web dashboard. Stays open until 10 idle minutes pass or Ctrl+C. */
+async function dash(portText: string | undefined, open: boolean, project: string | undefined): Promise<number> {
+  const port = portText === undefined ? 0 : Number(portText)
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    console.error(`${bad('✗')} The port must be a number from 0 to 65535 (0 picks a free one).`)
+    return 2
+  }
+  const { startDash, openBrowser, IDLE_MS } = await import('../dashboard/server.ts')
+  const { snapshot } = await import('../dashboard/snapshot.ts')
+  const { targets } = await import('../setup/env.ts')
+  const codexHome = targets().codex
+  const root = project ?? process.cwd()
+  const d = await startDash({ port, data: () => snapshot({ root, codexHome }) })
+  console.log(header('Dashboard'))
+  console.log(`  ${good('●')} ${bold(d.url)}`)
+  console.log(`  ${dim(`Only this computer can open it, and only with this address. It stops after ${IDLE_MS / 60_000} idle minutes or Ctrl+C.`)}\n`)
+  if (open && !openBrowser(d.url)) console.log(`  ${warn('!')} Could not open a browser. Copy the address above into one.\n`)
+  const stop = () => d.close()
+  process.once('SIGINT', stop)
+  process.once('SIGTERM', stop)
+  await d.closed
+  console.log(`  ${dim('Dashboard stopped.')}\n`)
+  return 0
+}
+
+/** The map engine, loaded on first use; remembered so open maps can be closed on the way out. */
+let engine: typeof import('../map/indexer.ts') | null = null
+async function indexer(): Promise<typeof import('../map/indexer.ts')> {
+  engine ??= await import('../map/indexer.ts')
+  return engine
 }
 
 main(process.argv.slice(2))
   .then(code => {
-    closeMaps()
+    engine?.closeMaps()
     process.exitCode = code
   })
   .catch(err => {
-    closeMaps()
+    engine?.closeMaps()
     console.error(`${bad('✗')} ${(err as Error).message}`)
     process.exitCode = 1
   })

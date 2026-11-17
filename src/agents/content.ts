@@ -1,0 +1,64 @@
+// The words Mapshift adds to each agent: one short instruction block and one `/mapshift` command.
+// Kept in one place so every agent says the same thing.
+import { MANAGED } from '../setup/pieces.ts'
+import { shellLine, type Runtime } from '../setup/env.ts'
+
+const ADDED = `${MANAGED}: added by "mapshift setup"; "mapshift uninstall" removes it`
+
+/** The instruction block, as lines. `helpers` is for agents that can run helpers on their own model. */
+export function instructionLines(o: { helpers: boolean }): string[] {
+  return [
+    '## Mapshift code map',
+    'Mapshift keeps a map of the project you are working in (MCP server "mapshift").',
+    '- Before grepping or opening files to find code, call `map_find`.',
+    '- For one file\'s functions and classes, call `map_file`. Before changing a function, call `map_trace` with direction "impact".',
+    '- Answers include exact file:line ranges and the code, so read a file only for lines the answer did not show.',
+    ...(o.helpers ? ['- Give routine side work (searching, summaries, running tests) to a helper on a light, cheap model at low effort when you can choose its model.'] : []),
+  ]
+}
+
+/** What the `/mapshift` command asks the agent to do: run the report and show it unchanged. */
+export function reportSteps(rt: Runtime, agent: string, platform: NodeJS.Platform = process.platform): string {
+  const cmd = shellLine(rt, ['report', '--agent', agent])
+  return [
+    "Show the user Mapshift's report.",
+    '',
+    `1. Run this command in the terminal${platform === 'win32' ? ' (in PowerShell, put `& ` in front of it)' : ''}:`,
+    '',
+    `   ${cmd}`,
+    '',
+    '2. Show its output exactly as printed, inside a code block. Add nothing unless the user asks a question about it.',
+  ].join('\n')
+}
+
+const DESCRIPTION = "Show Mapshift's code map status, today's map lookups, tokens saved and usage limits"
+
+/** A Codex custom prompt (`/prompts:mapshift`). */
+export function codexPrompt(rt: Runtime): string {
+  return `---\ndescription: ${DESCRIPTION}\n---\n<!-- ${ADDED} -->\n\n${reportSteps(rt, 'codex')}\n`
+}
+
+/** A Gemini CLI custom command (`/mapshift`). A literal multi-line string keeps Windows paths as they are. */
+export function geminiCommand(rt: Runtime): string {
+  const body = reportSteps(rt, 'gemini')
+  if (body.includes("'''")) throw new Error('The Mapshift install path contains three quotes in a row; move it and run setup again.')
+  return `# ${ADDED}\ndescription = "${DESCRIPTION}"\nprompt = '''\n${body}\n'''\n`
+}
+
+/** A SKILL.md that shows up as `/mapshift`. Cursor has no global rules file, so its skill also carries the map advice. */
+export function skill(rt: Runtime, agent: 'agy' | 'grok' | 'cursor'): string {
+  const front = [
+    '---',
+    'name: mapshift',
+    `description: ${DESCRIPTION}. Use when the user types /mapshift or asks how Mapshift is doing${agent === 'cursor' ? ', and when looking for code: use the mapshift map tools (map_find, map_file, map_trace) before grepping or reading files' : ''}.`,
+    ...(agent === 'grok' ? ['user-invocable: true'] : []),
+    '---',
+  ]
+  const extra = agent === 'cursor' ? `\n\n${instructionLines({ helpers: false }).join('\n')}` : ''
+  return `${front.join('\n')}\n<!-- ${ADDED} -->\n\n# Mapshift report\n\n${reportSteps(rt, agent)}${extra}\n`
+}
+
+/** Grok reads every Markdown file in ~/.grok/rules, so the instructions get a file of their own there. */
+export function grokRules(): string {
+  return `<!-- ${ADDED} -->\n${instructionLines({ helpers: true }).join('\n')}\n`
+}
