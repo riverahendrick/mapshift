@@ -1,0 +1,54 @@
+{
+  "name": "mapshift",
+  "version": "0.1.0",
+  "description": "Map your code, shift to the right model. Fewer tokens and lower cost for coding agents, with no loss in quality. 100% local.",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "code-map",
+    "code-index",
+    "coding-agent",
+    "model-routing",
+    "token-savings",
+    "codex",
+    "gemini",
+    "grok",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/riverahendrick/mapshift#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riverahendrick/mapshift.git"
+  },
+  "bugs": {
+    "url": "https://github.com/riverahendrick/mapshift/issues"
+  },
+  "type": "module",
+  "bin": {
+    "mapshift": "dist/cli/main.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "tree-sitter-wasm": "2.0.4",
+    "web-tree-sitter": "0.27.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^6.0.3"
+  }
+}
