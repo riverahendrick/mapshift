@@ -26,7 +26,7 @@ It runs entirely on your computer. No account, no server, no telemetry. Your cod
 - [How routing decides](#how-routing-decides)
 - [How the numbers are counted](#how-the-numbers-are-counted)
 - [Commands](#commands)
-- [Turn it off or remove it](#turn-it-off-or-remove-it)
+- [Update, turn off or remove](#update-turn-off-or-remove)
 - [Privacy and safety](#privacy-and-safety)
 - [FAQ](#faq)
 
@@ -137,6 +137,7 @@ Every number Mapshift shows comes from its local logs, by these rules:
 | `mapshift report` | Map, savings and limits as text |
 | `mapshift dash` | Open the dashboard in your browser |
 | `mapshift off` / `on` | Pause Mapshift in every agent, or bring it back |
+| `mapshift update` | Get the newest version, and update the Claude Code add-on too (`--check` to only look) |
 | `mapshift uninstall` | Take out everything setup added |
 | `mapshift map build` | Build or update the map of this project |
 | `mapshift map find <words>` | Find code by plain words or by name |
@@ -147,9 +148,10 @@ In Claude Code, `/mapshift` opens the dashboard, and `/mapshift auto`, `quality`
 
 ---
 
-## Turn it off or remove it
+## Update, turn off or remove
 
 ```bash
+mapshift update     # get the newest version (your agents keep working, open a new chat after)
 mapshift off        # pause it everywhere
 mapshift on         # bring it back
 mapshift uninstall  # remove everything setup added, exactly
@@ -161,7 +163,7 @@ Setup backs up every file before changing it and only writes between its own cle
 
 ## Privacy and safety
 
-- **Fully local.** No telemetry, no update checks, no accounts. The map and its logs stay in `~/.mapshift/`.
+- **Fully local.** No telemetry, no background update checks, no accounts. The map and its logs stay in `~/.mapshift/`. The only time Mapshift goes online is when you run `mapshift update`, which asks npm for the newest version.
 - **Never touches credentials.** Mapshift never reads your login files and never routes your traffic through anything.
 - **Safe with projects you do not trust.** Mapshift never starts a program from inside a project folder, it never follows links that point outside the project, and a project's own git settings cannot make it run anything.
 - **Your settings only.** Setup changes personal settings only, never files shared with your team.

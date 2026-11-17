@@ -1,12 +1,40 @@
+# build output and dependencies
 node_modules/
 dist/
 coverage/
-*.log
 *.tgz
+*.log
+
+# operating system files
 .DS_Store
 Thumbs.db
+
+# local secrets and scratch space
 .env
 .env.*
 .tmp/
-# written by the host app when it loads the adapter
+*.patch
+
+# editor and assistant tool folders and files (personal, never part of the project)
+.vscode/
+.idea/
+.claude/
+.cursor/
+.codex/
+.gemini/
+.grok/
+.agents/
+.aider*
+.trail/
+graft/
+.ignore
+.mcp.json
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+
+# written by the host app when it loads the add-on
 plugins/*/.claude-plugin/types/
+
+# local previews
+assets/preview*.html
