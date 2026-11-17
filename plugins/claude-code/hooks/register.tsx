@@ -365,7 +365,7 @@ export const register: Register = on => {
     try {
       await syncSession($)
       const v = await $.session.version()
-      log(await $.clock.now(), { k: 'session', project: e.cwd, engine: v.version, mod: '0.1.0' })
+      log(await $.clock.now(), { k: 'session', project: e.cwd, engine: v.version, mod: '0.1.1' })
       await flushAudit($)
     } catch (err) {
       void logErr($, 'session.start audit', err)

@@ -225,8 +225,14 @@ test("Claude Code's own commands run only with --yes, only for the real home, ne
     await runSetup({ ...s.opts({ agents: 'claude', env, runClaude, interactive: true, ask: async () => true }), home: undefined })
     assert.equal(calls.length, 0)
     await runSetup({ ...s.opts({ agents: 'claude', yes: true, env, runClaude }), home: undefined })
-    assert.deepEqual(calls.map(c => c.slice(0, 2).join(' ')), ['mcp add', 'plugin marketplace', 'plugin install'])
-    assert.deepEqual(calls[0]!.slice(-3), ['C:\\Program Files\\nodejs\\node.exe', 'C:\\Users\\me\\My Tools\\mapshift\\dist\\cli\\main.js', 'mcp'])
+    assert.deepEqual(calls.map(c => c.slice(0, 2).join(' ')), ['mcp add-json', 'plugin marketplace', 'plugin install'])
+    // the server is added with alwaysLoad, so its tools are ready from the first prompt
+    assert.deepEqual(JSON.parse(calls[0]!.at(-1)!), {
+      type: 'stdio',
+      command: 'C:\\Program Files\\nodejs\\node.exe',
+      args: ['C:\\Users\\me\\My Tools\\mapshift\\dist\\cli\\main.js', 'mcp'],
+      alwaysLoad: true,
+    })
     calls.length = 0
     await runUninstall({ ...s.opts({ yes: true, env, runClaude }), home: undefined })
     assert.deepEqual(calls.map(c => c.slice(0, 2).join(' ')), ['plugin uninstall', 'mcp remove'])

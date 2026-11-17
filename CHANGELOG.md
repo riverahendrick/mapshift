@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 (2026-11-17)
+
+- 🎯 Starting points: with every prompt, Claude Code now gets the few places in the code the request is clearly about (location, signature, callers), straight from the map. Nothing is added when the map has no clear answer.
+- ⚡ Map tools load up front in Claude Code instead of waiting behind a tool search, so agents use them from the first prompt.
+- 📏 Map savings are exact: "saved" always equals "without" minus "with", and an answer that spared nothing counts against it.
+
 ## 0.1.0 (2026-11-17)
 
 The first release.

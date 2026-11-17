@@ -164,10 +164,14 @@ export const AGENTS: AgentDef[] = [
 
 export const agentById = (id: string): AgentDef | undefined => AGENTS.find(a => a.id === id)
 
-/** Claude Code's own commands that add the map server and the Mapshift plugin. */
+/**
+ * Claude Code's own commands that add the map server and the Mapshift plugin. The server is added with
+ * `alwaysLoad`, so its tools are ready from the first prompt instead of hidden behind a tool search.
+ */
 export function claudeCommands(rt: Runtime): string[][] {
+  const server = { type: 'stdio', command: rt.node, args: [rt.script, 'mcp'], alwaysLoad: true }
   return [
-    ['mcp', 'add', '--scope', 'user', 'mapshift', '--', rt.node, rt.script, 'mcp'],
+    ['mcp', 'add-json', '--scope', 'user', 'mapshift', JSON.stringify(server)],
     ['plugin', 'marketplace', 'add', 'riverahendrick/mapshift'],
     ['plugin', 'install', 'mapshift@mapshift'],
   ]
