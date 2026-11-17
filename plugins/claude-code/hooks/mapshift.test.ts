@@ -561,7 +561,7 @@ test('map lookups and file reads are counted, and the map reminder is added once
   expect(text).toContain('"impact"')
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /1 map lookup · 2 file reads/ })).toBeTruthy()
-  expect(await ui.find({ type: 'Text', text: /33% lookups/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /33% via the map/ })).toBeTruthy()
   await ui.unmount()
 })
 
@@ -574,16 +574,16 @@ test('no map reminder when the map is not available, and the card says how to se
   expect(composed.sections.some((x: any) => x.id === 'mapshift:map')).toBe(false)
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui: any = await $.ui.mount({ ...PANE, surface })
-    expect(await ui.find({ type: 'Text', text: 'Map not available — run `npx mapshift setup`' })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /^⚪ Not available yet$/ })).toBeTruthy()
     await ui.unmount()
   }
 })
 
 test('the Map card shows Ready, Building 40% and Not built yet', async ($, on) => {
   const answers: [string, RegExp][] = [
-    ['ready', /^Ready$/],
-    ['building', /^Building 40%$/],
-    ['empty', /^Not built yet$/],
+    ['ready', /Ready$/],
+    ['building', /Building 40%$/],
+    ['empty', /Not built yet$/],
   ]
   let state = 'ready'
   const { clock } = engine(on, { run: argv => mapCli(state)(argv) })
@@ -883,12 +883,12 @@ test('the pane draws every tab on every surface, clean Overview first', async ($
   await fill($, on)
   for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
     const ui: any = await $.ui.mount({ ...PANE, surface })
-    expect((await ui.find({ type: 'Text', text: /^Mapshift$/ }))?.text).toBeTruthy()
-    for (const title of [/^Now$/, /^Limits$/, /^Savings$/, /^Map$/]) expect(await ui.find({ type: 'Text', text: title })).toBeTruthy()
+    expect((await ui.find({ type: 'Text', text: /^🗺️ Mapshift$/ }))?.text).toBeTruthy()
+    for (const title of [/^🎯 Right now$/, /^⏱️ Limits$/, /^💸 Savings$/, /^🗺️ Map$/]) expect(await ui.find({ type: 'Text', text: title })).toBeTruthy()
     expect(await ui.find({ type: 'Text', text: /^(Quick|Standard|Complex|Critical)$/ })).toBeTruthy()
-    expect(await ui.find({ type: 'Text', text: /^Thinking effort$/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /^💭 Thinking$/ })).toBeTruthy()
     expect(await ui.find({ type: 'Text', text: /^Estimates$/ })).toBeTruthy()
-    expect(await ui.find({ type: 'Text', text: /Cache saved/ })).toBeTruthy()
+    expect(await ui.find({ type: 'Text', text: /^♻️ Cache$/ })).toBeTruthy()
     // the detail lives on Activity, not on the Overview
     expect(await ui.find({ type: 'Text', text: /^Steps$/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^Health$/ })).toBeUndefined()
@@ -896,7 +896,7 @@ test('the pane draws every tab on every surface, clean Overview first', async ($
       ['tab-activity', /Requests/],
       ['tab-settings', /Map reminder/],
       ['tab-help', /30 seconds/],
-      ['tab-overview', /Thinking effort/],
+      ['tab-overview', /💭 Thinking/],
     ]
     for (const [tab, mark] of expectations) {
       await ui.press({ key: tab })
@@ -922,8 +922,8 @@ test('terminal shows limits as text bars; graphical surfaces draw them', async (
 test('a narrow pane stacks labels above values instead of squeezing them', async ($, on) => {
   await fill($, on)
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal', props: { ...PANE.props, bodyColumns: 34 } })
-  expect(await ui.find({ type: 'Text', text: /^Thinking effort$/ })).toBeTruthy()
-  expect(await ui.find({ type: 'Text', text: /^Map$/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /^💭 Thinking$/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /^🗺️ Map$/ })).toBeTruthy()
   await ui.unmount()
 })
 
@@ -959,7 +959,7 @@ test('the map reminder stays put once added, even if a later status check fails'
   await settle(clock)
   expect(await compose()).toBe(1)
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /^Ready$/ })).toBeTruthy() // the last good picture stays
+  expect(await ui.find({ type: 'Text', text: /Ready$/ })).toBeTruthy() // the last good picture stays
   await ui.unmount()
 })
 
@@ -971,7 +971,7 @@ test('MAPSHIFT_BIN pointing at a script runs it with node', async ($, on) => {
   expect(runs.some(r => r.argv.join(' ') === `node ${bin} map status --json --project C:/work/alpha`)).toBe(true)
   expect(runs.find(r => r.argv.includes('status'))!.init.cwd).toBe('C:/') // never the project folder
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /^Ready$/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /Ready$/ })).toBeTruthy()
   await ui.unmount()
 })
 
@@ -996,7 +996,7 @@ test('map savings come from the map log for this project and session, and show o
   await $.turn.complete({ turnId: 'sv1', answer: '', durationMs: 1000, isAborted: false, reason: 'answer' })
   await settle(clock)
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /Map saved about 1\.7k tokens/ })).toBeTruthy()
+  expect(await ui.find({ type: 'Text', text: /1\.7k tokens/ })).toBeTruthy()
   await ui.unmount()
 })
 

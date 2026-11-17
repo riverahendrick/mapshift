@@ -1,15 +1,22 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Language, Parser, Query, type Tree } from 'web-tree-sitter'
 import { LANGS, type LangId } from './languages.ts'
 
 const require = createRequire(import.meta.url)
 let grammarsDir: string | null = null
 
-/** The `out` folder of the grammar package, wherever npm put it. */
+/**
+ * Where the language grammars are: bundled next to the compiled code in an installed copy
+ * (`dist/grammars`), or in the grammar package during development.
+ */
 function grammars(): string {
-  if (!grammarsDir) grammarsDir = join(dirname(require.resolve('tree-sitter-wasm/manifest.json')), 'out')
+  if (!grammarsDir) {
+    const bundled = fileURLToPath(new URL('../grammars', import.meta.url))
+    grammarsDir = existsSync(join(bundled, 'typescript')) ? bundled : join(dirname(require.resolve('tree-sitter-wasm/manifest.json')), 'out')
+  }
   return grammarsDir
 }
 

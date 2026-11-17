@@ -46,6 +46,79 @@ export function limitBar(o: { dark?: boolean; pct: number; label: string; sub?: 
   )
 }
 
+/** A ring gauge in the fixed status colours: the percent in the middle, the name and a note under it. */
+export function ringGauge(o: { dark?: boolean; pct: number | null; label: string; sub?: string; size?: number }): string {
+  const size = Math.round(o.size ?? 96)
+  const r = size / 2 - 7
+  const c = 2 * Math.PI * r
+  const known = o.pct !== null && Number.isFinite(o.pct)
+  const pct = known ? Math.max(0, Math.min(100, o.pct as number)) : 0
+  const color = known ? statusColor(pct) : ACCENT.gray
+  const cx = size / 2
+  const w = Math.max(size, 120)
+  const x0 = (w - size) / 2
+  const ht = size + 34
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" ${FONT} width="${w}" height="${ht}" viewBox="0 0 ${w} ${ht}">` +
+    `<g transform="translate(${x0} 0)">` +
+    `<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${TRACK}" stroke-width="8"/>` +
+    (known && pct > 0
+      ? `<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${((pct / 100) * c).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${cx} ${cx})"/>`
+      : '') +
+    `<text x="${cx}" y="${cx + 6}" text-anchor="middle" font-size="${Math.round(size / 4.8)}" font-weight="700" fill="${known ? color : mut(o.dark)}">${known ? `${Math.round(pct)}%` : '–'}</text>` +
+    `</g>` +
+    `<text x="${w / 2}" y="${size + 14}" text-anchor="middle" font-size="12.5" font-weight="600" fill="${ink(o.dark)}">${esc(o.label)}</text>` +
+    (o.sub ? `<text x="${w / 2}" y="${size + 29}" text-anchor="middle" font-size="10.5" fill="${mut(o.dark)}">${esc(o.sub)}</text>` : '') +
+    `</svg>`
+  )
+}
+
+/** The four levels as steps, the current one lit: Quick, Standard, Complex, Critical. */
+export function levelMeter(o: { dark?: boolean; level: number; width?: number }): string {
+  const w = Math.round(o.width ?? 300)
+  const names = ['Quick', 'Standard', 'Complex', 'Critical']
+  const colors = [ACCENT.teal, ACCENT.blue, ACCENT.purple, ACCENT.indigo]
+  const gap = 6
+  const seg = (w - gap * 3) / 4
+  let out = `<svg xmlns="http://www.w3.org/2000/svg" ${FONT} width="${w}" height="34" viewBox="0 0 ${w} 34">`
+  names.forEach((name, i) => {
+    const x = i * (seg + gap)
+    const on = i <= o.level
+    const current = i === o.level
+    out +=
+      `<rect x="${x.toFixed(1)}" y="${current ? 0 : 3}" width="${seg.toFixed(1)}" height="${current ? 12 : 6}" rx="${current ? 6 : 3}" fill="${on ? colors[i] : TRACK}" opacity="${on && !current ? 0.55 : 1}"/>` +
+      `<text x="${(x + seg / 2).toFixed(1)}" y="29" text-anchor="middle" font-size="11" font-weight="${current ? 700 : 400}" fill="${current ? ink(o.dark) : mut(o.dark)}">${name}</text>`
+  })
+  return `${out}</svg>`
+}
+
+/**
+ * What the requests cost with Mapshift next to what they would have cost on the person's own model,
+ * the difference shaded as savings (or marked as extra spent on quality).
+ */
+export function compareBars(o: { dark?: boolean; withUsd: number; withoutUsd: number; withoutLabel: string; width?: number; fmt: (n: number) => string }): string {
+  const w = Math.round(o.width ?? 320)
+  const max = Math.max(1e-9, o.withUsd, o.withoutUsd)
+  const len = (v: number) => Math.max(v > 0 ? 6 : 0, (v / max) * (w - 4))
+  const saved = o.withoutUsd - o.withUsd
+  const row = (y: number, label: string, v: number, color: string) =>
+    `<text x="0" y="${y}" font-size="11.5" fill="${mut(o.dark)}">${esc(label)}</text>` +
+    `<text x="${w}" y="${y}" text-anchor="end" font-size="11.5" font-weight="600" fill="${ink(o.dark)}">${esc(o.fmt(v))}</text>` +
+    `<rect x="0" y="${y + 5}" width="${w}" height="10" rx="5" fill="${TRACK}"/>` +
+    `<rect x="0" y="${y + 5}" width="${len(v).toFixed(1)}" height="10" rx="5" fill="${color}"/>`
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" ${FONT} width="${w}" height="${saved !== 0 ? 82 : 66}" viewBox="0 0 ${w} ${saved !== 0 ? 82 : 66}">` +
+    row(12, 'With Mapshift', o.withUsd, ACCENT.teal) +
+    row(44, o.withoutLabel, o.withoutUsd, ACCENT.slate) +
+    (saved > 0.0005
+      ? `<text x="0" y="78" font-size="11.5" font-weight="600" fill="${STATUS.ok}">${esc(`Saved ${o.fmt(saved)} (${Math.round((saved / Math.max(1e-9, o.withoutUsd)) * 100)}%)`)}</text>`
+      : saved < -0.0005
+        ? `<text x="0" y="78" font-size="11.5" fill="${mut(o.dark)}">${esc(`${o.fmt(-saved)} more, spent on stronger models for harder work`)}</text>`
+        : '') +
+    `</svg>`
+  )
+}
+
 /** Bars, one per request, coloured by model; height = estimated cost. */
 export function sparkBars(o: { dark?: boolean; values: { v: number; family?: string; flag?: boolean }[]; width?: number; height?: number; caption?: string }): string {
   const w = o.width ?? 300

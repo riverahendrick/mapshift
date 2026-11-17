@@ -1,9 +1,9 @@
 // Everything Mapshift draws: the dashboard pane (four tabs), its small widget form, and the band above the prompt.
 
 import type { AgentRow, Cfg, Effort, Family, Health, Last, LimitWindow, Live, LogRow, MapInfo, Mode, Snap, StepRow, Tier, Totals, View } from '../types'
-import { EFFORTS, FAMILIES, cap, familyOf, fmtTok, fmtUsd, hitPct, isWarm, limitPressure } from './brain'
+import { EFFORTS, FAMILIES, PRICES, cap, familyOf, fmtTok, fmtUsd, hitPct, isWarm, limitPressure } from './brain'
 import type { Ledger } from './brain'
-import { ACCENT, STATUS, familyColor, limitBar, sparkBars, statusColor } from './charts'
+import { ACCENT, STATUS, compareBars, familyColor, levelMeter, ringGauge, sparkBars, statusColor } from './charts'
 import { project } from './state'
 import type { NextForce } from './state'
 
@@ -206,10 +206,10 @@ export function Pane(t: T, e: any, d: Data, act: Act) {
   const cols: number = e.props?.bodyColumns ?? 60
   const c: Ctx = { t, d, graphical: e.surface !== 'terminal' && typeof t.Svg === 'function', cols, wide: cols >= 46 }
   const tabs: [View, string, string][] = [
-    ['overview', 'Overview', 'o'],
-    ['activity', 'Activity', 'a'],
-    ['settings', 'Settings', 's'],
-    ['help', 'Help', 'h'],
+    ['overview', '📊 Overview', 'o'],
+    ['activity', '📜 Activity', 'a'],
+    ['settings', '⚙️ Settings', 's'],
+    ['help', '❓ Help', 'h'],
   ]
   const view: View = d.cfg.view ?? 'overview'
   return (
@@ -234,9 +234,9 @@ function Header(c: Ctx) {
   return (
     <Box flexDirection="row" flexWrap="wrap" columnGap={1} alignItems="center">
       <Text size="title" weight="bold">
-        Mapshift
+        🗺️ Mapshift
       </Text>
-      {Pill(c.t, mi.label, mi.color)}
+      {Pill(c.t, `${MODE_ICON[c.d.cfg.mode]} ${mi.label}`, mi.color)}
       {project.name ? <Text dimColor>{project.name}</Text> : null}
     </Box>
   )
@@ -244,10 +244,14 @@ function Header(c: Ctx) {
 
 // ------------------------------------------------------------------ Overview
 
+export const MODE_ICON: Record<Mode, string> = { auto: '⚡', quality: '💎', saver: '🪙', manual: '🎛️', off: '⏸️' }
+const TIER_INDEX: Record<Tier, number> = { trivial: 0, routine: 1, complex: 2, critical: 3 }
+
 function Overview(c: Ctx, act: Act) {
   const { Box } = c.t
   return (
     <Box flexDirection="column" gap={1}>
+      {ModeBar(c, act)}
       {NowCard(c, act)}
       {LimitsCard(c, act)}
       {SavingsCard(c)}
@@ -257,82 +261,109 @@ function Overview(c: Ctx, act: Act) {
   )
 }
 
+/** The five modes, always one press away, with one line on what the chosen one does. */
+function ModeBar(c: Ctx, act: Act) {
+  const { Box, Text, Button } = c.t
+  const modes: Mode[] = ['auto', 'quality', 'saver', 'manual', 'off']
+  return (
+    <Box flexDirection="column">
+      <Box flexDirection="row" flexWrap="wrap" columnGap={1}>
+        {modes.map((m, i) => (
+          <Button
+            key={`ov-mode-${m}`}
+            label={`${MODE_ICON[m]} ${MODE_INFO[m].label}`}
+            hotkey={String(i + 1)}
+            variant={c.d.cfg.mode === m ? 'primary' : 'secondary'}
+            onPress={() => act.setCfg({ mode: m })}
+          />
+        ))}
+      </Box>
+      <Text dimColor wrap="wrap">
+        {MODE_INFO[c.d.cfg.mode].text}
+      </Text>
+    </Box>
+  )
+}
+
 const clock = (ms: number) => {
   const s = Math.max(0, Math.round(ms / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+/** A bar of block characters for the terminal. */
+function blocks(c: Ctx, pct: number, width: number, color: string) {
+  const { Text } = c.t
+  const v = Math.max(0, Math.min(100, pct))
+  const fill = Math.round((v / 100) * width)
+  return (
+    <Text>
+      <Text color={color}>{'█'.repeat(fill)}</Text>
+      <Text dimColor>{'░'.repeat(width - fill)}</Text>
+    </Text>
+  )
+}
+
 function NowCard(c: Ctx, act: Act) {
   const { Box, Text, Button } = c.t
+  const Svg = c.t.Svg
   const { last, live, cfg } = c.d
-  const aside = live.busy ? `Working · ${clock(live.now - live.startedAt)}` : live.lastSeconds !== null ? `Last request took ${live.lastSeconds} s` : undefined
+  const aside = live.busy ? `⏳ Working · ${clock(live.now - live.startedAt)}` : live.lastSeconds !== null ? `Last request took ${live.lastSeconds} s` : undefined
   if (!last)
-    return Card(c, { title: 'Now', aside, children: Muted(c.t, cfg.mode === 'off' ? 'Mapshift is off for this project: your own model picker is used.' : 'Send a prompt and what it runs on shows here.') })
+    return Card(c, {
+      title: '🎯 Right now',
+      aside,
+      children: Muted(c.t, cfg.mode === 'off' ? 'Mapshift is off for this project: your own model picker is used.' : 'Send a prompt and what it runs on shows here.'),
+    })
   const shown = famVer(last.family, last.answeredBy ?? last.appModel)
   const differs = !!last.family && last.family !== familyOf(last.appModel)
+  const level = TIER_INDEX[last.tier] ?? 1
+  const meterWidth = Math.max(220, Math.min(460, c.cols * 7 - 40))
   return Card(c, {
-    title: 'Now',
+    title: '🎯 Right now',
     aside,
     children: (
       <Box flexDirection="column">
-        {Row(c, 'Level', <Text weight="bold">{TIER_LABEL[last.tier] ?? cap(last.tier)}</Text>)}
+        {c.graphical && Svg ? <Svg key="level-meter" source={levelMeter({ level, width: meterWidth, dark: c.d.dark })} alt={`Level: ${TIER_LABEL[last.tier]}`} /> : null}
         {Row(
           c,
-          'Model',
+          '📶 Level',
+          <Text>
+            <Text weight="bold">{TIER_LABEL[last.tier] ?? cap(last.tier)}</Text>
+            {c.graphical ? null : <Text color={ACCENT.blue}>{`  ${'●'.repeat(level + 1)}${'○'.repeat(3 - level)}`}</Text>}
+          </Text>,
+        )}
+        {Row(
+          c,
+          '🧠 Model',
           <Text wrap="wrap">
             <Text weight="bold" color={familyColor(last.family ?? undefined)}>
               {shown}
             </Text>
-            {differs ? <Text dimColor>{`  (your app: ${modelName(last.appModel)})`}</Text> : null}
+            {differs ? <Text dimColor>{`  (your pick: ${modelName(last.appModel)})`}</Text> : null}
           </Text>,
         )}
-        {Row(c, 'Thinking effort', <Text weight="bold">{effortName(last.effort)}</Text>)}
+        {Row(c, '💭 Thinking', <Text weight="bold">{`${effortName(last.effort)} effort`}</Text>)}
         {Row(
           c,
-          'Why',
-          <Text dimColor wrap="truncate-end">
+          '💡 Why',
+          <Text dimColor wrap="wrap">
             {last.why ?? shortWhy([], last.reason)}
           </Text>,
         )}
-        {live.busy && live.tool ? Row(c, 'Doing', <Text wrap="truncate-end">{`${live.tool}${live.detail ? ` · ${live.detail}` : ''}`}</Text>) : null}
-        {last.mismatch && last.answeredBy ? <Text color={STATUS.warn} wrap="wrap">{`${modelName(last.answeredBy)} answered instead of the model Mapshift asked for.`}</Text> : null}
+        {live.busy && live.tool ? Row(c, '🔧 Doing', <Text wrap="truncate-end">{`${live.tool}${live.detail ? ` · ${live.detail}` : ''}`}</Text>) : null}
+        {last.mismatch && last.answeredBy ? <Text color={STATUS.warn} wrap="wrap">{`⚠️ ${modelName(last.answeredBy)} answered instead of the model Mapshift asked for.`}</Text> : null}
         {last.suggest ? (
           <Box flexDirection="column" marginTop={1}>
-            <Text wrap="wrap">{`${cap(last.suggest.family)} is recommended for this task. Moving now rewrites the conversation cache once (about ${fmtUsd(last.suggest.usd)}).`}</Text>
+            <Text wrap="wrap">{`💡 ${cap(last.suggest.family)} is recommended for this task. Moving now rewrites the conversation cache once (about ${fmtUsd(last.suggest.usd)}).`}</Text>
             <Button key="use-suggest" label={`Use ${cap(last.suggest.family)} next`} variant="primary" onPress={() => act.useNext({ family: last.suggest!.family }, `Mapshift: your next prompt runs on ${cap(last.suggest!.family)}.`)} />
           </Box>
         ) : null}
         <Box flexDirection="row" flexWrap="wrap" columnGap={1} marginTop={1}>
-          <Button key="flag" label="Wrong pick? Think harder" onPress={() => act.flag()} />
+          <Button key="flag" label="🔼 Wrong pick? Think harder" onPress={() => act.flag()} />
         </Box>
       </Box>
     ),
   })
-}
-
-/** A text bar for the terminal, in the fixed status colours. */
-function TextBar(c: Ctx, w: LimitWindow) {
-  const { Box, Text } = c.t
-  const width = Math.max(8, Math.min(28, c.cols - 34))
-  const v = Math.max(0, Math.min(100, w.pct))
-  const fill = Math.round((v / 100) * width)
-  const color = statusColor(w.pct)
-  const reset = w.resetsAt ? `resets in ${inText(w.resetsAt - c.d.now)}` : 'reset time not known yet'
-  const bar = (
-    <Text>
-      <Text weight="bold">{w.name.padEnd(8)}</Text>
-      <Text color={color}>{'█'.repeat(fill)}</Text>
-      <Text dimColor>{'░'.repeat(width - fill)}</Text>
-      <Text weight="bold" color={color}>{` ${String(Math.round(w.pct)).padStart(3)}%`}</Text>
-      {c.cols >= 62 ? <Text dimColor>{`  ${reset}`}</Text> : null}
-    </Text>
-  )
-  return (
-    <Box key={`limit-${w.kind}`} flexDirection="column">
-      {bar}
-      {c.cols < 62 ? <Text dimColor>{`        ${reset}`}</Text> : null}
-    </Box>
-  )
 }
 
 function LimitsCard(c: Ctx, act: Act) {
@@ -343,101 +374,192 @@ function LimitsCard(c: Ctx, act: Act) {
   const weekly = snap.windows.find(w => w.kind === 'seven_day') ?? null
   const pressure = limitPressure({ pct: weekly?.pct ?? null, projected: weekly?.projected ?? null })
   const runsOut = windows.filter(w => w.hitsAt !== null)
-  const width = Math.max(200, Math.min(520, c.cols * 7 - 30))
-  return Card(c, {
-    title: 'Limits',
-    aside: windows.length ? `Updated ${ago(now - snap.at)}` : undefined,
-    children: windows.length ? (
-      <Box flexDirection="column" gap={c.graphical ? 1 : 0}>
-        {windows.map(w =>
-          c.graphical && Svg ? (
-            <Svg
-              key={`limit-${w.kind}`}
-              source={limitBar({ pct: w.pct, label: w.name, sub: w.resetsAt ? `Resets in ${inText(w.resetsAt - now)}` : 'Reset time not known yet', width, dark: c.d.dark })}
-              alt={`${w.name} limit ${Math.round(w.pct)}% used${w.resetsAt ? `, resets in ${inText(w.resetsAt - now)}` : ''}`}
-            />
-          ) : (
-            TextBar(c, w)
-          ),
-        )}
-        {runsOut.length || pressure > 0 ? (
-          <Box flexDirection="column" marginTop={1}>
-            <Text color={pressure === 2 || runsOut.some(w => w.pct >= 85) ? STATUS.bad : STATUS.warn} wrap="wrap">
-              {runsOut.length
-                ? `At this pace the ${runsOut[0]!.name.toLowerCase()} limit runs out before it resets (${when(runsOut[0]!.hitsAt)}).`
-                : 'Your weekly limit is on a fast pace.'}
-            </Text>
-            {cfg.mode !== 'saver' && cfg.mode !== 'off' ? <Button key="to-saver" label="Switch to Saver" onPress={() => act.setCfg({ mode: 'saver' })} /> : null}
-          </Box>
-        ) : null}
+  const ctx = snap.ctxPct
+  if (!windows.length && ctx === null) return Card(c, { title: '⏱️ Limits', children: Muted(c.t, 'Shows after the first reply.') })
+  const resetText = (w: LimitWindow) => (w.resetsAt ? `resets in ${inText(w.resetsAt - now)}` : 'reset time not known yet')
+  const gaugeSize = c.cols >= 70 ? 92 : 80
+  const warning =
+    runsOut.length || pressure > 0 ? (
+      <Box flexDirection="column" marginTop={1}>
+        <Text color={pressure === 2 || runsOut.some(w => w.pct >= 85) ? STATUS.bad : STATUS.warn} wrap="wrap">
+          {runsOut.length
+            ? `⚠️ At this pace the ${runsOut[0]!.name.toLowerCase()} limit runs out before it resets (${when(runsOut[0]!.hitsAt)}).`
+            : '⚠️ Your weekly limit is on a fast pace.'}
+        </Text>
+        {cfg.mode !== 'saver' && cfg.mode !== 'off' ? <Button key="to-saver" label="🪙 Switch to Saver" onPress={() => act.setCfg({ mode: 'saver' })} /> : null}
       </Box>
-    ) : (
-      Muted(c.t, "Shows after Claude's first reply.")
+    ) : null
+  if (c.graphical && Svg) {
+    return Card(c, {
+      title: '⏱️ Limits',
+      aside: windows.length ? `Updated ${ago(now - snap.at)}` : undefined,
+      children: (
+        <Box flexDirection="column">
+          <Box flexDirection="row" flexWrap="wrap" columnGap={2} rowGap={1}>
+            {windows.map(w => (
+              <Svg
+                key={`gauge-${w.kind}`}
+                source={ringGauge({ pct: w.pct, label: w.name, sub: w.resetsAt ? `Resets in ${inText(w.resetsAt - now)}` : 'Reset not known', size: gaugeSize, dark: c.d.dark })}
+                alt={`${w.name} limit ${Math.round(w.pct)}% used, ${resetText(w)}`}
+              />
+            ))}
+            {ctx !== null ? (
+              <Svg key="gauge-context" source={ringGauge({ pct: ctx, label: 'Context', sub: 'Of this chat', size: gaugeSize, dark: c.d.dark })} alt={`Context ${Math.round(ctx)}% full`} />
+            ) : null}
+          </Box>
+          {warning}
+        </Box>
+      ),
+    })
+  }
+  const width = Math.max(8, Math.min(24, c.cols - 36))
+  const line = (key: string, name: string, pct: number, note: string) => (
+    <Box key={key} flexDirection="column">
+      <Text>
+        <Text weight="bold">{name.padEnd(9)}</Text>
+        {blocks(c, pct, width, statusColor(pct))}
+        <Text weight="bold" color={statusColor(pct)}>{` ${String(Math.round(pct)).padStart(3)}%`}</Text>
+        {c.cols >= 64 ? <Text dimColor>{`  ${note}`}</Text> : null}
+      </Text>
+      {c.cols < 64 ? <Text dimColor>{`         ${note}`}</Text> : null}
+    </Box>
+  )
+  return Card(c, {
+    title: '⏱️ Limits',
+    aside: windows.length ? `Updated ${ago(now - snap.at)}` : undefined,
+    children: (
+      <Box flexDirection="column">
+        {windows.map(w => line(`limit-${w.kind}`, w.name, w.pct, resetText(w)))}
+        {ctx !== null ? line('limit-context', 'Context', ctx, 'of this chat') : null}
+        {warning}
+      </Box>
     ),
   })
 }
 
-function moneyLines(c: Ctx, m: Totals['session'], mapTokens: number | null) {
-  const { Box, Text } = c.t
-  const routing = m.baseUsd - m.usd
-  return (
-    <Box flexDirection="column">
-      <Text wrap="wrap">
-        <Text weight="bold">{`${fmtUsd(m.usd)} spent`}</Text>
-        {Math.abs(routing) >= 0.005 ? <Text dimColor>{` · ${fmtUsd(m.baseUsd)} on your app's model`}</Text> : null}
-      </Text>
-      <Text wrap="wrap">
-        <Text color={STATUS.ok}>{`Cache saved ${fmtUsd(m.cacheSavedUsd)}`}</Text>
-        {mapTokens !== null ? <Text color={STATUS.ok}>{` · Map saved ${mapTokens > 0 ? `about ${fmtTok(mapTokens)} tokens` : 'nothing yet'}`}</Text> : null}
-      </Text>
-    </Box>
-  )
+/** Map savings in dollars, valued at the input price of the model doing the work (an estimate). */
+function mapUsd(c: Ctx, tokens: number | null): number | null {
+  if (tokens === null) return null
+  const fam = c.d.current ?? c.d.last?.family ?? 'sonnet'
+  return (tokens * PRICES[fam].in) / 1e6
+}
+
+type Split = { map: number | null; mapUsd: number | null; routing: number; cache: number }
+
+function split(c: Ctx, m: Totals['session'], mapTokens: number | null): Split {
+  return { map: mapTokens, mapUsd: mapUsd(c, mapTokens), routing: m.baseUsd - m.usd, cache: m.cacheSavedUsd }
 }
 
 function SavingsCard(c: Ctx) {
-  const { Box } = c.t
+  const { Box, Text } = c.t
+  const Svg = c.t.Svg
   const { totals, map } = c.d
-  return Card(c, {
-    title: 'Savings',
-    aside: 'Estimates',
-    children:
-      totals.session.turns === 0 && totals.today.turns === 0 ? (
-        Muted(c.t, 'Shows after your first request.')
-      ) : (
-        <Box flexDirection="column" gap={c.wide ? 0 : 1}>
-          {Row(c, 'This session', moneyLines(c, totals.session, map.available ? map.savedSession : null))}
-          {Row(c, 'Today', moneyLines(c, totals.today, map.available ? map.savedToday : null))}
+  if (totals.session.turns === 0 && totals.today.turns === 0) return Card(c, { title: '💸 Savings', aside: 'Estimates', children: Muted(c.t, 'Shows after your first request.') })
+  const s = split(c, totals.session, map.available ? map.savedSession : null)
+  const t = split(c, totals.today, map.available ? map.savedToday : null)
+  const appModel = c.d.last?.appModel ? modelName(c.d.last.appModel) : 'your model'
+  const total = (x: Split) => Math.max(0, x.routing) + x.cache + (x.mapUsd ?? 0)
+  const money = (v: number) => fmtUsd(Math.abs(v))
+  const routingText = (v: number) => (v >= 0.0005 ? money(v) : v <= -0.0005 ? `${money(v)} more` : '$0')
+  const mapText = (x: Split) => (x.map === null ? 'not available' : x.map > 0 ? `${fmtTok(x.map)} tokens ≈ ${fmtUsd(x.mapUsd ?? 0)}` : 'none yet')
+  const width = Math.max(220, Math.min(460, c.cols * 7 - 40))
+
+  const breakdown = (
+    <Box flexDirection="column">
+      <Box flexDirection="row">
+        <Box width={c.wide ? 22 : 16} flexShrink={0}>
+          <Text dimColor> </Text>
         </Box>
-      ),
+        <Box width={c.wide ? 24 : 14} flexShrink={0}>
+          <Text dimColor weight="bold">
+            This session
+          </Text>
+        </Box>
+        <Text dimColor weight="bold">
+          Today
+        </Text>
+      </Box>
+      {(
+        [
+          ['🗺️ Map', mapText(s), mapText(t)],
+          ['🔀 Model switching', routingText(s.routing), routingText(t.routing)],
+          ['♻️ Cache', fmtUsd(s.cache), fmtUsd(t.cache)],
+          ['💚 Total saved', fmtUsd(total(s)), fmtUsd(total(t))],
+        ] as [string, string, string][]
+      ).map(([label, a, b], i) => (
+        <Box key={`saving-${i}`} flexDirection="row">
+          <Box width={c.wide ? 22 : 16} flexShrink={0}>
+            <Text weight={i === 3 ? 'bold' : undefined}>{label}</Text>
+          </Box>
+          <Box width={c.wide ? 24 : 14} flexShrink={0}>
+            <Text weight={i === 3 ? 'bold' : undefined} color={i === 3 ? STATUS.ok : undefined} wrap="wrap">
+              {a}
+            </Text>
+          </Box>
+          <Text weight={i === 3 ? 'bold' : undefined} color={i === 3 ? STATUS.ok : undefined} wrap="wrap">
+            {b}
+          </Text>
+        </Box>
+      ))}
+    </Box>
+  )
+
+  return Card(c, {
+    title: '💸 Savings',
+    aside: 'Estimates',
+    children: (
+      <Box flexDirection="column" gap={1}>
+        {c.graphical && Svg ? (
+          <Svg
+            key="compare"
+            source={compareBars({ withUsd: totals.today.usd, withoutUsd: totals.today.baseUsd, withoutLabel: `Everything on ${appModel}`, width, fmt: fmtUsd, dark: c.d.dark })}
+            alt={`Today: ${fmtUsd(totals.today.usd)} with Mapshift, ${fmtUsd(totals.today.baseUsd)} on ${appModel} alone`}
+          />
+        ) : (
+          <Text wrap="wrap">
+            <Text weight="bold">{`Today ${fmtUsd(totals.today.usd)}`}</Text>
+            <Text dimColor>{` with Mapshift · ${fmtUsd(totals.today.baseUsd)} with everything on ${appModel}`}</Text>
+          </Text>
+        )}
+        {breakdown}
+        <Text dimColor size="footnote" wrap="wrap">
+          {`Model switching compares each request with running it on ${appModel}, the model you picked. Map tokens are reads the agent skipped because the map already answered.`}
+        </Text>
+      </Box>
+    ),
   })
 }
 
 function MapCard(c: Ctx) {
   const { Box, Text } = c.t
   const m = c.d.map
-  if (m.available === null) return Card(c, { title: 'Map', children: Muted(c.t, 'Checking the map…') })
-  if (!m.available || !m.state) return Card(c, { title: 'Map', children: <Text wrap="wrap">Map not available — run `npx mapshift setup`</Text> })
-  const total = m.lookups + m.fileReads
-  const share = total > 0 ? Math.round((m.lookups / total) * 100) : null
-  const usage = (
-    <Text wrap="wrap">
-      {`${plural(m.lookups, 'map lookup')} · ${plural(m.fileReads, 'file read')}`}
-      {share !== null ? <Text color={share >= 30 ? STATUS.ok : undefined} dimColor={share < 30}>{` · ${share}% lookups`}</Text> : null}
-    </Text>
-  )
-  if (m.state === 'empty')
+  if (m.available === null) return Card(c, { title: '🗺️ Map', children: Muted(c.t, '⏳ Checking the map…') })
+  if (!m.available || !m.state)
     return Card(c, {
-      title: 'Map',
+      title: '🗺️ Map',
       children: (
         <Box flexDirection="column">
-          {Row(c, 'Status', <Text weight="bold">Not built yet</Text>)}
-          {Muted(c.t, 'Build it with `npx mapshift map build` in this project.')}
+          <Text wrap="wrap">⚪ Not available yet</Text>
+          {Muted(c.t, 'Install the map with `npx mapshift setup`, then open a new chat.')}
         </Box>
       ),
     })
+  if (m.state === 'empty')
+    return Card(c, {
+      title: '🗺️ Map',
+      children: (
+        <Box flexDirection="column">
+          {Row(c, 'Status', <Text weight="bold">⚪ Not built yet</Text>)}
+          {Muted(c.t, 'It builds by itself the first time the map tools are used, or run `npx mapshift map build`.')}
+        </Box>
+      ),
+    })
+  const total = m.lookups + m.fileReads
+  const share = total > 0 ? Math.round((m.lookups / total) * 100) : null
   const langs = m.languages.slice(0, 4).map(l => `${l.label} ${num(l.n)}`).join(' · ')
+  const barWidth = Math.max(8, Math.min(20, c.cols - 40))
   return Card(c, {
-    title: 'Map',
+    title: '🗺️ Map',
     aside: m.builtAt ? `Updated ${ago(c.d.now - m.builtAt)}` : undefined,
     children: (
       <Box flexDirection="column">
@@ -445,16 +567,25 @@ function MapCard(c: Ctx) {
           c,
           'Status',
           m.state === 'building' ? (
-            <Text weight="bold" color={ACCENT.blue}>{`Building ${m.percent}%`}</Text>
+            <Text weight="bold" color={ACCENT.blue}>{`⏳ Building ${m.percent}%`}</Text>
           ) : (
             <Text weight="bold" color={STATUS.ok}>
-              Ready
+              ✅ Ready
             </Text>
           ),
         )}
-        {Row(c, 'Holds', `${plural(m.files, 'file')} · ${plural(m.symbols, 'definition')} · ${plural(m.links, 'call link')}`)}
-        {langs ? Row(c, 'Languages', langs) : null}
-        {Row(c, 'This session', usage)}
+        {Row(c, '📦 Holds', `${plural(m.files, 'file')} · ${plural(m.symbols, 'definition')} · ${plural(m.links, 'call link')}`)}
+        {langs ? Row(c, '🔤 Languages', langs) : null}
+        {Row(
+          c,
+          '🔍 This chat',
+          <Text wrap="wrap">
+            {`${plural(m.lookups, 'map lookup')} · ${plural(m.fileReads, 'file read')}`}
+            {share !== null ? <Text dimColor>{'  '}</Text> : null}
+            {share !== null ? blocks(c, share, barWidth, ACCENT.teal) : null}
+            {share !== null ? <Text color={ACCENT.teal}>{` ${share}% via the map`}</Text> : null}
+          </Text>,
+        )}
       </Box>
     ),
   })
