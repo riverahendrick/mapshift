@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="t">
+  <title id="t">Mapshift</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1530"/>
+      <stop offset="1" stop-color="#162a5c"/>
+    </linearGradient>
+    <linearGradient id="panelA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5eead4"/>
+      <stop offset="1" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="panelB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#f0abfc"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <!-- the folded map: three panels -->
+  <path d="M52 78 L100 62 L100 188 L52 204 Z" fill="url(#panelA)"/>
+  <path d="M100 62 L156 80 L156 206 L100 188 Z" fill="url(#panelB)"/>
+  <path d="M156 80 L204 64 L204 190 L156 206 Z" fill="url(#panelA)"/>
+  <!-- routes on the map -->
+  <g fill="none" stroke="#0b1530" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity=".55">
+    <path d="M66 170 L88 150 L114 158 L140 128"/>
+  </g>
+  <g fill="#0b1530" opacity=".6">
+    <circle cx="66" cy="170" r="7"/>
+    <circle cx="114" cy="158" r="6"/>
+  </g>
+  <!-- the shift: an arrow cutting up through the map -->
+  <path d="M120 176 L176 120" stroke="#0b1530" stroke-width="30" stroke-linecap="round"/>
+  <path d="M120 176 L176 120" stroke="url(#arrow)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M146 104 L192 104 L192 150 Z" fill="#0b1530" stroke="#0b1530" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M150 108 L188 108 L188 146 Z" fill="url(#arrow)" stroke="url(#arrow)" stroke-width="6" stroke-linejoin="round"/>
+</svg>
