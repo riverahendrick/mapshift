@@ -93,28 +93,39 @@ export function levelMeter(o: { dark?: boolean; level: number; width?: number })
 }
 
 /**
- * What the requests cost with Mapshift next to what they would have cost on the person's own model,
- * the difference shaded as savings (or marked as extra spent on quality).
+ * Two bars, "with" next to "without", each with its label and value, and an optional note under them
+ * (green when it reports a saving, muted otherwise). The numbers and the note come from the caller,
+ * already worked out by one rule, so the drawing never recomputes them.
  */
-export function compareBars(o: { dark?: boolean; withUsd: number; withoutUsd: number; withoutLabel: string; width?: number; fmt: (n: number) => string }): string {
+export function compareBars(o: {
+  dark?: boolean
+  withValue: number
+  withoutValue: number
+  withLabel: string
+  withoutLabel: string
+  note?: string
+  good?: boolean
+  width?: number
+  fmt: (n: number) => string
+}): string {
   const w = Math.round(o.width ?? 320)
-  const max = Math.max(1e-9, o.withUsd, o.withoutUsd)
-  const len = (v: number) => Math.max(v > 0 ? 6 : 0, (v / max) * (w - 4))
-  const saved = o.withoutUsd - o.withUsd
+  const max = Math.max(1e-9, o.withValue, o.withoutValue)
+  const len = (v: number) => Math.max(v > 0 ? 6 : 0, (Math.max(0, v) / max) * (w - 4))
   const row = (y: number, label: string, v: number, color: string) =>
     `<text x="0" y="${y}" font-size="11.5" fill="${mut(o.dark)}">${esc(label)}</text>` +
     `<text x="${w}" y="${y}" text-anchor="end" font-size="11.5" font-weight="600" fill="${ink(o.dark)}">${esc(o.fmt(v))}</text>` +
     `<rect x="0" y="${y + 5}" width="${w}" height="10" rx="5" fill="${TRACK}"/>` +
     `<rect x="0" y="${y + 5}" width="${len(v).toFixed(1)}" height="10" rx="5" fill="${color}"/>`
+  const ht = o.note ? 82 : 66
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" ${FONT} width="${w}" height="${saved !== 0 ? 82 : 66}" viewBox="0 0 ${w} ${saved !== 0 ? 82 : 66}">` +
-    row(12, 'With Mapshift', o.withUsd, ACCENT.teal) +
-    row(44, o.withoutLabel, o.withoutUsd, ACCENT.slate) +
-    (saved > 0.0005
-      ? `<text x="0" y="78" font-size="11.5" font-weight="600" fill="${STATUS.ok}">${esc(`Saved ${o.fmt(saved)} (${Math.round((saved / Math.max(1e-9, o.withoutUsd)) * 100)}%)`)}</text>`
-      : saved < -0.0005
-        ? `<text x="0" y="78" font-size="11.5" fill="${mut(o.dark)}">${esc(`${o.fmt(-saved)} more, spent on stronger models for harder work`)}</text>`
-        : '') +
+    `<svg xmlns="http://www.w3.org/2000/svg" ${FONT} width="${w}" height="${ht}" viewBox="0 0 ${w} ${ht}">` +
+    row(12, o.withLabel, o.withValue, ACCENT.teal) +
+    row(44, o.withoutLabel, o.withoutValue, ACCENT.slate) +
+    (o.note
+      ? o.good
+        ? `<text x="0" y="78" font-size="11.5" font-weight="600" fill="${STATUS.ok}">${esc(o.note)}</text>`
+        : `<text x="0" y="78" font-size="11.5" fill="${mut(o.dark)}">${esc(o.note)}</text>`
+      : '') +
     `</svg>`
   )
 }

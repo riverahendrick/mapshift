@@ -25,7 +25,8 @@ import {
 import type { MapInfo } from '../types'
 import type { DecideInput } from './brain'
 import { STATUS, statusColor } from './charts'
-import { launchers, mapSavings, parseRoute, parseStatus, raises, routeText } from './map'
+import { addStats, launchers, mapSavings, mapToolOf, parseRoute, parseStatus, raises, routeText, savedPct } from './map'
+import { mapStatsLine, mapUsd, moneyVerdict, savingsFor, savingsLines, signedUsd, tokenVerdict, toolLine } from './savings'
 import { projectKey } from './state'
 import { bandText, inText, shortWhy } from './ui'
 
@@ -48,6 +49,35 @@ const base: DecideInput = {
   prices: PRICES,
 }
 const warmOpus = { opus: { at: NOW - 30_000, tokens: 100_000 } }
+
+/**
+ * The map's log for one chat in C:/work/alpha (the agent later reads src/b.ts):
+ *   find     answer 300, points at a.ts 4000 + b.ts 2000  → would read 4000, credit 3700
+ *   trace    answer 250, points at c.ts 1500              → would read 1500, credit 1250
+ *   file     answer 400, points at d.ts 9000              → would read 9000, credit 8600
+ *   search   answer 500, points at b.ts 2000 (read)       → would read 0,    credit 0 (not −500)
+ *   overview answer 150, points at a.ts 4000 again        → would read 4000, credit 3850
+ * plus one answer in another project and one from before this chat, which never count.
+ */
+const LEDGER = [
+  { kind: 'map', ts: NOW + 1000, agent: 'claude-code', repo: 'C:/work/alpha', tool: 'map_find', answerTokens: 300, files: [{ path: 'src/a.ts', tokens: 4000 }, { path: 'src/b.ts', tokens: 2000 }] },
+  { kind: 'map', ts: NOW + 1100, agent: 'claude-code', repo: 'C:/work/alpha', tool: 'map_trace', answerTokens: 250, files: [{ path: 'src/c.ts', tokens: 1500 }] },
+  { kind: 'map', ts: NOW + 1200, agent: 'claude-code', repo: 'C:/work/alpha', tool: 'map_file', answerTokens: 400, files: [{ path: 'src/d.ts', tokens: 9000 }] },
+  { kind: 'map', ts: NOW + 1300, agent: 'claude-code', repo: 'C:/work/alpha', tool: 'map_search', answerTokens: 500, files: [{ path: 'src/b.ts', tokens: 2000 }] },
+  { kind: 'map', ts: NOW + 1400, agent: 'claude-code', repo: 'C:/work/alpha', tool: 'map_overview', answerTokens: 150, files: [{ path: 'src/a.ts', tokens: 4000 }] },
+  { kind: 'map', ts: NOW + 1500, agent: 'claude-code', repo: 'C:/work/beta', tool: 'map_find', answerTokens: 300, files: [{ path: 'src/z.ts', tokens: 9000 }] },
+  { kind: 'map', ts: NOW - 60_000, agent: 'claude-code', repo: 'C:/work/alpha', tool: 'map_find', answerTokens: 300, files: [{ path: 'src/e.ts', tokens: 5000 }] },
+]
+const LEDGER_STATS = {
+  lookups: 5,
+  byTool: { find: 1, trace: 1, file: 1, overview: 1, search: 1, other: 0 },
+  answerTokens: 1600, // 300 + 250 + 400 + 500 + 150
+  wouldRead: 18_500, // 4000 + 1500 + 9000 + 0 + 4000
+  saved: 17_400, // 3700 + 1250 + 8600 + 0 + 3850
+  filesSkipped: 3, // a.ts, c.ts, d.ts
+}
+/** Another chat of the same day, as the store keeps it. */
+const OTHER_CHAT = { lookups: 2, byTool: { find: 2, trace: 0, file: 0, overview: 0, search: 0, other: 0 }, answerTokens: 400, wouldRead: 10_000, saved: 9600, filesSkipped: 2 }
 
 // ------------------------------------------------------------------ pure rules
 
@@ -521,9 +551,92 @@ test('map savings: files the map pointed to and that were not read anyway, less 
     ev({ repo: 'C:/work/beta', files: [{ path: 'src/d.ts', tokens: 9000 }] }), // another project
     'not json',
   ].join('\n')
-  expect(mapSavings(log, { root: 'c:\\work\\alpha', since: NOW - 1000, reads: [] })).toBe(2700)
-  expect(mapSavings(log, { root: 'C:/work/alpha', since: NOW - 1000, reads: ['C:\\work\\alpha\\src\\a.ts'] })).toBe(700)
-  expect(mapSavings(ev({ files: [] }), { root: 'C:/work/alpha', since: 0, reads: [] })).toBe(0) // never below zero
+  expect(mapSavings(log, { root: 'c:\\work\\alpha', since: NOW - 1000, reads: [] }).saved).toBe(2700)
+  expect(mapSavings(log, { root: 'C:/work/alpha', since: NOW - 1000, reads: ['C:\\work\\alpha\\src\\a.ts'] }).saved).toBe(700)
+  expect(mapSavings(ev({ files: [] }), { root: 'C:/work/alpha', since: 0, reads: [] }).saved).toBe(0) // never below zero
+})
+
+test('map numbers: three answers, one pointed file read afterwards (the worked example)', async () => {
+  const ev = (o: any) => JSON.stringify({ kind: 'map', ts: NOW, agent: 'claude-code', repo: 'C:/work/alpha', ...o })
+  const log = [
+    ev({ tool: 'map_find', answerTokens: 300, files: [{ path: 'src/a.ts', tokens: 4000 }, { path: 'src/b.ts', tokens: 2000 }] }),
+    ev({ tool: 'map_trace', answerTokens: 250, files: [{ path: 'src/c.ts', tokens: 1500 }] }),
+    ev({ tool: 'map_file', answerTokens: 400, files: [{ path: 'src/d.ts', tokens: 9000 }] }),
+  ].join('\n')
+  const s = mapSavings(log, { root: 'C:/work/alpha', since: NOW - 1000, reads: ['C:/work/alpha/src/b.ts'] })
+  expect(s).toEqual({
+    lookups: 3,
+    byTool: { find: 1, trace: 1, file: 1, overview: 0, search: 0, other: 0 },
+    answerTokens: 950, // 300 + 250 + 400
+    wouldRead: 14500, // 4000 + 1500 + 9000 (b.ts was read, so not counted)
+    saved: 13550, // (4000 − 300) + (1500 − 250) + (9000 − 400)
+    filesSkipped: 3, // a, c, d
+  })
+  expect(savedPct(s)).toBe(93) // 13550 / 14500 = 93.4%
+  expect(mapStatsLine(s)).toBe('🔍 3 lookups · 📄 3 files not opened · 💚 13.6k tokens saved (93%)')
+  expect(toolLine(s)).toBe('Find 1 · Trace 1 · File outline 1')
+})
+
+test('map numbers: an answer that spared nothing counts 0, a file pointed at twice is one file, other chats and projects stay out', async () => {
+  const s = mapSavings(LEDGER.map(x => JSON.stringify(x)).join('\n') + '\nnot json', { root: 'C:/work/alpha', since: NOW, reads: ['C:/work/alpha/src/b.ts'] })
+  expect(s).toEqual(LEDGER_STATS)
+  expect(savedPct(s)).toBe(94) // 17400 / 18500 = 94.05%
+  // today: chats add field by field, and the percent comes from the sums
+  const both = addStats([s, OTHER_CHAT])
+  expect(both).toEqual({
+    lookups: 7,
+    byTool: { find: 3, trace: 1, file: 1, overview: 1, search: 1, other: 0 },
+    answerTokens: 2000,
+    wouldRead: 28500,
+    saved: 27000,
+    filesSkipped: 5,
+  })
+  expect(savedPct(both)).toBe(95) // 27000 / 28500 = 94.7%
+  expect(mapToolOf('mcp__mapshift__map_overview')).toBe('overview')
+  expect(mapToolOf('map_rename')).toBe('other')
+})
+
+test('with and without Mapshift, in money and tokens, to the cent', async () => {
+  // this chat: routing saved money, the map saved tokens; priced on Opus input ($4 per million)
+  const m = { usd: 1.2, baseUsd: 1.5, cacheSavedUsd: 0.4, turns: 3, tokens: 250_000, cacheRead: 200_000 }
+  const s = savingsFor(m, LEDGER_STATS, mapUsd(LEDGER_STATS.saved, PRICES.opus.in))
+  const cents = (v: number) => Math.round(v * 100)
+  const micro = (v: number) => Math.round(v * 1e6) // millionths of a dollar: exact for these figures
+  expect(cents(s.with.usd)).toBe(120)
+  expect(s.with.tokens).toBe(250_000)
+  expect(micro(s.without.usd)).toBe(1_569_600) // $1.50 + 17,400 × $4 / 1M = $1.5696
+  expect(cents(s.without.usd)).toBe(157)
+  expect(s.without.tokens).toBe(267_400)
+  expect(micro(s.saved.usd)).toBe(369_600) // $0.30 switching + $0.0696 map
+  expect(cents(s.saved.usd)).toBe(37)
+  expect(s.saved.tokens).toBe(17_400)
+  expect(cents(s.routingUsd)).toBe(30)
+  expect(micro(s.map.usd!)).toBe(69_600)
+  expect(cents(s.cache.usd)).toBe(40) // shown, not added
+  expect(s.cache.tokens).toBe(200_000)
+  expect(micro(s.map.usd! + s.routingUsd)).toBe(micro(s.saved.usd)) // the rows add up to the total
+  expect(moneyVerdict(s)).toBe('Saved $0.370 (24%)') // 0.3696 / 1.5696 = 23.5%
+  expect(tokenVerdict(s)).toBe('17.4k tokens saved (7%)') // 17,400 / 267,400 = 6.5%
+  expect(savingsLines('This chat', s, 'Opus 5.5')).toEqual([
+    'This chat with Mapshift: $1.20 · 250.0k tokens',
+    'This chat without Mapshift: $1.57 · 267.4k tokens (every request on Opus 5.5, no map)',
+    'This chat difference: Saved $0.370 (24%) · 17.4k tokens saved (7%)',
+  ])
+  // stronger models for harder work cost more than the map saved: said plainly, never hidden
+  const more = savingsFor({ ...m, usd: 2, baseUsd: 1.5 }, LEDGER_STATS, mapUsd(LEDGER_STATS.saved, PRICES.opus.in))
+  expect(micro(more.saved.usd)).toBe(-430_400) // $1.5696 − $2.00
+  expect(moneyVerdict(more)).toBe('$0.430 more, spent on stronger models for harder work')
+  expect(signedUsd(more.routingUsd)).toBe('$0.500 more')
+  // an app model with no known price: the map's tokens still count, its dollars are not guessed
+  const unpriced = savingsFor(m, LEDGER_STATS, mapUsd(LEDGER_STATS.saved, null))
+  expect(unpriced.map.usd).toBe(null)
+  expect(unpriced.without.tokens).toBe(267_400)
+  expect(cents(unpriced.saved.usd)).toBe(30)
+  // no map log: nothing is added for the map, and nothing is invented for switching
+  const noMap = savingsFor(m, null, null)
+  expect(noMap.without.tokens).toBe(250_000)
+  expect(cents(noMap.saved.usd)).toBe(30)
+  expect(tokenVerdict(noMap)).toBe('No tokens saved')
 })
 
 test('time and status words: fixed limit colours at 64, 65 and 85 percent; plain durations', async () => {
@@ -711,7 +824,7 @@ test('projects: one folder is one key whatever the slashes or case', async () =>
 type RunAnswer = { exitCode: number; stdout: string } | { deny: string } | undefined
 type Run = (argv: string[]) => RunAnswer
 
-const MAP_READY: MapInfo = { available: true, state: 'ready', percent: 100, files: 412, symbols: 3120, links: 8450, languages: [], builtAt: NOW, checkedAt: NOW, lookups: 0, fileReads: 0, savedSession: null, savedToday: null }
+const MAP_READY: MapInfo = { available: true, state: 'ready', percent: 100, files: 412, symbols: 3120, links: 8450, languages: [], builtAt: NOW, checkedAt: NOW, lookups: 0, fileReads: 0, statsSession: null, statsToday: null, usdSession: null, usdToday: null }
 
 function statusJson(state: string) {
   return JSON.stringify({
@@ -998,6 +1111,160 @@ test('map savings come from the map log for this project and session, and show o
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /1\.7k tokens/ })).toBeTruthy()
   await ui.unmount()
+})
+
+// ------------------------------------------------------------------ every displayed number, from fixture logs
+
+const LOCAL_DAY = new Date(NOW).toLocaleDateString('en-CA') // the day totals are kept under
+const UTC_DAY = new Date(NOW).toISOString().slice(0, 10) // the day the map names its log after
+const HOME = ['C:', 'Users', 'me'].join(String.fromCharCode(92)) // a Windows home: C:\Users\me
+/** Earlier today, before this chat: 4 requests, routing spent $0.50 more than Opus alone would have. */
+const EARLIER_TODAY = { usd: 2, baseUsd: 1.5, cacheSavedUsd: 0.5, turns: 4, tokens: 400_000, cacheRead: 300_000 }
+
+/**
+ * One chat in C:/work/alpha: five map lookups (the LEDGER), then src/b.ts read, then one request on Opus
+ * (the test engine's step: 10 new, 90,000 cache read, 500 cache write, 50 out = 90,560 tokens,
+ * $0.02304 at Opus list prices with a 60-minute cache, $0.342 saved by the cache).
+ */
+async function mapChat($: any, on: any, store: Record<string, unknown>) {
+  const env = engine(on, {
+    run: mapCli('ready'),
+    env: { USERPROFILE: HOME },
+    files: { [`C:/Users/me/.mapshift/logs/${UTC_DAY}.jsonl`]: LEDGER.map(x => JSON.stringify(x)).join('\n') },
+    store,
+  })
+  on('tool.call', () => ({ result: {} }))
+  await $.session.start({ cwd: 'C:/work/alpha', surface: 'desktop', isInteractive: true })
+  await settle(env.clock)
+  await $.turn.start({ text: 'where is the cart total computed', turnId: 'mc1' })
+  for (const tool of ['map_find', 'map_trace', 'map_file', 'map_search', 'map_overview']) await $.tool.call({ tool: `mcp__mapshift__${tool}`, query: 'cart' } as any)
+  await $.tool.call({ tool: 'Read', file_path: 'C:/work/alpha/src/b.ts' } as any)
+  await step($, 'mc1', 0)
+  await $.turn.complete({ turnId: 'mc1', answer: '', durationMs: 1000, isAborted: false, reason: 'answer' })
+  await settle(env.clock)
+  return env
+}
+
+const exact = (s: string) => new RegExp(`^${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+
+test('the Map and Savings cards show every figure, exactly, on the terminal and on graphical surfaces', async ($, on) => {
+  const { captured } = await mapChat($, on, {
+    totals2: { all: EARLIER_TODAY, today: EARLIER_TODAY, day: LOCAL_DAY },
+    mapStats: { day: LOCAL_DAY, bySid: { 'sess-0': { stats: OTHER_CHAT, price: PRICES.opus.in } } },
+  })
+  // what the store keeps for today: one entry per chat
+  expect(Object.keys((captured.mapStats as any).bySid).sort()).toEqual(['sess-0', 'sess-1'])
+  expect((captured.mapStats as any).bySid['sess-1'].stats).toEqual(LEDGER_STATS)
+  const texts = [
+    '🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)',
+    'Find 1 · Trace 1 · File outline 1 · Overview 1 · Search 1',
+    // Map card, today: this chat + the other chat (2 lookups, 9,600 saved of 10,000)
+    '🔍 7 lookups · 📄 5 files not opened · 💚 27.0k tokens saved (95%)',
+    'Find 3 · Trace 1 · File outline 1 · Overview 1 · Search 1 · with the map 2.0k tokens, without 28.5k tokens',
+    // Savings card: with $0.02304 / 90,560 tokens; without $0.02304 + 17,400 × $4/M = $0.09264 / 107,960 tokens
+    'This chat: Saved $0.070 (75%) · 17.4k tokens saved (16%)',
+    // today: with $2.02304 / 490,560; without $1.52304 + 27,000 × $4/M = $1.63104 / 517,560
+    'Today: $0.392 more, spent on stronger models for harder work · 27.0k tokens saved (5%)',
+    'This chat',
+    'Today',
+    '$0.023', // with, this chat
+    '90.6k tokens',
+    '$0.093', // without, this chat
+    '108.0k tokens',
+    '$2.02', // with, today
+    '490.6k tokens',
+    '$1.63', // without, today
+    '517.6k tokens',
+    '$0.070', // map this chat (also the total)
+    '17.4k tokens',
+    '$0.108', // map today: (17,400 + 9,600) × $4/M
+    '27.0k tokens',
+    '$0', // model switching this chat: same model
+    '$0.500 more', // model switching today
+    'same tokens',
+    '$0.342', // cache this chat
+    '90.0k from cache',
+    '$0.842', // cache today
+    '390.0k from cache',
+    '$0.392 more', // total today
+  ]
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui: any = await $.ui.mount({ ...PANE, surface })
+    for (const s of texts) {
+      const hit = await ui.find({ type: 'Text', text: exact(s) })
+      if (!hit) throw new Error(`${surface}: no text "${s}"`)
+    }
+    // the hook's own count in this chat: 5 map lookups, 1 Read, so 5 of 6 (83%) went through the map
+    expect(await ui.find({ type: 'Text', text: /^5 map lookups · 1 file read.*83% via the map$/ })).toBeTruthy()
+    const drawn = JSON.stringify(await ui.drawn())
+    // the bars: with the map 1,600 tokens, without 18,500 tokens (this chat); today's money with and without
+    expect(drawn.includes('With the map')).toBe(true)
+    expect(drawn.includes(' 1.6k tokens')).toBe(true)
+    expect(drawn.includes('18.5k tokens')).toBe(true)
+    if (surface === 'desktop') {
+      expect(await ui.find({ type: 'Svg', alt: 'With the map 1.6k tokens, without 18.5k tokens' })).toBeTruthy()
+      expect(await ui.find({ type: 'Svg', alt: 'Today: $2.02 with Mapshift, $1.63 without' })).toBeTruthy()
+    } else expect(await ui.find({ type: 'Svg' })).toBeUndefined()
+    // red is for warnings only: the cost-more line is never red
+    expect(drawn.includes(STATUS.bad)).toBe(false)
+    await ui.unmount()
+  }
+  // the terminal-only view: /mapshift status
+  const out: any = await $.command.run({ command: 'mapshift', args: 'status' } as any)
+  for (const line of [
+    'This chat with Mapshift: $0.023 · 90.6k tokens',
+    'This chat without Mapshift: $0.093 · 108.0k tokens (every request on Opus 5.5, no map)',
+    'This chat difference: Saved $0.070 (75%) · 17.4k tokens saved (16%)',
+    'Today with Mapshift: $2.02 · 490.6k tokens',
+    'Today without Mapshift: $1.63 · 517.6k tokens (every request on Opus 5.5, no map)',
+    'Today difference: $0.392 more, spent on stronger models for harder work · 27.0k tokens saved (5%)',
+    'Cache (in both figures, not added): $0.342 this chat · $0.842 today',
+    'Map this chat: 🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)',
+    '  Find 1 · Trace 1 · File outline 1 · Overview 1 · Search 1 · answers 1.6k tokens, without the map 18.5k tokens',
+    'Map today: 🔍 7 lookups · 📄 5 files not opened · 💚 27.0k tokens saved (95%)',
+  ])
+    if (!String(out.text).split('\n').includes(line)) throw new Error(`status has no line "${line}"\n${out.text}`)
+})
+
+test('today never counts a chat twice, and a stored day that is over is dropped', async ($, on) => {
+  const { clock, captured } = await mapChat($, on, { mapStats: { day: '2000-01-01', bySid: { 'sess-old': { stats: OTHER_CHAT, price: 4 } } } })
+  // two more requests: each refreshes the map figures again
+  for (const id of ['mc2', 'mc3']) {
+    await $.turn.start({ text: 'and where is it rendered', turnId: id })
+    await step($, id, 0)
+    await $.turn.complete({ turnId: id, answer: '', durationMs: 1000, isAborted: false, reason: 'answer' })
+    await settle(clock)
+  }
+  expect(Object.keys((captured.mapStats as any).bySid)).toEqual(['sess-1'])
+  expect((captured.mapStats as any).day).toBe(LOCAL_DAY)
+  const out: any = await $.command.run({ command: 'mapshift', args: 'status' } as any)
+  const lines = String(out.text).split('\n')
+  expect(lines.includes('Map this chat: 🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)')).toBe(true)
+  expect(lines.includes('Map today: 🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)')).toBe(true)
+  // three requests of 90,560 tokens; the map's 17,400 tokens are added once, not three times
+  expect(lines.includes('Today with Mapshift: $0.069 · 271.7k tokens')).toBe(true)
+  expect(lines.includes('Today without Mapshift: $0.139 · 289.1k tokens (every request on Opus 5.5, no map)')).toBe(true)
+})
+
+test('Help says how the numbers are counted, on every surface', async ($, on) => {
+  await fill($, on)
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    const ui: any = await $.ui.mount({ ...PANE, surface })
+    await ui.press({ key: 'tab-help' })
+    const drawn = JSON.stringify(await ui.drawn())
+    for (const words of ['How the numbers are counted', 'characters / 4', 'did not read it anywhere in the same chat', 'never below 0 for one answer', 'plus the map', 'list prices', 'adds each chat of the day once'])
+      if (!drawn.includes(words)) throw new Error(`${surface}: Help lacks "${words}"`)
+    await ui.unmount()
+  }
+})
+
+test('a today saved by an older version, with money but no token counts, starts afresh', async ($, on) => {
+  const { clock } = engine(on, { run: mapCli('ready'), store: { totals2: { all: { usd: 9, baseUsd: 9, cacheSavedUsd: 1, turns: 9 }, today: { usd: 5, baseUsd: 5, cacheSavedUsd: 1, turns: 5 }, day: LOCAL_DAY } } })
+  await $.session.start({ cwd: 'C:/work/alpha', surface: 'desktop', isInteractive: true })
+  await settle(clock)
+  const out: any = await $.command.run({ command: 'mapshift', args: 'status' } as any)
+  expect(String(out.text).split('\n').includes('Today with Mapshift: $0.0000 · 0 tokens')).toBe(true)
+  expect(String(out.text).includes('NaN')).toBe(false)
 })
 
 test('the Health card appears when the account did not serve the model that was asked for', async ($, on) => {

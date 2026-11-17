@@ -107,7 +107,16 @@ export type Snap = {
   at: number
 }
 
-export type Money = { usd: number; baseUsd: number; cacheSavedUsd: number; turns: number }
+export type Money = {
+  usd: number
+  baseUsd: number
+  cacheSavedUsd: number
+  turns: number
+  /** Tokens processed, as logged per request: fresh input + cache reads + cache writes + output. */
+  tokens: number
+  /** Of those, the tokens read from the conversation cache. */
+  cacheRead: number
+}
 export type Totals = {
   session: Money
   today: Money
@@ -120,6 +129,22 @@ export type Totals = {
 }
 
 export type MapState = 'empty' | 'building' | 'ready'
+/** The five map tools by their short names (map_find is 'find'); anything else the log names is 'other'. */
+export type MapTool = 'find' | 'trace' | 'file' | 'overview' | 'search' | 'other'
+/** What the map's own log says about its answers. The rules are in mapSavings (hooks/map.ts). */
+export type MapStats = {
+  /** Map answers logged. */
+  lookups: number
+  byTool: Record<MapTool, number>
+  /** Tokens the answers cost (their characters / 4). */
+  answerTokens: number
+  /** Full size in tokens of the files the answers pointed at that the agent did not open. */
+  wouldRead: number
+  /** Per answer: those files less the answer, never below 0; summed over answers. */
+  saved: number
+  /** Distinct files the answers pointed at that the agent did not open. */
+  filesSkipped: number
+}
 export type MapInfo = {
   /** Whether `mapshift map status` answered: null before the first check, false when it failed. */
   available: boolean | null
@@ -137,9 +162,13 @@ export type MapInfo = {
   lookups: number
   /** Read, Grep and Glob calls seen this session: the work the map is meant to replace. */
   fileReads: number
-  /** Tokens the map saved, estimated from the map's own log; null when the log could not be read. */
-  savedSession: number | null
-  savedToday: number | null
+  /** This chat's map figures from the map's own log; null when the log could not be read. */
+  statsSession: MapStats | null
+  /** Today's: each chat's latest figures, kept by session id and added once each. */
+  statsToday: MapStats | null
+  /** Saved map tokens priced at the input price of the model picked in the app; null when that model is unknown. */
+  usdSession: number | null
+  usdToday: number | null
 }
 
 export type Live = {

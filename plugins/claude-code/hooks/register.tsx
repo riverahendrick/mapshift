@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Cfg, Family, Health, LimitWindow, LogRow, Mode, StepRow, Tier, Totals } from '../types'
+import type { Cfg, Family, Health, LimitWindow, LogRow, MapStats, Mode, StepRow, Tier, Totals } from '../types'
 import {
   DEFAULT_CFG,
   FAMILIES,
@@ -30,9 +30,10 @@ import { crossedLine, formatEvent, growEffort, growth, verifyAudit } from './bra
 import type { AuditEvent, Force, Ledger, Plan, RateSample, RiskDomain } from './brain'
 import { Band, Pane, bandText, mapLine, modelName, shortWhy } from './ui'
 import type { Act, Data } from './ui'
-import { EMPTY_LIVE, EMPTY_MAP, EMPTY_SNAP, EMPTY_TOTALS, PANE, PROJECT_KEYS, TITLE, nextTurn, project, projectKey, projectName } from './state'
+import { EMPTY_LIVE, EMPTY_MAP, EMPTY_SNAP, EMPTY_TOTALS, PANE, PROJECT_KEYS, TITLE, asMoney, money, nextTurn, project, projectKey, projectName } from './state'
 import type { NextForce, ProjectPrefs } from './state'
-import { MAP_REMINDER, isFileRead, isMapTool, launchers, ledgerFiles, mapSavings, parseRoute, parseStatus, raises, routeText } from './map'
+import { MAP_REMINDER, addStats, emptyStats, isFileRead, isMapTool, launchers, ledgerFiles, mapSavings, parseRoute, parseStatus, raises, routeText } from './map'
+import { mapStatsLine, mapUsd, savingsFor, savingsLines, toolLine } from './savings'
 import type { MapRoute } from './map'
 
 type $ = EngineInterface
@@ -43,8 +44,8 @@ const lastA = atom({ plugin: 'mapshift', key: 'last' } as const, null, { shape: 
 const logA = atom({ plugin: 'mapshift', key: 'log' } as const, [], { shape: 'log-1' })
 const stepsA = atom({ plugin: 'mapshift', key: 'steps' } as const, [], { shape: 'steps-1' })
 const snapA = atom({ plugin: 'mapshift', key: 'snap' } as const, EMPTY_SNAP, { shape: 'snap-1' })
-const totalsA = atom({ plugin: 'mapshift', key: 'totals' } as const, EMPTY_TOTALS, { shape: 'totals-1' })
-const mapA = atom({ plugin: 'mapshift', key: 'map' } as const, EMPTY_MAP, { shape: 'map-1' })
+const totalsA = atom({ plugin: 'mapshift', key: 'totals' } as const, EMPTY_TOTALS, { shape: 'totals-2' })
+const mapA = atom({ plugin: 'mapshift', key: 'map' } as const, EMPTY_MAP, { shape: 'map-2' })
 const seenA = atom({ plugin: 'mapshift', key: 'seen' } as const, [], { shape: 'seen-1' })
 const liveA = atom({ plugin: 'mapshift', key: 'live' } as const, EMPTY_LIVE, { shape: 'live-1' })
 const agentsA = atom({ plugin: 'mapshift', key: 'agents' } as const, [], { shape: 'agents-1' })
@@ -160,7 +161,7 @@ async function syncSession($: $) {
   readPaths.clear()
   reminderOn = false
   sessionSince = audit.length ? Math.min(...audit.map(x => x.ts)) : await $.clock.now()
-  await update($, mapA, m => ({ ...m, lookups: 0, fileReads: 0, savedSession: null }))
+  await update($, mapA, m => ({ ...m, lookups: 0, fileReads: 0, statsSession: null, usdSession: null }))
   // keep the 8 most recent session logs in the store
   const idx = ((await $.store.get('auditSessions')) as string[] | undefined) ?? []
   const next = [sid, ...idx.filter(x => x !== sid)]
@@ -243,7 +244,7 @@ async function flagLast($: $) {
 }
 
 async function resetSession($: $) {
-  await update($, totalsA, tt => ({ ...tt, session: { usd: 0, baseUsd: 0, cacheSavedUsd: 0, turns: 0 }, switches: 0, misroutes: 0, upgrades: 0, downgrades: 0 }))
+  await update($, totalsA, tt => ({ ...tt, session: money(), switches: 0, misroutes: 0, upgrades: 0, downgrades: 0 }))
   await update($, logA, () => [])
   await update($, stepsA, () => [])
   await update($, agentsA, () => [])
@@ -346,10 +347,13 @@ export const register: Register = on => {
       const now = await $.clock.now()
       const day = today(now)
       if (tot && tot.all) {
+        // a today saved by an older version has money but no token counts: start today afresh rather
+        // than show money without the tokens behind it
+        const keepToday = tot.day === day && !!tot.today && typeof tot.today.tokens === 'number'
         await update($, totalsA, () => ({
           ...EMPTY_TOTALS,
-          all: tot.all!,
-          today: tot.day === day && tot.today ? tot.today : EMPTY_TOTALS.today,
+          all: asMoney(tot.all),
+          today: keepToday ? asMoney(tot.today) : money(),
           day,
         }))
       } else await update($, totalsA, t => ({ ...t, day }))
@@ -695,7 +699,14 @@ export const register: Register = on => {
         misroute: false,
       }
       await update($, logA, rows => [...rows, row].slice(-80))
-      const add = (m: Totals['session']) => ({ usd: m.usd + row.usd, baseUsd: m.baseUsd + row.baseUsd, cacheSavedUsd: m.cacheSavedUsd + tp.acc.cacheSaved, turns: m.turns + 1 })
+      const add = (m: Totals['session']) => ({
+        usd: m.usd + row.usd,
+        baseUsd: m.baseUsd + row.baseUsd,
+        cacheSavedUsd: m.cacheSavedUsd + tp.acc.cacheSaved,
+        turns: m.turns + 1,
+        tokens: m.tokens + row.fresh + row.read + row.wrote + row.out,
+        cacheRead: m.cacheRead + row.read,
+      })
       const day = today(now)
       const totals = await update($, totalsA, t => ({
         ...t,
@@ -870,13 +881,20 @@ export const register: Register = on => {
       const s = await read($, snapA)
       const m = await read($, mapA)
       const last = await read($, lastA)
+      const appName = last?.appModel ? modelName(last.appModel) : 'your model'
+      const mapStats = (label: string, st: MapStats | null) => (st ? [`Map ${label}: ${mapStatsLine(st)}`, `  ${toolLine(st)} · answers ${fmtTok(st.answerTokens)} tokens, without the map ${fmtTok(st.wouldRead)} tokens`] : [])
       return {
         text: [
           `Mode: ${cap(cfg.mode)}${cfg.mode === 'manual' ? ` (${cap(cfg.lockModel)} · ${cfg.lockEffort} effort)` : ''} · upgrade budget ${fmtUsd(cfg.maxSwitchUsd)} · cache ${cfg.ttlMin} min`,
           last ? `Last request: ${last.family ? cap(last.family) : 'session model'} · ${last.effort} effort (${last.tier}) · ${last.reason}` : 'No request routed yet.',
           ...s.windows.map(w => `${w.name}: ${w.pct}%${w.resetsAt ? `, resets ${new Date(w.resetsAt).toLocaleString()}` : ''}${w.projected !== null ? `, on pace for ${Math.round(w.projected)}% at reset` : ''}`),
-          `Session (estimates): ${fmtUsd(t.session.usd)} spent, ${fmtUsd(t.session.cacheSavedUsd)} cache savings, ${fmtUsd(t.session.baseUsd - t.session.usd)} routing savings`,
-          `Map: ${mapLine(m)} · ${m.lookups} lookups, ${m.fileReads} file reads this session${m.savedSession ? ` · about ${fmtTok(m.savedSession)} tokens saved` : ''}`,
+          ...savingsLines('This chat', savingsFor(t.session, m.statsSession, m.usdSession), appName),
+          ...savingsLines('Today', savingsFor(t.today, m.statsToday, m.usdToday), appName),
+          `Cache (in both figures, not added): ${fmtUsd(t.session.cacheSavedUsd)} this chat · ${fmtUsd(t.today.cacheSavedUsd)} today`,
+          `Map: ${mapLine(m)} · ${m.lookups} lookups, ${m.fileReads} file reads this chat`,
+          ...mapStats('this chat', m.statsSession),
+          ...mapStats('today', m.statsToday),
+          'Estimates: dollars at list prices; map answers and file sizes in tokens are characters / 4.',
         ].join('\n'),
       }
     }
@@ -1065,7 +1083,7 @@ async function refreshMap($: $) {
     await update($, mapA, m => (st ? { ...m, ...st, available: true, checkedAt: now } : m.available ? m : { ...m, available: false, state: null, checkedAt: now }))
     if (!st) return
     const m = await read($, mapA)
-    let session: number | null = m.lookups === 0 ? 0 : null
+    let session: MapStats | null = m.lookups === 0 ? emptyStats() : null
     if (m.lookups > 0 && mapHome) {
       let log = ''
       let any = false
@@ -1079,14 +1097,22 @@ async function refreshMap($: $) {
       }
       if (any) session = mapSavings(log, { root: rootDir, since: sessionSince, reads: [...readPaths] })
     }
-    // today: this session's figure plus the other sessions of the day, each kept by session id (never added twice)
+    // saved map tokens are priced at the input price of the model picked in the app (unknown model: no price)
+    const fam = familyOf(appModel || (await read($, lastA))?.appModel || '')
+    const price = fam ? PRICES[fam].in : null
+    // today: this chat's latest figures plus the other chats of the day, each kept once by session id
+    // (a chat's entry is replaced, never added to, so no chat is counted twice)
     const day = today(now)
-    const kept = ((await $.store.get('mapSaved')) as { day?: string; bySid?: Record<string, number> } | undefined) ?? {}
-    const bySid = kept.day === day && kept.bySid ? { ...kept.bySid } : {}
-    if (session !== null && curSid) bySid[curSid] = session
-    if (session) await save($, 'mapSaved', { day, bySid })
-    const values = Object.values(bySid)
-    await update($, mapA, x => ({ ...x, savedSession: session, savedToday: values.length ? values.reduce((a, b) => a + b, 0) : null }))
+    type Kept = { day?: string; bySid?: Record<string, { stats?: MapStats; price?: unknown }> }
+    const kept = ((await $.store.get('mapStats')) as Kept | undefined) ?? {}
+    const bySid = kept.day === day && kept.bySid && typeof kept.bySid === 'object' ? { ...kept.bySid } : {}
+    if (session !== null && curSid) bySid[curSid] = { stats: session, price }
+    if (session && session.lookups > 0 && curSid) await save($, 'mapStats', { day, bySid })
+    const entries = Object.values(bySid).filter(x => !!x && typeof x.stats === 'object' && x.stats !== null)
+    const priced = entries.filter(x => typeof x.price === 'number')
+    const statsToday = entries.length ? addStats(entries.map(x => x.stats as MapStats)) : null
+    const usdToday = priced.length ? priced.reduce((a, x) => a + (mapUsd(addStats([x.stats as MapStats]).saved, x.price as number) ?? 0), 0) : null
+    await update($, mapA, x => ({ ...x, statsSession: session, statsToday, usdSession: session ? mapUsd(session.saved, price) : null, usdToday }))
   } catch {
     /* the card shows the last known state */
   }

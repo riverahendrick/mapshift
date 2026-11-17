@@ -1,6 +1,6 @@
 // The code map, as this plugin sees it: how to run the mapshift command line, how to read its answers,
 // and how much the map saved. Plain functions only (no engine access), so they can be tested alone.
-import type { MapInfo, MapState, Tier } from '../types'
+import type { MapInfo, MapState, MapStats, MapTool, Tier } from '../types'
 import { projectKey } from './state'
 
 /** Map tools as Claude Code names them: mcp__mapshift__map_find and so on. */
@@ -88,30 +88,80 @@ export function ledgerFiles(now: number): string[] {
 
 const norm = (p: string) => p.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase()
 
+const TOOL_NAMES: MapTool[] = ['find', 'trace', 'file', 'overview', 'search']
+/** 'map_find' or 'mcp__mapshift__map_find' is 'find'; a name the map does not have is 'other'. */
+export const mapToolOf = (tool: string): MapTool => {
+  const t = tool.replace(/^mcp__mapshift__/, '').replace(/^map_/, '') as MapTool
+  return TOOL_NAMES.includes(t) ? t : 'other'
+}
+export const emptyStats = (): MapStats => ({
+  lookups: 0,
+  byTool: { find: 0, trace: 0, file: 0, overview: 0, search: 0, other: 0 },
+  answerTokens: 0,
+  wouldRead: 0,
+  saved: 0,
+  filesSkipped: 0,
+})
+
 /**
- * Tokens the map saved: for each map answer in this project since `since`, the size of the files it
- * pointed at that were not then read anyway, less what the answer itself cost. An estimate, never below 0.
+ * What the map did, from its own log, for the map answers in this project since `since` (one chat):
+ * - lookups: the answers logged, also counted per tool;
+ * - answerTokens: what the answers cost (the map logs characters / 4);
+ * - wouldRead: the full size of the files each answer pointed at that the agent did not open in this
+ *   chat (`reads`, before or after the answer), i.e. what it would have read without the map;
+ * - saved: per answer, those files less the answer itself, never below 0 for any one answer; summed;
+ * - filesSkipped: the distinct files pointed at and not opened.
+ * Estimates: sizes are characters / 4.
  */
-export function mapSavings(log: string, o: { root: string; since: number; reads: string[] }): number {
+export function mapSavings(log: string, o: { root: string; since: number; reads: string[] }): MapStats {
   const repo = projectKey(o.root)
   const reads = o.reads.map(norm)
   const wasRead = (path: string) => {
     const p = norm(path)
     return reads.some(r => r === p || r.endsWith(`/${p}`))
   }
-  let net = 0
+  const s = emptyStats()
+  const skipped = new Set<string>()
   for (const line of log.split('\n')) {
     if (!line.trim()) continue
-    let e: { kind?: unknown; ts?: unknown; repo?: unknown; answerTokens?: unknown; files?: unknown }
+    let e: { kind?: unknown; ts?: unknown; repo?: unknown; tool?: unknown; answerTokens?: unknown; files?: unknown }
     try {
       e = JSON.parse(line)
     } catch {
       continue
     }
-    if (e.kind !== 'map' || typeof e.ts !== 'number' || e.ts < o.since || typeof e.repo !== 'string' || projectKey(e.repo) !== repo) continue
+    if (!e || e.kind !== 'map' || typeof e.ts !== 'number' || e.ts < o.since || typeof e.repo !== 'string' || projectKey(e.repo) !== repo) continue
     const files = Array.isArray(e.files) ? (e.files as { path?: unknown; tokens?: unknown }[]) : []
-    const spared = files.filter(f => typeof f?.path === 'string' && !wasRead(f.path)).reduce((a, f) => a + num(f.tokens), 0)
-    net += spared - num(e.answerTokens)
+    const notOpened = files.filter((f): f is { path: string; tokens?: unknown } => typeof f?.path === 'string' && !wasRead(f.path))
+    const spared = notOpened.reduce((a, f) => a + num(f.tokens), 0)
+    const answer = num(e.answerTokens)
+    s.lookups += 1
+    s.byTool[mapToolOf(typeof e.tool === 'string' ? e.tool : '')] += 1
+    s.answerTokens += answer
+    s.wouldRead += spared
+    s.saved += Math.max(0, spared - answer)
+    for (const f of notOpened) skipped.add(norm(f.path))
   }
-  return Math.max(0, Math.round(net))
+  s.filesSkipped = skipped.size
+  s.answerTokens = Math.round(s.answerTokens)
+  s.wouldRead = Math.round(s.wouldRead)
+  s.saved = Math.round(s.saved)
+  return s
 }
+
+/** Several chats' figures added field by field (today = each chat's latest figures, once each). */
+export function addStats(list: MapStats[]): MapStats {
+  const s = emptyStats()
+  for (const x of list) {
+    s.lookups += num(x?.lookups)
+    for (const k of [...TOOL_NAMES, 'other'] as MapTool[]) s.byTool[k] += num(x?.byTool?.[k])
+    s.answerTokens += num(x?.answerTokens)
+    s.wouldRead += num(x?.wouldRead)
+    s.saved += num(x?.saved)
+    s.filesSkipped += num(x?.filesSkipped)
+  }
+  return s
+}
+
+/** Saved as a share of what would have been read, rounded; null when nothing would have been read. */
+export const savedPct = (s: MapStats): number | null => (s.wouldRead > 0 ? Math.round((s.saved / s.wouldRead) * 100) : null)

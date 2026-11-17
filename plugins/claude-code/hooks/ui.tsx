@@ -1,7 +1,9 @@
 // Everything Mapshift draws: the dashboard pane (four tabs), its small widget form, and the band above the prompt.
 
-import type { AgentRow, Cfg, Effort, Family, Health, Last, LimitWindow, Live, LogRow, MapInfo, Mode, Snap, StepRow, Tier, Totals, View } from '../types'
-import { EFFORTS, FAMILIES, PRICES, cap, familyOf, fmtTok, fmtUsd, hitPct, isWarm, limitPressure } from './brain'
+import type { AgentRow, Cfg, Effort, Family, Health, Last, LimitWindow, Live, LogRow, MapInfo, MapStats, Mode, Snap, StepRow, Tier, Totals, View } from '../types'
+import { EFFORTS, FAMILIES, cap, familyOf, fmtTok, fmtUsd, hitPct, isWarm, limitPressure } from './brain'
+import { mapStatsLine, moneyVerdict, savingsFor, signedUsd, tokenVerdict, toolLine } from './savings'
+import type { Savings } from './savings'
 import type { Ledger } from './brain'
 import { ACCENT, STATUS, compareBars, familyColor, levelMeter, ringGauge, sparkBars, statusColor } from './charts'
 import { project } from './state'
@@ -437,71 +439,82 @@ function LimitsCard(c: Ctx, act: Act) {
   })
 }
 
-/** Map savings in dollars, valued at the input price of the model doing the work (an estimate). */
-function mapUsd(c: Ctx, tokens: number | null): number | null {
-  if (tokens === null) return null
-  const fam = c.d.current ?? c.d.last?.family ?? 'sonnet'
-  return (tokens * PRICES[fam].in) / 1e6
-}
+const tok = (n: number) => `${fmtTok(n)} tokens`
 
-type Split = { map: number | null; mapUsd: number | null; routing: number; cache: number }
-
-function split(c: Ctx, m: Totals['session'], mapTokens: number | null): Split {
-  return { map: mapTokens, mapUsd: mapUsd(c, mapTokens), routing: m.baseUsd - m.usd, cache: m.cacheSavedUsd }
-}
-
+/**
+ * Without Mapshift next to with it, in money and tokens, for this chat and today. Every figure comes from
+ * savings.ts (the same rules `/mapshift status` prints), so the rows add up: 💚 Total = 🗺️ Map + 🔀 Model
+ * switching = without − with. ♻️ Cache is Claude Code's own and inside both sides, so it is shown, not added.
+ */
 function SavingsCard(c: Ctx) {
   const { Box, Text } = c.t
   const Svg = c.t.Svg
   const { totals, map } = c.d
   if (totals.session.turns === 0 && totals.today.turns === 0) return Card(c, { title: '💸 Savings', aside: 'Estimates', children: Muted(c.t, 'Shows after your first request.') })
-  const s = split(c, totals.session, map.available ? map.savedSession : null)
-  const t = split(c, totals.today, map.available ? map.savedToday : null)
+  const ss = map.available ? map.statsSession : null
+  const st = map.available ? map.statsToday : null
+  const s = savingsFor(totals.session, ss, map.available ? map.usdSession : null)
+  const t = savingsFor(totals.today, st, map.available ? map.usdToday : null)
   const appModel = c.d.last?.appModel ? modelName(c.d.last.appModel) : 'your model'
-  const total = (x: Split) => Math.max(0, x.routing) + x.cache + (x.mapUsd ?? 0)
-  const money = (v: number) => fmtUsd(Math.abs(v))
-  const routingText = (v: number) => (v >= 0.0005 ? money(v) : v <= -0.0005 ? `${money(v)} more` : '$0')
-  const mapText = (x: Split) => (x.map === null ? 'not available' : x.map > 0 ? `${fmtTok(x.map)} tokens ≈ ${fmtUsd(x.mapUsd ?? 0)}` : 'none yet')
   const width = Math.max(220, Math.min(460, c.cols * 7 - 40))
-
-  const breakdown = (
+  const labelW = c.wide ? 20 : 15
+  const colW = c.wide ? 22 : 14
+  const mapMoney = (x: Savings, known: boolean) => (!known ? 'not available' : x.map.usd === null ? 'price unknown' : fmtUsd(x.map.usd))
+  type Cell = [string, string]
+  const rows: [string, Cell, Cell][] = [
+    ['With Mapshift', [fmtUsd(s.with.usd), tok(s.with.tokens)], [fmtUsd(t.with.usd), tok(t.with.tokens)]],
+    ['Without', [fmtUsd(s.without.usd), tok(s.without.tokens)], [fmtUsd(t.without.usd), tok(t.without.tokens)]],
+    ['🗺️ Map', [mapMoney(s, !!ss), ss ? tok(s.map.tokens) : ''], [mapMoney(t, !!st), st ? tok(t.map.tokens) : '']],
+    ['🔀 Model switching', [signedUsd(s.routingUsd), 'same tokens'], [signedUsd(t.routingUsd), 'same tokens']],
+    ['♻️ Cache', [fmtUsd(s.cache.usd), `${fmtTok(s.cache.tokens)} from cache`], [fmtUsd(t.cache.usd), `${fmtTok(t.cache.tokens)} from cache`]],
+    ['💚 Total saved', [signedUsd(s.saved.usd), tok(s.saved.tokens)], [signedUsd(t.saved.usd), tok(t.saved.tokens)]],
+  ]
+  const TOTAL = rows.length - 1
+  const totalColor = (x: Savings) => (x.saved.usd > -0.00005 ? STATUS.ok : undefined)
+  const cell = (key: string, v: Cell, i: number, x: Savings, last: boolean) => (
+    <Box key={key} flexDirection="column" width={last ? undefined : colW} flexShrink={last ? 1 : 0}>
+      <Text weight={i === TOTAL ? 'bold' : undefined} color={i === TOTAL ? totalColor(x) : undefined} wrap="wrap">
+        {v[0]}
+      </Text>
+      {v[1] ? (
+        <Text dimColor size="footnote" wrap="wrap">
+          {v[1]}
+        </Text>
+      ) : null}
+    </Box>
+  )
+  const table = (
     <Box flexDirection="column">
       <Box flexDirection="row">
-        <Box width={c.wide ? 22 : 16} flexShrink={0}>
+        <Box width={labelW} flexShrink={0}>
           <Text dimColor> </Text>
         </Box>
-        <Box width={c.wide ? 24 : 14} flexShrink={0}>
+        <Box width={colW} flexShrink={0}>
           <Text dimColor weight="bold">
-            This session
+            This chat
           </Text>
         </Box>
         <Text dimColor weight="bold">
           Today
         </Text>
       </Box>
-      {(
-        [
-          ['🗺️ Map', mapText(s), mapText(t)],
-          ['🔀 Model switching', routingText(s.routing), routingText(t.routing)],
-          ['♻️ Cache', fmtUsd(s.cache), fmtUsd(t.cache)],
-          ['💚 Total saved', fmtUsd(total(s)), fmtUsd(total(t))],
-        ] as [string, string, string][]
-      ).map(([label, a, b], i) => (
+      {rows.map(([label, a, b], i) => (
         <Box key={`saving-${i}`} flexDirection="row">
-          <Box width={c.wide ? 22 : 16} flexShrink={0}>
-            <Text weight={i === 3 ? 'bold' : undefined}>{label}</Text>
-          </Box>
-          <Box width={c.wide ? 24 : 14} flexShrink={0}>
-            <Text weight={i === 3 ? 'bold' : undefined} color={i === 3 ? STATUS.ok : undefined} wrap="wrap">
-              {a}
+          <Box width={labelW} flexShrink={0}>
+            <Text weight={i === TOTAL ? 'bold' : undefined} dimColor={i < 2 ? true : undefined}>
+              {label}
             </Text>
           </Box>
-          <Text weight={i === 3 ? 'bold' : undefined} color={i === 3 ? STATUS.ok : undefined} wrap="wrap">
-            {b}
-          </Text>
+          {cell(`saving-${i}-chat`, a, i, s, false)}
+          {cell(`saving-${i}-today`, b, i, t, true)}
         </Box>
       ))}
     </Box>
+  )
+  const verdict = (key: string, label: string, x: Savings) => (
+    <Text key={key} wrap="wrap" color={x.saved.usd >= 0.00005 ? STATUS.ok : undefined} dimColor={x.saved.usd <= -0.00005 ? true : undefined}>
+      {`${label}: ${moneyVerdict(x)} · ${tokenVerdict(x)}`}
+    </Text>
   )
 
   return Card(c, {
@@ -512,22 +525,66 @@ function SavingsCard(c: Ctx) {
         {c.graphical && Svg ? (
           <Svg
             key="compare"
-            source={compareBars({ withUsd: totals.today.usd, withoutUsd: totals.today.baseUsd, withoutLabel: `Everything on ${appModel}`, width, fmt: fmtUsd, dark: c.d.dark })}
-            alt={`Today: ${fmtUsd(totals.today.usd)} with Mapshift, ${fmtUsd(totals.today.baseUsd)} on ${appModel} alone`}
+            source={compareBars({
+              withValue: t.with.usd,
+              withoutValue: t.without.usd,
+              withLabel: 'Today with Mapshift',
+              withoutLabel: `Without: all on ${appModel}, no map`,
+              width,
+              fmt: fmtUsd,
+              dark: c.d.dark,
+            })}
+            alt={`Today: ${fmtUsd(t.with.usd)} with Mapshift, ${fmtUsd(t.without.usd)} without`}
           />
-        ) : (
-          <Text wrap="wrap">
-            <Text weight="bold">{`Today ${fmtUsd(totals.today.usd)}`}</Text>
-            <Text dimColor>{` with Mapshift · ${fmtUsd(totals.today.baseUsd)} with everything on ${appModel}`}</Text>
-          </Text>
-        )}
-        {breakdown}
+        ) : null}
+        <Box flexDirection="column">
+          {verdict('verdict-chat', 'This chat', s)}
+          {verdict('verdict-today', 'Today', t)}
+        </Box>
+        {table}
         <Text dimColor size="footnote" wrap="wrap">
-          {`Model switching compares each request with running it on ${appModel}, the model you picked. Map tokens are reads the agent skipped because the map already answered.`}
+          {`Without Mapshift: every request on ${appModel}, the model you picked, plus the map's saved tokens priced at its input price. Switching models does not change token counts. Cache is Claude Code's own, in both figures, so it is not added to the total.`}
         </Text>
       </Box>
     ),
   })
+}
+
+/** "With the map" next to "Without" in tokens: an SVG on graphical surfaces, block bars on the terminal. */
+function MapBars(c: Ctx, x: MapStats) {
+  const { Box, Text } = c.t
+  const Svg = c.t.Svg
+  if (c.graphical && Svg)
+    return (
+      <Svg
+        key="map-bars"
+        source={compareBars({
+          withValue: x.answerTokens,
+          withoutValue: x.wouldRead,
+          withLabel: 'With the map',
+          withoutLabel: 'Without',
+          width: Math.max(200, Math.min(420, c.cols * 7 - 160)),
+          fmt: tok,
+          dark: c.d.dark,
+        })}
+        alt={`With the map ${tok(x.answerTokens)}, without ${tok(x.wouldRead)}`}
+      />
+    )
+  const width = Math.max(6, Math.min(18, c.cols - 44))
+  const max = Math.max(1, x.answerTokens, x.wouldRead)
+  const line = (key: string, label: string, v: number, color: string) => (
+    <Text key={key}>
+      <Text dimColor>{label.padEnd(13)}</Text>
+      {blocks(c, (v / max) * 100, width, color)}
+      <Text>{` ${tok(v)}`}</Text>
+    </Text>
+  )
+  return (
+    <Box flexDirection="column">
+      {line('map-with', 'With the map', x.answerTokens, ACCENT.teal)}
+      {line('map-without', 'Without', x.wouldRead, ACCENT.slate)}
+    </Box>
+  )
 }
 
 function MapCard(c: Ctx) {
@@ -558,6 +615,8 @@ function MapCard(c: Ctx) {
   const share = total > 0 ? Math.round((m.lookups / total) * 100) : null
   const langs = m.languages.slice(0, 4).map(l => `${l.label} ${num(l.n)}`).join(' · ')
   const barWidth = Math.max(8, Math.min(20, c.cols - 40))
+  const ss = m.statsSession
+  const st = m.statsToday
   return Card(c, {
     title: '🗺️ Map',
     aside: m.builtAt ? `Updated ${ago(c.d.now - m.builtAt)}` : undefined,
@@ -586,6 +645,38 @@ function MapCard(c: Ctx) {
             {share !== null ? <Text color={ACCENT.teal}>{` ${share}% via the map`}</Text> : null}
           </Text>,
         )}
+        {ss && ss.lookups > 0
+          ? Row(
+              c,
+              '💚 Saved here',
+              <Box flexDirection="column">
+                <Text wrap="wrap">{mapStatsLine(ss)}</Text>
+                <Text dimColor wrap="wrap">
+                  {toolLine(ss)}
+                </Text>
+                {MapBars(c, ss)}
+              </Box>,
+            )
+          : !ss && m.lookups > 0
+            ? Row(c, '💚 Saved here', Muted(c.t, "The map's log could not be read, so its savings are not shown."))
+            : null}
+        {st && st.lookups > 0
+          ? Row(
+              c,
+              '📅 Today',
+              <Box flexDirection="column">
+                <Text wrap="wrap">{mapStatsLine(st)}</Text>
+                <Text dimColor wrap="wrap">
+                  {`${toolLine(st)} · with the map ${tok(st.answerTokens)}, without ${tok(st.wouldRead)}`}
+                </Text>
+              </Box>,
+            )
+          : null}
+        {(ss && ss.lookups > 0) || (st && st.lookups > 0) ? (
+          <Text dimColor size="footnote" wrap="wrap">
+            Estimates: tokens are characters / 4. A file counts as not opened only if Claude did not read it anywhere in this chat.
+          </Text>
+        ) : null}
       </Box>
     ),
   })
@@ -911,11 +1002,13 @@ function Help(c: Ctx) {
     '- `/mapshift use opus high` one model for everything  ·  `/mapshift flag` the last pick was wrong',
     '- `/mapshift status`  ·  `/mapshift trace`  ·  `/mapshift doctor`',
     '',
-    '**Reading the numbers**',
-    '- *Cache saved*: what the same requests would have cost with no conversation cache, from real token counts.',
-    "- *On your app's model*: the same requests priced on the model your app is set to.",
-    '- *Map saved*: tokens of files the map pointed to that Claude did not then read anyway, less what the answers cost.',
-    '- All money figures are list-price estimates, not a bill. On a subscription they map to your usage limits.',
+    '**How the numbers are counted**',
+    '- *Map*: each map answer logs its own size and the files it pointed at, both in tokens estimated as characters / 4. A file counts as not opened only if Claude did not read it anywhere in the same chat.',
+    '- *Map saved*: for each answer, the files it pointed at that Claude did not open, less the answer itself, never below 0 for one answer. The percent is saved out of what Claude would have read without the map.',
+    '- *With Mapshift*: what the requests cost on the models used, and the tokens they processed as logged (new input, cache reads, cache writes and output).',
+    "- *Without Mapshift*: every request on the model you picked in the app, plus the map's saved tokens at that model's input price; tokens are the same plus the map's saved tokens. Switching models does not change token counts.",
+    "- *Saved* = without − with. When stronger models for harder work cost more than was saved, it says so. *Cache* is Claude Code's own prompt cache: it is in both figures, so it is shown but not added.",
+    '- *Today* adds each chat of the day once. Dollar values use list prices: estimates, not a bill. On a subscription they map to your usage limits.',
   ].join('\n')
   return Markdown ? <Markdown text={md} /> : <Text>{md}</Text>
 }
