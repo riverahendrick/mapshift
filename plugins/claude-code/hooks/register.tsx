@@ -85,6 +85,13 @@ const alerted = new Set<string>() // limit alerts already shown, per window, lin
 // ---- the map: how to start the command line once one way has worked, and what this session read
 let launcher: string[] | null = null
 let mapHome = '' // ~/.mapshift, or MAPSHIFT_HOME
+/**
+ * Programs are always started from the home folder, never from the project: on Windows a bare program name
+ * is looked up in the working folder first, so a project could otherwise plant its own `git` or `mapshift`.
+ * The project is passed as an argument instead (`--project`, `git -C`).
+ */
+let homeDir = ''
+const neutralCwd = (): string => homeDir || (/^[a-zA-Z]:[\\/]/.test(rootDir) ? `${rootDir.slice(0, 2)}/` : '/')
 let sessionSince = 0
 const readPaths = new Set<string>()
 let appModel = '' // the app's model at the last request: the route check judges for it
@@ -143,6 +150,7 @@ async function syncSession($: $) {
   curSid = sid
   const custom = (await $.env.get('MAPSHIFT_HOME'))?.trim()
   const home = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))
+  homeDir = home ? home.replace(/\\/g, '/') : ''
   mapHome = custom ? custom.replace(/\\/g, '/').replace(/\/+$/, '') : home ? `${home.replace(/\\/g, '/')}/.mapshift` : ''
   auditPath = mapHome ? `${mapHome}/logs/claude/audit-${sid}.jsonl` : ''
   const saved = (await $.store.get(`audit:${sid}`)) as AuditEvent[] | undefined
@@ -1007,7 +1015,7 @@ async function runMapshift($: $, args: string[], timeoutMs: number): Promise<str
   const tries = launcher ? [launcher, ...others.filter(x => x.join(' ') !== launcher!.join(' '))] : others
   for (const pre of tries) {
     try {
-      const r = await $.process.run([...pre, ...args], { cwd: rootDir || undefined, timeoutMs })
+      const r = await $.process.run([...pre, ...args, ...(rootDir ? ['--project', rootDir] : [])], { cwd: neutralCwd(), timeoutMs })
       if (r.exitCode === 0 && r.stdout.trim()) {
         launcher = pre
         return r.stdout
@@ -1033,7 +1041,10 @@ async function askMap($: $, text: string): Promise<MapAsk> {
     const words = routeText(text)
     if (!launcher || (m.state !== 'ready' && m.state !== 'building') || !words) return { route: null, skipped: true, ms: 0 }
     const model = /^[\w.:[\]-]{1,80}$/.test(appModel) ? appModel : ''
-    const r = await $.process.run([...launcher, 'route', ...(model ? ['--model', model] : []), '--json', '--', words], { cwd: rootDir || undefined, timeoutMs: 1500 })
+    const r = await $.process.run(
+      [...launcher, 'route', ...(model ? ['--model', model] : []), ...(rootDir ? ['--project', rootDir] : []), '--json', '--', words],
+      { cwd: neutralCwd(), timeoutMs: 1500 },
+    )
     const ms = (await $.clock.now()) - t0
     if (r.exitCode !== 0) return { route: null, failed: `exit ${r.exitCode}`, ms }
     const route = parseRoute(r.stdout)
@@ -1084,7 +1095,7 @@ async function refreshMap($: $) {
 async function probeProject($: $, cwd: string) {
   await refreshMap($)
   try {
-    const files = await $.process.run(['git', 'ls-files'], { cwd: rootDir || cwd, timeoutMs: 10000 })
+    const files = await $.process.run(['git', '-C', rootDir || cwd, '-c', 'core.fsmonitor=false', 'ls-files'], { cwd: neutralCwd(), timeoutMs: 10000 })
     if (files.exitCode === 0) bigRepo = files.stdout.split('\n').filter(Boolean).length > 1500
   } catch {
     /* not a repository */

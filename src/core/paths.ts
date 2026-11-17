@@ -19,11 +19,15 @@ export function homeDir(): string {
  */
 const SAFE_GIT = ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=', '-c', 'core.untrackedCache=false']
 
-/** Runs git quietly. Returns null when git is missing or the folder is not a repository. */
+/**
+ * Runs git quietly on a folder. Returns null when git is missing or the folder is not a repository.
+ * git is started from the home folder and pointed at the project with `-C`: on Windows a bare program name
+ * is looked up in the working folder first, so starting it inside a project could run a planted `git.exe`.
+ */
 export function git(args: string[], cwd: string, timeoutMs = 5000): string | null {
   try {
-    return execFileSync('git', [...SAFE_GIT, ...args], {
-      cwd,
+    return execFileSync('git', [...SAFE_GIT, '-C', resolve(cwd), ...args], {
+      cwd: homedir(),
       encoding: 'utf8',
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'ignore'],

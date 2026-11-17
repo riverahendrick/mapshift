@@ -601,6 +601,24 @@ test('the Map card shows Ready, Building 40% and Not built yet', async ($, on) =
   }
 })
 
+test('programs never start inside the project, so a project cannot plant its own git or mapshift', async ($, on) => {
+  const { clock, runs } = engine(on, { run: mapCli('ready', { tier: 'complex', reasons: ['x'] }) })
+  await $.session.start({ cwd: 'C:/work/alpha', surface: 'desktop', isInteractive: true })
+  await settle(clock)
+  await $.turn.start({ text: 'add a unit test for parseDate in src/date.ts', turnId: 'p1' })
+  await step($, 'p1', 0)
+  expect(runs.length > 0).toBe(true)
+  for (const r of runs) {
+    expect(String(r.init.cwd ?? '').toLowerCase().startsWith('c:/work/alpha')).toBe(false)
+    expect(r.init.cwd === undefined).toBe(false)
+  }
+  const git = runs.find(r => r.argv[0] === 'git')
+  if (git) expect(git.argv.slice(1, 3)).toEqual(['-C', 'C:/work/alpha'])
+  for (const r of runs.filter(x => x.argv.includes('route') || x.argv.includes('status'))) {
+    expect(r.argv[r.argv.indexOf('--project') + 1]).toBe('C:/work/alpha')
+  }
+})
+
 test('a map signal raises the level: more thinking effort, and the reason is logged', async ($, on) => {
   const { seen, captured, clock, runs } = engine(on, { run: mapCli('ready', { tier: 'complex', reasons: ['The map shows the change reaches 14 callers in 6 files'] }) })
   await $.session.start({ cwd: 'C:/work/alpha', surface: 'desktop', isInteractive: true })
@@ -950,8 +968,8 @@ test('MAPSHIFT_BIN pointing at a script runs it with node', async ($, on) => {
   const { clock, runs } = engine(on, { env: { MAPSHIFT_BIN: bin }, run: argv => (argv[0] === 'node' && argv[1] === bin ? mapCli('ready')(['mapshift', ...argv.slice(2)]) : { exitCode: 1, stdout: '' }) })
   await $.session.start({ cwd: 'C:/work/alpha', surface: 'desktop', isInteractive: true })
   await settle(clock)
-  expect(runs.some(r => r.argv.join(' ') === `node ${bin} map status --json`)).toBe(true)
-  expect(runs.find(r => r.argv.includes('status'))!.init.cwd).toBe('C:/work/alpha')
+  expect(runs.some(r => r.argv.join(' ') === `node ${bin} map status --json --project C:/work/alpha`)).toBe(true)
+  expect(runs.find(r => r.argv.includes('status'))!.init.cwd).toBe('C:/') // never the project folder
   const ui: any = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /^Ready$/ })).toBeTruthy()
   await ui.unmount()
