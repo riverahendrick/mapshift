@@ -1,0 +1,15 @@
+{
+  "note": "Judged from the blind sheet (answers shuffled, arm labels removed) against bench/agent-tasks.json, before the key was opened. Blinding was imperfect: Graft's tool output tells the agent to end its reply with a 'graft saved ~N tokens' line, and the agent did so in every Graft run, so those answers were recognisable. A05 was first marked correct, then changed to incorrect on a second strict pass against the code (the same pass checked A03's capture='fd' claim against testing.py: true).",
+  "verdicts": {
+    "A06": { "correct": true, "note": "Names Command.get_help_option; help_option decorator, caching in _help_option, None when add_help_option is off: all true. Says it did not open get_params." },
+    "A09": { "correct": true, "note": "Names Command.get_help_option; names, caching and add_help_option are correct." },
+    "A01": { "correct": true, "note": "Names Option.consume_value and states both prompt conditions exactly (FLAG_NEEDS_VALUE, UNSET/default source with required or prompt_required, resilient_parsing)." },
+    "A05": { "correct": false, "note": "Names the right method (Option.consume_value), but the explanation is wrong: it says the prompt happens only if no parser, environment or default-map value is found. The code prompts when the value is UNSET or its source is DEFAULT_MAP or lower (so a default-map value still prompts), and only when required or prompt_required is set. The answer itself says it did not read the body. Strict rule: something stated is false." },
+    "A03": { "correct": true, "note": "Names CliRunner.isolation; stdout/stderr swapped for _NamedTextIOWrapper over BytesIO via StreamMixer; correct." },
+    "A08": { "correct": true, "note": "Names CliRunner.isolation; same mechanism; correct." },
+    "A02": { "correct": true, "note": "Names Command.main; KeyboardInterrupt/EOFError -> _echo_aborted and exit, EPIPE -> _PacifyFlushWrapper; correct." },
+    "A10": { "correct": true, "note": "Names Command.main; same mechanism; correct." },
+    "A04": { "correct": true, "note": "Names Choice.normalize_choice (and convert); token_normalize_func, casefold, original choice returned; correct. Describes the mapping as normalized -> original (the code maps original -> normalized and searches it); the lookup it describes is equivalent, same treatment as A07." },
+    "A07": { "correct": true, "note": "Names Choice.convert; normalize_choice, casefold, _normalized_mapping, fail on no match; correct. Same mapping-direction wording as A04, treated the same." }
+  }
+}

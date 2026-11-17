@@ -14,6 +14,8 @@ export type Sym = {
   exported: boolean
   /** The comment or docstring that explains it, markers removed, up to 300 characters ('' when none). */
   doc: string
+  /** Words from the names used inside a function or method's body, for plain-English search ('' for others). */
+  body: string
 }
 
 /** A use of a name: a call, or a `new`. */

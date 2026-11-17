@@ -1,0 +1,93 @@
+{
+  "repo": "ky",
+  "note": "truth: file is relative to the repo root; line..end is the definition span at the pinned commit. kind: concept = plain English, name = 'where is X defined', callers = 'what calls X' (answered with each tool's caller command on `symbol`).",
+  "questions": [
+    {
+      "id": "ky-c1",
+      "kind": "concept",
+      "question": "How does ky work out how long to wait before the next attempt after a request fails?",
+      "truth": [
+        { "file": "source/core/Ky.ts", "name": "Ky.#calculateRetryDelay", "line": 688, "end": 764 },
+        { "file": "source/core/Ky.ts", "name": "Ky.#calculateDelay", "line": 665, "end": 687 }
+      ]
+    },
+    {
+      "id": "ky-c2",
+      "kind": "concept",
+      "question": "Where does a relative request path get turned into a full URL using the configured base address?",
+      "truth": [{ "file": "source/core/Ky.ts", "name": "resolveInput", "line": 246, "end": 271 }]
+    },
+    {
+      "id": "ky-c3",
+      "kind": "concept",
+      "question": "Where does ky report how many bytes of the request body have been sent so far?",
+      "truth": [
+        { "file": "source/utils/body.ts", "name": "streamRequest", "line": 217, "end": 9999 },
+        { "file": "source/utils/body.ts", "name": "withProgress", "line": 78, "end": 111 }
+      ]
+    },
+    {
+      "id": "ky-c4",
+      "kind": "concept",
+      "question": "Where are two sets of request headers combined into one?",
+      "truth": [
+        { "file": "source/utils/merge.ts", "name": "mergeHeaders", "line": 73, "end": 87 },
+        { "file": "source/utils/merge.ts", "name": "mergeHeaderContainers", "line": 188, "end": 197 }
+      ]
+    },
+    {
+      "id": "ky-c5",
+      "kind": "concept",
+      "question": "How is the server's wait-before-trying-again header value converted into a number of milliseconds?",
+      "truth": [
+        { "file": "source/core/retry-timing.ts", "name": "calculateRetryTimingDelay", "line": 151, "end": 9999 },
+        { "file": "source/core/retry-timing.ts", "name": "parseDate", "line": 88, "end": 150 }
+      ]
+    },
+    {
+      "id": "ky-c6",
+      "kind": "concept",
+      "question": "Where is a fetch call cancelled when the server does not answer in time?",
+      "truth": [{ "file": "source/utils/timeout.ts", "name": "timeout", "line": 11, "end": 9999 }]
+    },
+    {
+      "id": "ky-n1",
+      "kind": "name",
+      "question": "Where is `NonError` defined?",
+      "truth": [{ "file": "source/errors/NonError.ts", "name": "NonError", "line": 8, "end": 9999 }]
+    },
+    {
+      "id": "ky-n2",
+      "kind": "name",
+      "question": "Where is `deepMerge` defined?",
+      "truth": [{ "file": "source/utils/merge.ts", "name": "deepMerge", "line": 500, "end": 9999 }]
+    },
+    {
+      "id": "ky-n3",
+      "kind": "name",
+      "question": "Where is `createInstance` defined?",
+      "truth": [{ "file": "source/index.ts", "name": "createInstance", "line": 33, "end": 57 }]
+    },
+    {
+      "id": "ky-k1",
+      "kind": "callers",
+      "question": "What calls `calculateRetryTimingDelay`?",
+      "symbol": "calculateRetryTimingDelay",
+      "truth": [{ "file": "source/core/Ky.ts", "name": "Ky.#calculateRetryDelay", "line": 688, "end": 764 }]
+    },
+    {
+      "id": "ky-k2",
+      "kind": "callers",
+      "question": "What calls `getBodySize`?",
+      "symbol": "getBodySize",
+      "truth": [{ "file": "source/utils/body.ts", "name": "streamRequest", "line": 217, "end": 9999 }]
+    },
+    {
+      "id": "ky-k3",
+      "kind": "callers",
+      "question": "What calls `findUnknownOptions`?",
+      "symbol": "findUnknownOptions",
+      "truth": [{ "file": "source/core/Ky.ts", "name": "Ky.#fetch", "line": 1218, "end": 1276 }]
+    }
+  ]
+}

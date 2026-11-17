@@ -69,7 +69,8 @@ export const TOOLS: ToolDef[] = [
 export const INSTRUCTIONS =
   'Mapshift keeps a map of this project, built and refreshed automatically. Before grepping or opening files to find code, call map_find; ' +
   'for a file\'s API use map_file; before changing a function use map_trace with direction "impact". Answers include exact file:line ranges ' +
-  'and the relevant code, so read a file only when you need lines the answer did not show. ' +
+  'and the relevant code, so read a file only when you need lines the answer did not show. When an exact detail matters ' +
+  '(a condition, a value, an error message), read those lines before stating it. ' +
   'If these tools are listed but not loaded yet (deferred), load all five in one tool search: ' +
   '"select:mcp__mapshift__map_find,mcp__mapshift__map_trace,mcp__mapshift__map_file,mcp__mapshift__map_overview,mcp__mapshift__map_search".'
 

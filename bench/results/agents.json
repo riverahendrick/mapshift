@@ -1,0 +1,1132 @@
+{
+  "repo": "click",
+  "commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+  "model": "sonnet",
+  "maxTurns": 8,
+  "runs": [
+    {
+      "task": "T1",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 7592,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.0137604,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 12864,
+        "cacheWrite": 2564,
+        "output": 221
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "get_help_option create help option on command",
+            "limit": 4
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/core.py:Command.get_help_option\n\n`Command.get_help_option` (core.py:1216) builds the help option with the `help_option` decorator helper from decorators.py. It uses the names from `get_help_option_names`, caches the result, and returns `None` if `add_help_option` is False. `Command.get_params` (core.py:1128) appends the option to the command's parameter list.",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Command.get_help_option; names, caching and add_help_option are correct.",
+      "blindCode": "A09"
+    },
+    {
+      "task": "T1",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 12145,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.040317900000000004,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 7619,
+        "cacheWrite": 9157,
+        "output": 292
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "get_help_option create help option and add to command params",
+            "limit": 3
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/core.py:Command.get_help_option\n\nIt builds the help option the first time it's needed. It calls the `help_option` decorator from `decorators.py` on the command, pops the resulting option off `self.params`, and caches it in `self._help_option`. It returns `None` if `add_help_option` is false or there are no help option names. The option is added to the command's parameters when `get_params` calls it.\n\nI read `get_help_option` directly. I didn't open `get_params`, so that last step comes from my knowledge of Click, not from this session.\n\n🌱 graft saved ~43,998 tokens this turn",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Command.get_help_option; help_option decorator, caching in _help_option, None when add_help_option is off: all true. Says it did not open get_params.",
+      "blindCode": "A06"
+    },
+    {
+      "task": "T2",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 18873,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 4,
+      "costUsd": 0.0373897,
+      "tokens": {
+        "input": 8,
+        "cacheRead": 36897,
+        "cacheWrite": 6766,
+        "output": 662
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "option prompt user for value when missing",
+            "in": "src/click"
+          }
+        },
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "prompt_for_value\\(|def consume_value",
+            "path": "src/click/core.py",
+            "output_mode": "content"
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-graft\\click\\src\\click\\core.py",
+            "offset": 3800,
+            "limit": 62
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/core.py:Option.consume_value\n\nAfter the base class looks for a value, `Option.consume_value` calls `prompt_for_value` in two cases. The first is a flag given without a value (`FLAG_NEEDS_VALUE`) when `self.prompt` is set. The second is when the value is `UNSET` or came from the default or something lower-priority (`source >= DEFAULT_MAP`), `self.prompt` is set, and `required` or `prompt_required` is true. Both cases are skipped under `ctx.resilient_parsing`. `Option.prompt_for_value` (`core.py:3682`) does the prompting through `termui.prompt` or `confirm`.\n\n🌱 graft saved ~65,481 tokens this turn",
+      "toolCallCount": 3,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1,
+        "Grep": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Option.consume_value and states both prompt conditions exactly (FLAG_NEEDS_VALUE, UNSET/default source with required or prompt_required, resilient_parsing).",
+      "blindCode": "A01"
+    },
+    {
+      "task": "T2",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 12045,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.014622,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 12860,
+        "cacheWrite": 2682,
+        "output": 260
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "Option.consume_value prompt user for value when missing",
+            "limit": 4
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/core.py:Option.consume_value\n\n`Option.consume_value` (core.py:3803) first takes the parser, environment, and default-map value. If none is found and `self.prompt` is set, it calls `Option.prompt_for_value` (core.py:3682), which calls `termui.prompt`. It also uses the prompt path when a flag that needs a value is given without one.\n\nI read only the search summaries, not the full function body. The exact condition lines inside `consume_value` are unchecked.",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1
+      },
+      "stderr": "",
+      "correct": false,
+      "judgeNote": "Names the right method (Option.consume_value), but the explanation is wrong: it says the prompt happens only if no parser, environment or default-map value is found. The code prompts when the value is UNSET or its source is DEFAULT_MAP or lower (so a default-map value still prompts), and only when required or prompt_required is set. The answer itself says it did not read the body. Strict rule: something stated is false.",
+      "blindCode": "A05"
+    },
+    {
+      "task": "T3",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 14969,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.013455100000000001,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 12871,
+        "cacheWrite": 2440,
+        "output": 240
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "CliRunner isolation captures output",
+            "limit": 4
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/testing.py:CliRunner.isolation\n\n`isolation` replaces `sys.stdout` and `sys.stderr` with `_NamedTextIOWrapper` objects. These wrap in-memory `BytesIO` buffers, created through a `StreamMixer`, and the context manager yields the buffers. `CliRunner.invoke` calls `isolation` and reads the captured bytes from those buffers into the `Result`.",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names CliRunner.isolation; same mechanism; correct.",
+      "blindCode": "A08"
+    },
+    {
+      "task": "T3",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 12631,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.027807699999999998,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 13797,
+        "cacheWrite": 5780,
+        "output": 330
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "CliRunner isolation captures stdout stderr output",
+            "in": "src/click/testing.py",
+            "limit": 3
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/testing.py:CliRunner.isolation\n\n`isolation` replaces `sys.stdout` and `sys.stderr` with `_NamedTextIOWrapper` objects. These wrap the in-memory `BytesIO` streams of a `StreamMixer`, which also keeps a mixed stream of both outputs. `CliRunner.invoke` runs the command inside this context and reads the bytes into the `Result`. With `capture=\"fd\"`, it also redirects file descriptors 1 and 2 through `_FDCapture`.\n\n🌱 graft saved ~4,667 tokens this turn",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names CliRunner.isolation; stdout/stderr swapped for _NamedTextIOWrapper over BytesIO via StreamMixer; correct.",
+      "blindCode": "A03"
+    },
+    {
+      "task": "T4",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 15290,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0203063,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 22023,
+        "cacheWrite": 3073,
+        "output": 580
+      },
+      "toolCalls": [
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "KeyboardInterrupt|BrokenPipeError",
+            "path": "<work>\\bench-repos\\agent-graft\\click\\src",
+            "output_mode": "content"
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-graft\\click\\src\\click\\core.py",
+            "offset": 1595,
+            "limit": 55
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/core.py:Command.main\n\nIn standalone mode, `main` catches `KeyboardInterrupt` and `EOFError`. It prints a newline to stderr, then reports \"Aborted!\" through `_echo_aborted` and exits. It also catches `OSError` with `errno.EPIPE`, which means the output pipe was closed. In that case it wraps `sys.stdout` and `sys.stderr` in `_PacifyFlushWrapper` (`src/click/utils.py:518`) so the flush at interpreter exit doesn't raise `BrokenPipeError`.",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "Grep": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Command.main; same mechanism; correct.",
+      "blindCode": "A10"
+    },
+    {
+      "task": "T4",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 18259,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 4,
+      "costUsd": 0.0198391,
+      "tokens": {
+        "input": 8,
+        "cacheRead": 27851,
+        "cacheWrite": 2682,
+        "output": 631
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_search",
+          "input": {
+            "pattern": "KeyboardInterrupt|BrokenPipeError",
+            "path": "src/click/core.py"
+          }
+        },
+        {
+          "name": "mcp__mapshift__map_search",
+          "input": {
+            "pattern": "KeyboardInterrupt|EPIPE",
+            "regex": true,
+            "path": "src"
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-mapshift\\click\\src\\click\\core.py",
+            "offset": 1605,
+            "limit": 40
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/core.py:Command.main\n`Command.main` catches `KeyboardInterrupt` and `EOFError` around the invocation (core.py:1612). It prints a newline to stderr, and in standalone mode it reports \"Aborted!\" through `_echo_aborted` and exits. Without standalone mode it raises `Abort` instead. It also catches `OSError` with `errno.EPIPE` (core.py:1625-1630), which means the output pipe was closed. It then replaces `sys.stdout` and `sys.stderr` with `_PacifyFlushWrapper` (`src/click/utils.py`) so flushing at exit doesn't raise again.",
+      "toolCallCount": 3,
+      "toolCallsByName": {
+        "mcp__mapshift__map_search": 2,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Command.main; KeyboardInterrupt/EOFError -> _echo_aborted and exit, EPIPE -> _PacifyFlushWrapper; correct.",
+      "blindCode": "A02"
+    },
+    {
+      "task": "T5",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 11654,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.013325199999999999,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 12872,
+        "cacheWrite": 2380,
+        "output": 251
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "Choice convert match value against choices case_sensitive",
+            "limit": 4
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/types.py:Choice.convert\n\n`Choice.convert` runs the typed value through `normalize_choice`. That applies `ctx.token_normalize_func` if one is set, and casefolds the result when `case_sensitive=False`. It then looks the result up in a mapping from each choice's normalized form to its original choice (`_normalized_mapping`). On a match it returns the original choice, and otherwise it calls `fail` with the invalid-choice message.",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Choice.convert; normalize_choice, casefold, _normalized_mapping, fail on no match; correct. Same mapping-direction wording as A04, treated the same.",
+      "blindCode": "A07"
+    },
+    {
+      "task": "T5",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 13656,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0301399,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 24879,
+        "cacheWrite": 5540,
+        "output": 548
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "Choice convert matching normalized case_sensitive",
+            "in": "src/click"
+          }
+        },
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "normalize_choice|def convert|class Choice",
+            "path": "<work>\\bench-repos\\agent-graft\\click\\src\\click\\types.py",
+            "output_mode": "content",
+            "head_limit": 20
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/click/types.py:Choice.normalize_choice\n\n`Choice.convert` (line 436) runs the typed value through `normalize_choice`. It then compares the result with a map of normalized choice to original choice, which is built from `self.choices` (line 381). `normalize_choice` takes the enum name or `str()` of the value, applies `ctx.token_normalize_func` if one is set, and calls `.casefold()` when `case_sensitive=False`. Case-insensitive matching therefore compares casefolded forms, and the original choice is what gets returned.\n\n🌱 graft saved ~69,603 tokens this turn",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1,
+        "Grep": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Choice.normalize_choice (and convert); token_normalize_func, casefold, original choice returned; correct. Describes the mapping as normalized -> original (the code maps original -> normalized and searches it); the lookup it describes is equivalent, same treatment as A07.",
+      "blindCode": "A04"
+    }
+  ],
+  "summary": {
+    "mapshift": {
+      "runs": 5,
+      "correct": 4,
+      "avgToolCalls": 1.4,
+      "avgTurns": 2.4,
+      "avgInputTokens": 4.8,
+      "avgCacheReadTokens": 15863.6,
+      "avgCacheWriteTokens": 2549.6,
+      "avgOutputTokens": 320.6,
+      "avgTotalTokens": 18738.6,
+      "avgCostUsd": 0.015000359999999999,
+      "totalCostUsd": 0.0750018,
+      "hitTurnLimit": 0
+    },
+    "graft": {
+      "runs": 5,
+      "correct": 5,
+      "avgToolCalls": 1.8,
+      "avgTurns": 2.8,
+      "avgInputTokens": 5.6,
+      "avgCacheReadTokens": 21043,
+      "avgCacheWriteTokens": 6063.2,
+      "avgOutputTokens": 482.4,
+      "avgTotalTokens": 27594.2,
+      "avgCostUsd": 0.0311923,
+      "totalCostUsd": 0.1559615,
+      "hitTurnLimit": 0
+    }
+  },
+  "mcpServers": {
+    "mapshift": {
+      "tools": [
+        "map_find",
+        "map_trace",
+        "map_file",
+        "map_overview",
+        "map_search"
+      ],
+      "toolSchemaChars": 2713
+    },
+    "graft": {
+      "tools": [
+        "graft_find_code",
+        "graft_file_api",
+        "graft_check_freshness",
+        "graft_trace_calls",
+        "graft_find_all",
+        "graft_repo_map"
+      ],
+      "toolSchemaChars": 3341
+    }
+  }
+}

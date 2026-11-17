@@ -78,7 +78,7 @@ export const MAP_REMINDER =
   'This project has a code map (the mapshift tools). To locate code, call map_find before grepping or reading files; ' +
   "use map_file for a file's API, and map_trace with direction \"impact\" before changing a function. " +
   'If those tools are deferred, load them once with ToolSearch (select:mcp__mapshift__map_find,mcp__mapshift__map_file,mcp__mapshift__map_trace). ' +
-  'Read a file only when you need lines the map did not show.'
+  'Read a file only when you need lines the map did not show, and read the exact lines before stating a detail that matters (a condition, a value, an error message).'
 
 /** Today's and yesterday's map log names (the map writes one file per UTC day). */
 export function ledgerFiles(now: number): string[] {

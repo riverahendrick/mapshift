@@ -1,0 +1,91 @@
+{
+  "repo": "click",
+  "note": "truth: file is relative to the repo root; line..end is the definition span at the pinned commit. kind: concept = plain English, name = 'where is X defined', callers = 'what calls X' (answered with each tool's caller command on `symbol`).",
+  "questions": [
+    {
+      "id": "click-c1",
+      "kind": "concept",
+      "question": "Where does click look up an option's value in an environment variable when it was not passed on the command line?",
+      "truth": [
+        { "file": "src/click/core.py", "name": "Option.resolve_envvar_value", "line": 3731, "end": 3754 },
+        { "file": "src/click/core.py", "name": "Parameter.resolve_envvar_value", "line": 2852, "end": 2896 }
+      ]
+    },
+    {
+      "id": "click-c2",
+      "kind": "concept",
+      "question": "Where is the list of options on the help page laid out into two aligned columns?",
+      "truth": [{ "file": "src/click/formatting.py", "name": "HelpFormatter.write_dl", "line": 238, "end": 282 }]
+    },
+    {
+      "id": "click-c3",
+      "kind": "concept",
+      "question": "Where does the parser handle several one-letter flags written together after a single dash, like -xvf?",
+      "truth": [{ "file": "src/click/parser.py", "name": "_OptionParser._match_short_opt", "line": 390, "end": 429 }]
+    },
+    {
+      "id": "click-c4",
+      "kind": "concept",
+      "question": "How does the progress bar estimate how much time is left?",
+      "truth": [
+        { "file": "src/click/_termui_impl.py", "name": "ProgressBar.eta", "line": 169, "end": 173 },
+        { "file": "src/click/_termui_impl.py", "name": "ProgressBar.format_eta", "line": 174, "end": 194 }
+      ]
+    },
+    {
+      "id": "click-c5",
+      "kind": "concept",
+      "question": "Where does click pick the folder an application should keep its configuration files in, depending on the operating system?",
+      "truth": [{ "file": "src/click/utils.py", "name": "get_app_dir", "line": 468, "end": 516 }]
+    },
+    {
+      "id": "click-c6",
+      "kind": "concept",
+      "question": "Where is a number given on the command line checked against a minimum and a maximum?",
+      "truth": [{ "file": "src/click/types.py", "name": "_NumberRangeBase.convert", "line": 637, "end": 670 }]
+    },
+    {
+      "id": "click-n1",
+      "kind": "name",
+      "question": "Where is `CliRunner` defined?",
+      "truth": [{ "file": "src/click/testing.py", "name": "CliRunner", "line": 341, "end": 9999 }]
+    },
+    {
+      "id": "click-n2",
+      "kind": "name",
+      "question": "Where is `make_pass_decorator` defined?",
+      "truth": [{ "file": "src/click/decorators.py", "name": "make_pass_decorator", "line": 47, "end": 95 }]
+    },
+    {
+      "id": "click-n3",
+      "kind": "name",
+      "question": "Where is `split_arg_string` defined?",
+      "truth": [{ "file": "src/click/shell_completion.py", "name": "split_arg_string", "line": 598, "end": 633 }]
+    },
+    {
+      "id": "click-k1",
+      "kind": "callers",
+      "question": "What calls `iter_params_for_processing`?",
+      "symbol": "iter_params_for_processing",
+      "truth": [{ "file": "src/click/core.py", "name": "Command.parse_args", "line": 1390, "end": 1422 }]
+    },
+    {
+      "id": "click-k2",
+      "kind": "callers",
+      "question": "What calls `join_options`?",
+      "symbol": "join_options",
+      "truth": [
+        { "file": "src/click/core.py", "name": "Option.get_help_spec._write_opts", "line": 3554, "end": 3565 },
+        { "file": "src/click/core.py", "name": "Option.get_help_spec", "line": 3543, "end": 3573 }
+      ],
+      "correction": "After the first run: the direct caller is the nested function _write_opts inside Option.get_help_spec (line 3557), which both tools returned. The original truth listed only the enclosing method. Added _write_opts; question wording unchanged; both tools rescored from their stored output."
+    },
+    {
+      "id": "click-k3",
+      "kind": "callers",
+      "question": "What calls `_resolve_context`?",
+      "symbol": "_resolve_context",
+      "truth": [{ "file": "src/click/shell_completion.py", "name": "ShellComplete.get_completions", "line": 353, "end": 366 }]
+    }
+  ]
+}

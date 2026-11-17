@@ -1,0 +1,25 @@
+{
+  "repos": [
+    {
+      "name": "ky",
+      "language": "TypeScript",
+      "url": "https://github.com/sindresorhus/ky.git",
+      "commit": "3541888878c4d303a8bc2ad61815f4e048f55a5d",
+      "commitDate": "2026-10-09"
+    },
+    {
+      "name": "click",
+      "language": "Python",
+      "url": "https://github.com/pallets/click.git",
+      "commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+      "commitDate": "2026-11-16"
+    },
+    {
+      "name": "cobra",
+      "language": "Go",
+      "url": "https://github.com/spf13/cobra.git",
+      "commit": "adbc8813901bba65827259daa8e22ff94ec1f30e",
+      "commitDate": "2026-07-10"
+    }
+  ]
+}

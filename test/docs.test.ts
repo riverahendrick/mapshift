@@ -42,6 +42,27 @@ test('a map saved in an older format is rebuilt in the new one, not left half-wo
   }
 })
 
+test('a plain-English question finds code by the names it uses inside, the way people describe it', async () => {
+  const r = makeRepo({
+    'src/request.ts': `export class Client {
+  async send(body: Uint8Array) {
+    const total = body.byteLength
+    let sent = 0
+    for (const chunk of [body]) { sent += chunk.byteLength; this.options.onUploadProgress?.({ percent: sent / total }) }
+  }
+  options: { onUploadProgress?: (p: { percent: number }) => void } = {}
+}
+`,
+    'src/other.ts': 'export function parseHeaders(raw: string) { return raw.split("\\n") }\n',
+  })
+  try {
+    await buildNow(r.root)
+    assert.match(find(openMap(r.root), r.root, 'where is upload progress reported').text, /### 1\. Client\.send/)
+  } finally {
+    r.cleanup()
+  }
+})
+
 test('a plain-English question finds code by what its comment says, even when the names differ', async () => {
   const r = makeRepo({
     'src/a.ts': '/** Masks phone numbers so they never reach the logs. */\nexport function scrubPii(s: string) { return s }\n',

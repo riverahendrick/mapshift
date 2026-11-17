@@ -1,0 +1,40 @@
+{
+  "repo": "click",
+  "note": "Written and frozen before any agent run. A run is correct only if its ANSWER line names an accepted definition (file and name) and the explanation contains nothing false about it. Runs that stop at the turn limit without an answer are incorrect.",
+  "promptSuffix": "Do not modify any files. Reply in this format: first line `ANSWER: <file path>:<function or Class.method>`, then at most two sentences explaining how it works.",
+  "tasks": [
+    {
+      "id": "T1",
+      "prompt": "In this repository, where is the automatic help option (`--help`) created and attached to a command?",
+      "accept": [{ "file": "src/click/core.py", "name": "Command.get_help_option" }],
+      "rubric": "Must name Command.get_help_option in src/click/core.py. Explanation should say it builds the option from get_help_option_names (via the help_option decorator) and caches it, or skips it when add_help_option is off."
+    },
+    {
+      "id": "T2",
+      "prompt": "Where does click decide whether to interactively prompt the user for an option's value?",
+      "accept": [{ "file": "src/click/core.py", "name": "Option.consume_value" }],
+      "rubric": "Must name Option.consume_value in src/click/core.py (it decides; prompt_for_value only performs the prompt). Naming only prompt_for_value is incorrect."
+    },
+    {
+      "id": "T3",
+      "prompt": "When a command is run through the test helper `CliRunner`, where is the output it prints captured so the test can read it?",
+      "accept": [{ "file": "src/click/testing.py", "name": "CliRunner.isolation" }],
+      "rubric": "Must name CliRunner.isolation in src/click/testing.py (it swaps sys.stdin/stdout/stderr for in-memory streams). Naming only CliRunner.invoke is incorrect."
+    },
+    {
+      "id": "T4",
+      "prompt": "Where does click handle the user pressing Ctrl+C, or the output pipe being closed, while a command runs in standalone mode?",
+      "accept": [{ "file": "src/click/core.py", "name": "Command.main" }],
+      "rubric": "Must name Command.main in src/click/core.py. Explanation should mention catching KeyboardInterrupt/EOFError (abort message, exit) and/or EPIPE OSError handled by wrapping the streams."
+    },
+    {
+      "id": "T5",
+      "prompt": "How does the `Choice` parameter type match what the user typed against its allowed values, including when matching should ignore case?",
+      "accept": [
+        { "file": "src/click/types.py", "name": "Choice.convert" },
+        { "file": "src/click/types.py", "name": "Choice.normalize_choice" }
+      ],
+      "rubric": "Must name Choice.convert or Choice.normalize_choice in src/click/types.py. Explanation should say both the input and the choices are normalized (token_normalize_func, casefold when case_sensitive is false) and the original matching choice is returned or the conversion fails."
+    }
+  ]
+}

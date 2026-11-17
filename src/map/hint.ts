@@ -61,7 +61,8 @@ export function startingPoints(store: Store, prompt: string, max = HINT_LIMITS.p
     for (let i = 0; i < w.length; i++) for (let j = i + 1; j < w.length; j++) groups.push([w[i]!, w[j]!])
     for (const g of groups) {
       try {
-        for (const r of fts.all(g.map(t => `"${t}"*`).join(' AND ')) as (Row & { bm: number })[]) {
+        // names, signatures, paths and comments only: body words alone would make hints fire on loose matches
+        for (const r of fts.all(`{name words signature path doc} : (${g.map(t => `"${t}"*`).join(' AND ')})`) as (Row & { bm: number })[]) {
           add(r, g.length * 10 * Math.max(0.05, -r.bm) * (1 + Math.log1p(r.rank) * 0.35))
         }
       } catch {

@@ -1,0 +1,93 @@
+{
+  "repo": "cobra",
+  "note": "truth: file is relative to the repo root; line..end is the definition span at the pinned commit. kind: concept = plain English, name = 'where is X defined', callers = 'what calls X' (answered with each tool's caller command on `symbol`).",
+  "questions": [
+    {
+      "id": "cobra-c1",
+      "kind": "concept",
+      "question": "How does cobra propose similar subcommand names when the user mistypes one?",
+      "truth": [
+        { "file": "command.go", "name": "Command.SuggestionsFor", "line": 863, "end": 883 },
+        { "file": "command.go", "name": "Command.findSuggestions", "line": 781, "end": 797 }
+      ]
+    },
+    {
+      "id": "cobra-c2",
+      "kind": "concept",
+      "question": "Where does cobra report an error when two flags that may not be combined were both given?",
+      "truth": [
+        { "file": "flag_groups.go", "name": "validateExclusiveFlagGroups", "line": 188, "end": 208 },
+        { "file": "flag_groups.go", "name": "Command.ValidateFlagGroups", "line": 81, "end": 110 }
+      ]
+    },
+    {
+      "id": "cobra-c3",
+      "kind": "concept",
+      "question": "Where are the completion candidates computed for the word the user is currently typing in the shell?",
+      "truth": [{ "file": "completions.go", "name": "Command.getCompletions", "line": 316, "end": 586 }]
+    },
+    {
+      "id": "cobra-c4",
+      "kind": "concept",
+      "question": "Where is a manual page in roff format produced for a command?",
+      "truth": [
+        { "file": "doc/man_docs.go", "name": "genMan", "line": 202, "end": 9999 },
+        { "file": "doc/man_docs.go", "name": "GenMan", "line": 105, "end": 117 }
+      ]
+    },
+    {
+      "id": "cobra-c5",
+      "kind": "concept",
+      "question": "Where are positional arguments validated so that their count lies between a lower and an upper bound?",
+      "truth": [{ "file": "args.go", "name": "RangeArgs", "line": 117, "end": 126 }]
+    },
+    {
+      "id": "cobra-c6",
+      "kind": "concept",
+      "question": "How does a cobra program learn that the user turned off the extra completion hints through the environment?",
+      "truth": [
+        { "file": "active_help.go", "name": "GetActiveHelpConfig", "line": 47, "end": 57 },
+        { "file": "active_help.go", "name": "activeHelpEnvVar", "line": 58, "end": 9999 }
+      ]
+    },
+    {
+      "id": "cobra-n1",
+      "kind": "name",
+      "question": "Where is `ShellCompDirective` defined?",
+      "truth": [{ "file": "completions.go", "name": "ShellCompDirective", "line": 45, "end": 46 }]
+    },
+    {
+      "id": "cobra-n2",
+      "kind": "name",
+      "question": "Where is `GenMarkdownTreeCustom` defined?",
+      "truth": [{ "file": "doc/md_docs.go", "name": "GenMarkdownTreeCustom", "line": 133, "end": 9999 }]
+    },
+    {
+      "id": "cobra-n3",
+      "kind": "name",
+      "question": "Where is `OnInitialize` defined?",
+      "truth": [{ "file": "cobra.go", "name": "OnInitialize", "line": 99, "end": 104 }]
+    },
+    {
+      "id": "cobra-k1",
+      "kind": "callers",
+      "question": "What calls `legacyArgs`?",
+      "symbol": "legacyArgs",
+      "truth": [{ "file": "command.go", "name": "Command.Find", "line": 757, "end": 780 }]
+    },
+    {
+      "id": "cobra-k2",
+      "kind": "callers",
+      "question": "What calls `fillHeader`?",
+      "symbol": "fillHeader",
+      "truth": [{ "file": "doc/man_docs.go", "name": "GenMan", "line": 105, "end": 117 }]
+    },
+    {
+      "id": "cobra-k3",
+      "kind": "callers",
+      "question": "What calls `hasAllFlags`?",
+      "symbol": "hasAllFlags",
+      "truth": [{ "file": "flag_groups.go", "name": "processFlagForGroupAnnotation", "line": 121, "end": 143 }]
+    }
+  ]
+}

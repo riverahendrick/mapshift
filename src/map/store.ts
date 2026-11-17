@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS edges_src ON edges(src);
 CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst);
 CREATE INDEX IF NOT EXISTS edges_ref ON edges(ref_id);
 CREATE TABLE IF NOT EXISTS skipped (path TEXT PRIMARY KEY, reason TEXT NOT NULL);
-CREATE VIRTUAL TABLE IF NOT EXISTS symbols_fts USING fts5(name, words, signature, path, doc, tokenize = 'unicode61');
+CREATE VIRTUAL TABLE IF NOT EXISTS symbols_fts USING fts5(name, words, signature, path, doc, body, tokenize = 'unicode61');
 `
 
 /** `getTotalPrice` and `get_total_price` both become `get total price`, so a search for "total" finds them. */
@@ -135,11 +135,11 @@ export class Store {
     )
     const fileId = Number(lastInsertRowid)
     const addSym = this.sql('INSERT INTO symbols(file_id, name, qualified, kind, start, end, signature, exported, doc) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    const addFts = this.sql('INSERT INTO symbols_fts(rowid, name, words, signature, path, doc) VALUES(?, ?, ?, ?, ?, ?)')
+    const addFts = this.sql('INSERT INTO symbols_fts(rowid, name, words, signature, path, doc, body) VALUES(?, ?, ?, ?, ?, ?, ?)')
     for (const s of facts.syms) {
       const doc = s.doc ?? ''
       const id = Number(addSym.run(fileId, s.name, s.qualified, s.kind, s.start, s.end, s.signature, s.exported ? 1 : 0, doc).lastInsertRowid)
-      addFts.run(id, s.name, `${nameWords(s.qualified)} ${s.qualified}`, s.signature, f.path, doc)
+      addFts.run(id, s.name, `${nameWords(s.qualified)} ${s.qualified}`, s.signature, f.path, doc, s.body ?? '')
     }
     const addRef = this.sql('INSERT INTO refs(file_id, name, receiver, line, from_qualified, kind) VALUES(?, ?, ?, ?, ?, ?)')
     for (const r of facts.refs) addRef.run(fileId, r.name, r.receiver, r.line, r.from, r.kind)

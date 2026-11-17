@@ -3,6 +3,7 @@ import { extractImports } from './imports.ts'
 import { LANGS, type LangId } from './languages.ts'
 import { grammarQuery, parse, queryFor } from './parser.ts'
 import { EXTRA_TAGS, stripDirectives } from './queries.ts'
+import { nameWords } from './store.ts'
 import type { Facts, Ref, Sym, SymKind } from './types.ts'
 
 const KIND: Record<string, SymKind> = {
@@ -178,6 +179,32 @@ function docOf(def: Node, source: string): string {
   return ''
 }
 
+/** Words every language uses: they say nothing about what a function does. */
+const KEYWORDS = new Set(
+  `const let var return function func def fn class struct interface type enum import export from as await async yield if else elif
+  for while do switch case break continue try catch except finally throw throws raise new this self super null nil none undefined true
+  false void int string str bool boolean number float double char long public private protected static final readonly override
+  package module use mod impl trait where match pub mut ref in of is not and or with lambda get set end then local val fun object`.split(/\s+/),
+)
+
+/**
+ * The words of the names a function or method uses inside its body (`onUploadProgress` → upload, progress),
+ * first seen first, at most 60. A question in plain words can then find code by what it works with.
+ */
+function bodyWords(def: Node, source: string): string {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const m of source.slice(def.startIndex, def.endIndex).matchAll(/[A-Za-z_$][\w$]*/g)) {
+    for (const w of nameWords(m[0]).split(' ')) {
+      if (w.length < 3 || KEYWORDS.has(w) || seen.has(w)) continue
+      seen.add(w)
+      out.push(w)
+      if (out.length >= 60) return out.join(' ')
+    }
+  }
+  return out.join(' ')
+}
+
 /** Text before the name inside its parent node: `this.repo` for `this.repo.save`. */
 function receiverOf(name: Node, source: string): string | null {
   let p = name.parent
@@ -241,7 +268,8 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
       // a member is public when its container is and its own modifiers or naming allow it
       const own = parent && JS_FAMILY.has(lang) ? true : isExported(lang, d.node, d.name, signature)
       const exported = parent ? parent.exported && own : own
-      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + 1, signature, exported, doc: docOf(d.node, text) })
+      const body = kind === 'function' || kind === 'method' ? bodyWords(d.node, text) : ''
+      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + 1, signature, exported, doc: docOf(d.node, text), body })
       stack.push({ end: d.node.endIndex, qualified, kind, exported })
       ranges.push({ start: d.node.startIndex, end: d.node.endIndex, qualified })
     }

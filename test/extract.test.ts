@@ -58,6 +58,16 @@ function helper() { new Logger() }
   ])
 })
 
+test('TypeScript and JavaScript #private methods are definitions, and calls to them are seen', async () => {
+  for (const lang of ['typescript', 'javascript'] as const) {
+    const f = await extract(lang, 'class Ky {\n  async #fetch() { return this.#retry() }\n  #retry() { return 1 }\n  run() { return this.#fetch() }\n}\n')
+    assert.equal(sym(f, 'Ky.#fetch')?.kind, 'method', lang)
+    assert.equal(sym(f, 'Ky.#retry')?.kind, 'method', lang)
+    assert.equal(call(f, '#retry')?.from, 'Ky.#fetch', lang)
+    assert.equal(call(f, '#fetch')?.from, 'Ky.run', lang)
+  }
+})
+
 test('JavaScript: functions, arrow functions and require', async () => {
   const f = await extract(
     'javascript',

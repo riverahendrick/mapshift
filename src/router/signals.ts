@@ -41,11 +41,11 @@ export function mapSignals(store: Store, text: string): MapSignals {
     try {
       const rows = store
         .sql(
-          `SELECT s.id, s.qualified, f.path, bm25(symbols_fts, 10.0, 6.0, 1.0, 1.0, 2.0) AS bm FROM symbols_fts
+          `SELECT s.id, s.qualified, f.path, bm25(symbols_fts, 10.0, 6.0, 1.0, 1.0, 2.0, 0.0) AS bm FROM symbols_fts
            JOIN symbols s ON s.id = symbols_fts.rowid JOIN files f ON f.id = s.file_id
            WHERE symbols_fts MATCH ? ORDER BY bm LIMIT 3`,
         )
-        .all(words.map(w => `"${w}"*`).join(' AND ')) as { id: number; qualified: string; path: string }[]
+        .all(`{name words signature path doc} : (${words.map(w => `"${w}"*`).join(' AND ')})`) as { id: number; qualified: string; path: string }[]
       for (const r of rows) if (!TEST.test(r.path)) ids.set(r.id, r)
     } catch {
       /* not a query the search accepts */
