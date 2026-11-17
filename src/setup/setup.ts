@@ -186,7 +186,7 @@ function defaultRun(exe: string, args: string[]): void {
   execFileSync(exe, args, { cwd: homedir(), stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, timeout: 120_000 })
 }
 
-async function askYesNo(question: string): Promise<boolean> {
+export async function askYesNo(question: string): Promise<boolean> {
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   try {
     const answer = await new Promise<string>(done => rl.question(question, done))

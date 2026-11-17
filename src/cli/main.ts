@@ -90,6 +90,28 @@ async function main(argv: string[]): Promise<number> {
   }
 
   if (cmd === 'setup' || cmd === 'off' || cmd === 'on' || cmd === 'uninstall') {
+    // run through npx? Make a lasting install first, so agents never point at npm's temporary cache
+    if (cmd === 'setup' && !opt('home')) {
+      const p = await import('../setup/persist.ts')
+      const { builtEntry } = await import('../setup/env.ts')
+      if (p.isTemporaryCopy(builtEntry())) {
+        console.log(header('Set up Mapshift for your coding agents'))
+        console.log(`  Mapshift is running from a temporary copy. Your agents need a lasting one, so it will be installed first:`)
+        console.log(`  ${bold(`npm install --global mapshift@${VERSION}`)}\n`)
+        if (values['dry-run']) return 0
+        const { askYesNo } = await import('../setup/setup.ts')
+        if (!values.yes && !(process.stdin.isTTY && (await askYesNo('  Install it now? [y/N] ')))) {
+          console.log(`\n  Nothing changed. Run the line above yourself, then ${bold('mapshift setup')}.`)
+          return 1
+        }
+        const got = p.installLasting(VERSION)
+        if (!got.main) {
+          console.error(`${bad('✗')} Could not install Mapshift (${got.why}). Run the line above yourself, then ${bold('mapshift setup')}.`)
+          return 1
+        }
+        return p.continueFrom(got.main, argv)
+      }
+    }
     const s = await import('../setup/setup.ts')
     const o = { home: opt('home'), agents: opt('agents'), yes: !!values.yes, dryRun: !!values['dry-run'] }
     return cmd === 'setup' ? s.runSetup(o) : cmd === 'off' ? s.runOff(o) : cmd === 'on' ? s.runOn(o) : s.runUninstall(o)
