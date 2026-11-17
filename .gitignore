@@ -8,3 +8,5 @@ Thumbs.db
 .env
 .env.*
 .tmp/
+# written by the host app when it loads the adapter
+plugins/*/.claude-plugin/types/
