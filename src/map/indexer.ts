@@ -144,10 +144,15 @@ export async function refresh(root: string, store: Store, onProgress?: (done: nu
         parsed.push({ f, hash, text: '', facts: null }) // same content, newer time
         continue
       }
-      const text = buf.toString('utf8')
+      let text = buf.toString('utf8')
       if (text.includes('\u0000')) {
-        errors.push({ path: f.path, reason: 'unreadable' })
-        continue
+        // a stray zero byte (in a test string, say) is fine; a file full of them is binary
+        const zeros = text.split('\u0000').length - 1
+        if (zeros > text.length / 100) {
+          errors.push({ path: f.path, reason: 'unreadable' })
+          continue
+        }
+        text = text.replaceAll('\u0000', ' ')
       }
       try {
         parsed.push({ f, hash, text, facts: await extract(f.lang, text) })

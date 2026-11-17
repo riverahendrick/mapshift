@@ -5,4 +5,4 @@ export const VERSION = '0.1.0'
  * The map's on-disk format. Raising it makes every existing map rebuild itself in the background
  * the next time it is used, so an upgrade never leaves an old map answering.
  */
-export const MAP_FORMAT = 1
+export const MAP_FORMAT = 2

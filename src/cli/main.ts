@@ -2,8 +2,7 @@
 import { parseArgs } from 'node:util'
 import { findRepoRoot } from '../core/paths.ts'
 import { buildNow, closeMaps, ensureFresh, openMap, status } from '../map/indexer.ts'
-import { LANGS, type LangId } from '../map/languages.ts'
-import { fileApi, find, overview, search, trace } from '../map/query.ts'
+import { fileApi, find, langCounts, overview, search, trace } from '../map/query.ts'
 import { runMcp } from '../mcp/server.ts'
 import { VERSION } from '../version.ts'
 import { ago, bad, bold, dim, good, header, n, progress, rows, warn } from './ui.ts'
@@ -124,14 +123,13 @@ async function main(argv: string[]): Promise<number> {
 
 function printStatus(st: ReturnType<typeof status>): void {
   const state = st.state === 'ready' ? good('Ready') : st.state === 'building' ? warn(`Building · ${st.percent}%`) : dim('Not built yet')
-  const store = openMap(st.root)
-  const langs = store.sql('SELECT lang, COUNT(*) AS n FROM files GROUP BY lang ORDER BY n DESC LIMIT 6').all() as { lang: LangId; n: number }[]
+  const langs = langCounts(openMap(st.root)).slice(0, 6)
   const pairs: [string, string][] = [
     ['Map', state],
     ['Files', n(st.files)],
     ['Definitions', n(st.symbols)],
     ['Call links', n(st.links)],
-    ['Languages', langs.map(l => `${LANGS[l.lang]?.label ?? l.lang} ${n(l.n)}`).join(' · ') || dim('none')],
+    ['Languages', langs.map(l => `${l.label} ${n(l.n)}`).join(' · ') || dim('none')],
     ['Updated', ago(st.builtAt)],
   ]
   if (st.skipped.length) {

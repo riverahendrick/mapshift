@@ -10,6 +10,29 @@ const JS_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue', '.svelte'
 const SELF = /^(this|self|cls|@|Self|super)$/
 const BUILDS = new Set<SymKind>(['class', 'type', 'interface', 'enum'])
 
+/**
+ * Languages where a plain call can only reach the same file or an import: `helper()` in one module
+ * never means a `helper` defined in another module that was not imported.
+ */
+const MODULE_SCOPED = new Set(['typescript', 'tsx', 'javascript', 'vue', 'svelte', 'python'])
+/** Languages where a plain call also reaches the rest of the same folder (package or namespace). */
+const PACKAGE_SCOPED = new Set(['go', 'java', 'kotlin', 'csharp', 'swift', 'dart', 'scala'])
+
+/**
+ * Method names every standard library has. A call like `items.find()` or `name.trim()` on an object of
+ * unknown type is almost always the built-in, so it is never guessed onto a project definition.
+ */
+const COMMON = new Set(
+  `find findIndex findLast filter map reduce forEach some every includes indexOf lastIndexOf push pop shift unshift slice splice
+  concat join split trim trimStart trimEnd replace replaceAll toLowerCase toUpperCase startsWith endsWith match matchAll test exec
+  keys values entries items get set has add delete remove clear then catch finally toString valueOf toFixed toISOString toJSON
+  getTime log warn error info debug trace parse stringify assign freeze from of isArray sort reverse fill flat flatMap at call apply
+  bind emit on off once append extend update copy format strip lower upper insert count index next pipe subscribe unsubscribe
+  resolve reject all race length size charAt charCodeAt padStart padEnd substring substr encode decode toList toArray iterator
+  getItem setItem removeItem addEventListener removeEventListener querySelector setTimeout clearTimeout setState dispatch
+  write read close open flush end json text status`.split(/\s+/),
+)
+
 /** Everything the matcher needs, loaded once per pass. */
 class Index {
   pathOf = new Map<number, string>()
@@ -174,9 +197,27 @@ function match(ix: Index, r: R): Hit[] {
     }
   }
 
-  // 4. one definition with that name anywhere; 5. a few candidates, all marked ambiguous
-  if (defs.length === 1) return [{ dst: defs[0]!.id, confidence: 'inferred' }]
-  if (defs.length <= 3) return defs.map(d => ({ dst: d.id, confidence: 'ambiguous' }))
+  const lang = ix.langOf.get(r.file_id) ?? ''
+  const viaObject = !!recv && !SELF.test(recv)
+  let pool: S[]
+  if (viaObject) {
+    // 4a. a method on an object of unknown type: only methods qualify, never the names every library has
+    if (COMMON.has(name)) return []
+    pool = defs.filter(d => d.kind === 'method' || (r.kind === 'new' && BUILDS.has(d.kind)))
+  } else if (MODULE_SCOPED.has(lang)) {
+    // 4b. a plain call that is neither in this file nor imported is a built-in or a global, not project code
+    return []
+  } else if (PACKAGE_SCOPED.has(lang)) {
+    // 4c. the same package: other files in the same folder
+    const dir = posix.dirname(ix.pathOf.get(r.file_id) ?? '')
+    const near = defs.filter(d => posix.dirname(ix.pathOf.get(d.file_id) ?? '') === dir)
+    pool = near.length ? near : defs
+  } else {
+    pool = defs
+  }
+  // 5. one candidate is a fair guess; two or three are listed as ambiguous; more is noise
+  if (pool.length === 1) return [{ dst: pool[0]!.id, confidence: 'inferred' }]
+  if (pool.length <= 3) return pool.map(d => ({ dst: d.id, confidence: 'ambiguous' }))
   return []
 }
 
@@ -245,8 +286,16 @@ export function rank(store: Store, iterations = 20, damping = 0.85): void {
     for (let i = 0; i < n; i++) next[i]! += share
     pr = next
   }
+  // test code is used a lot by other test code; it should not outrank the code it tests
+  const testy = new Set(
+    (store.sql('SELECT s.id, f.path FROM symbols s JOIN files f ON f.id = s.file_id').all() as { id: number; path: string }[])
+      .filter(r => TEST_PATH.test(r.path))
+      .map(r => r.id),
+  )
   const set = store.sql('UPDATE symbols SET rank = ? WHERE id = ?')
   store.tx(() => {
-    for (let i = 0; i < n; i++) set.run(pr[i]! * n, ids[i]!)
+    for (let i = 0; i < n; i++) set.run(pr[i]! * n * (testy.has(ids[i]!) ? 0.25 : 1), ids[i]!)
   })
 }
+
+export const TEST_PATH = /(^|\/)(test|tests|__tests__|spec|specs|fixtures?|mocks?|e2e|testdata)(\/|$)|\.(test|spec)\.[a-z]+$|_test\.(go|py)$|(^|\/)test_[^/]*\.py$/i

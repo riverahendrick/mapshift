@@ -53,23 +53,42 @@ function codeBlock(root: string, h: { path: string; start: number; end: number; 
 const tag = (c: string): string => (c === 'resolved' ? '' : ` (${c})`)
 const where = (h: { path: string; start: number; end?: number }): string => `${h.path}:${h.start}${h.end && h.end !== h.start ? `-${h.end}` : ''}`
 
+type Link = { who: string; path: string; line: number; uses: number; confidence: string; rank: number }
+
+/**
+ * Callers grouped one line each (`createLogEvent (log-event.ts:55) ×3`), real code before tests, and the
+ * tests summed up in one line, so a busy function's list stays short and useful.
+ */
+function summarize(list: Link[], max: number): string[] {
+  const code = list.filter(l => !TESTY.test(l.path)).sort((a, b) => b.rank - a.rank || b.uses - a.uses)
+  const tests = list.filter(l => TESTY.test(l.path))
+  const out = code.slice(0, max).map(l => `${l.who} (${l.path}:${l.line})${l.uses > 1 ? ` ×${l.uses}` : ''}${tag(l.confidence)}`)
+  if (code.length > max) out.push(`${code.length - max} more`)
+  if (tests.length) {
+    const uses = tests.reduce((s, l) => s + l.uses, 0)
+    const files = new Set(tests.map(l => l.path)).size
+    out.push(`${uses} from tests in ${files} file${files === 1 ? '' : 's'}`)
+  }
+  return out
+}
+
 function links(store: Store, id: number): { callers: string[]; calls: string[] } {
   const callers = store
     .sql(
-      `SELECT COALESCE(s.qualified, '(top of file)') AS who, f.path, e.line, e.confidence FROM edges e
-       JOIN files f ON f.id = e.src_file LEFT JOIN symbols s ON s.id = e.src WHERE e.dst = ? ORDER BY COALESCE(s.rank, 0) DESC LIMIT 6`,
+      `SELECT COALESCE(s.qualified, '(top of file)') AS who, f.path, MIN(e.line) AS line, COUNT(*) AS uses,
+              MIN(e.confidence) AS confidence, COALESCE(MAX(s.rank), 0) AS rank
+       FROM edges e JOIN files f ON f.id = e.src_file LEFT JOIN symbols s ON s.id = e.src
+       WHERE e.dst = ? GROUP BY who, f.path LIMIT 400`,
     )
-    .all(id) as { who: string; path: string; line: number; confidence: string }[]
+    .all(id) as Link[]
   const calls = store
     .sql(
-      `SELECT DISTINCT d.qualified AS who, f.path, d.start AS line, e.confidence FROM edges e
-       JOIN symbols d ON d.id = e.dst JOIN files f ON f.id = d.file_id WHERE e.src = ? ORDER BY d.rank DESC LIMIT 6`,
+      `SELECT d.qualified AS who, f.path, d.start AS line, COUNT(*) AS uses, MIN(e.confidence) AS confidence, d.rank AS rank
+       FROM edges e JOIN symbols d ON d.id = e.dst JOIN files f ON f.id = d.file_id
+       WHERE e.src = ? GROUP BY d.id LIMIT 400`,
     )
-    .all(id) as { who: string; path: string; line: number; confidence: string }[]
-  return {
-    callers: callers.map(c => `${c.who} (${c.path}:${c.line})${tag(c.confidence)}`),
-    calls: calls.map(c => `${c.who} (${c.path}:${c.line})${tag(c.confidence)}`),
-  }
+    .all(id) as Link[]
+  return { callers: summarize(callers, 5), calls: summarize(calls, 6) }
 }
 
 /** Lines that tell the agent the map is not complete yet, or left files out. */
@@ -204,6 +223,7 @@ export function trace(
       : `SELECT s.id, COALESCE(s.qualified, '(top of file)') AS who, f.path, e.line, e.confidence FROM edges e JOIN files f ON f.id = e.src_file LEFT JOIN symbols s ON s.id = e.src WHERE e.dst = ?`
   const label = direction === 'out' ? 'calls' : direction === 'impact' ? 'is reached by' : 'is called by'
 
+  type Row = { id: number | null; who: string; path: string; line: number; confidence: string }
   for (const r of roots.slice(0, 3)) {
     files.add(r.path)
     out.push(``, `${r.qualified} · ${r.kind} · ${where(r)} ${label}:`)
@@ -211,26 +231,42 @@ export function trace(
     let frontier = [r.id]
     let shown = 0
     const reachedFiles = new Set<string>()
+    const testUses = new Map<string, number>()
     for (let level = 1; level <= depth && frontier.length; level++) {
       const next: number[] = []
+      // one line per caller, with how many times it calls; tests are counted, not listed
+      const grouped = new Map<string, Row & { uses: number }>()
       for (const id of frontier) {
-        for (const e of store.sql(step).all(id) as { id: number | null; who: string; path: string; line: number; confidence: string }[]) {
-          const key = e.id ?? -1
-          if (e.id !== null && seen.has(key)) continue
-          if (e.id !== null) {
-            seen.add(key)
-            next.push(e.id)
-          }
+        for (const e of store.sql(step).all(id) as Row[]) {
           reachedFiles.add(e.path)
-          files.add(e.path)
-          if (shown < LIMITS.traceNodes) out.push(`${'  '.repeat(level)}- ${e.who} (${e.path}:${e.line})${tag(e.confidence)}`)
-          shown++
+          if (TESTY.test(e.path)) {
+            testUses.set(e.path, (testUses.get(e.path) ?? 0) + 1)
+            continue
+          }
+          const key = e.id !== null ? `#${e.id}` : `${e.who}@${e.path}`
+          const g = grouped.get(key)
+          if (g) g.uses++
+          else grouped.set(key, { ...e, uses: 1 })
         }
+      }
+      for (const e of grouped.values()) {
+        if (e.id !== null) {
+          if (seen.has(e.id)) continue
+          seen.add(e.id)
+          next.push(e.id)
+        }
+        files.add(e.path)
+        if (shown < LIMITS.traceNodes) out.push(`${'  '.repeat(level)}- ${e.who} (${e.path}:${e.line})${e.uses > 1 ? ` ×${e.uses}` : ''}${tag(e.confidence)}`)
+        shown++
       }
       frontier = next
     }
-    if (shown === 0) out.push(direction === 'out' ? '  - nothing it calls is in the map' : '  - no callers found in the map')
     if (shown > LIMITS.traceNodes) out.push(`  … ${shown - LIMITS.traceNodes} more`)
+    if (testUses.size) {
+      const uses = [...testUses.values()].reduce((a, b) => a + b, 0)
+      out.push(`  + ${uses} use${uses === 1 ? '' : 's'} from tests in ${testUses.size} file${testUses.size === 1 ? '' : 's'}`)
+    }
+    if (shown === 0 && !testUses.size) out.push(direction === 'out' ? '  - nothing it calls is in the map' : '  - no callers found in the map')
     if (direction === 'impact') out.push(`  Impact: ${seen.size - 1} definitions in ${reachedFiles.size} files within ${depth} steps.`)
   }
   return { text: out.join('\n').trim(), files: [...files] }
@@ -258,10 +294,20 @@ export function fileApi(store: Store, root: string, path: string): Answer {
   return { text: lines.join('\n'), files: [file.path] }
 }
 
+/** Files per language, with TypeScript and TSX (and the like) counted under one name. */
+export function langCounts(store: Store): { label: string; n: number }[] {
+  const by = new Map<string, number>()
+  for (const r of store.sql('SELECT lang, COUNT(*) AS n FROM files GROUP BY lang').all() as { lang: LangId; n: number }[]) {
+    const label = LANGS[r.lang]?.label ?? r.lang
+    by.set(label, (by.get(label) ?? 0) + r.n)
+  }
+  return [...by.entries()].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n)
+}
+
 /** A first look at a project: languages, main folders, the most used definitions and likely entry points. */
 export function overview(store: Store, root: string): Answer {
   const st = mapStatus(root, store)
-  const langs = store.sql('SELECT lang, COUNT(*) AS n FROM files GROUP BY lang ORDER BY n DESC').all() as { lang: LangId; n: number }[]
+  const langs = langCounts(store)
   const files = store.sql('SELECT path FROM files').all() as { path: string }[]
   const dirs = new Map<string, number>()
   for (const f of files) {
@@ -269,12 +315,16 @@ export function overview(store: Store, root: string): Answer {
     const key = parts.length > 2 ? `${parts[0]}/${parts[1]}` : parts.length === 2 ? parts[0]! : '.'
     dirs.set(key, (dirs.get(key) ?? 0) + 1)
   }
-  const hubs = store
-    .sql(
-      `SELECT s.qualified, s.kind, f.path, s.start, (SELECT COUNT(*) FROM edges e WHERE e.dst = s.id) AS uses FROM symbols s
-       JOIN files f ON f.id = s.file_id WHERE s.kind != 'variable' ORDER BY s.rank DESC LIMIT 12`,
-    )
-    .all() as { qualified: string; kind: string; path: string; start: number; uses: number }[]
+  const hubs = (
+    store
+      .sql(
+        `SELECT s.qualified, s.kind, f.path, s.start, (SELECT COUNT(*) FROM edges e WHERE e.dst = s.id AND e.confidence != 'ambiguous') AS uses
+         FROM symbols s JOIN files f ON f.id = s.file_id WHERE s.kind != 'variable' ORDER BY s.rank DESC LIMIT 40`,
+      )
+      .all() as { qualified: string; kind: string; path: string; start: number; uses: number }[]
+  )
+    .filter(h => !TESTY.test(h.path) && h.uses > 1)
+    .slice(0, 12)
   const entries = files
     .map(f => f.path)
     .filter(p => /(^|\/)(main|index|app|server|cli|program|manage|__main__)\.[a-z]+$/i.test(p) && !TESTY.test(p))
@@ -285,7 +335,7 @@ export function overview(store: Store, root: string): Answer {
     ...notices(st),
     `Map · ${posix.basename(root)} · ${st.files} files · ${st.symbols} definitions · ${st.links} call links`,
     '',
-    `Languages: ${langs.map(l => `${LANGS[l.lang]?.label ?? l.lang} ${l.n}`).join(', ') || 'none yet'}`,
+    `Languages: ${langs.map(l => `${l.label} ${l.n}`).join(', ') || 'none yet'}`,
     '',
     'Main folders:',
     ...[...dirs.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([d, n]) => `- ${d} (${n} files)`),
