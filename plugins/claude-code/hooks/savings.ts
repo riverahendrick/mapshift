@@ -45,6 +45,31 @@ export function savings(m: Money, map: { tokens: number; usd: number | null } | 
   }
 }
 
+/**
+ * How much a usage limit was stretched. `ratio` is today's with ÷ without (money, list prices): limits are
+ * counted in usage, which follows cost closely but not exactly, so everything here is an estimate.
+ * - withoutPct: where the limit would be without Mapshift (`pct ÷ ratio`); kept = the difference.
+ * - extraMs: at the pace since the window opened, how much longer it lasts before running out. Only set when
+ *   the "without" pace would have run out before the reset; otherwise neither runs out and only `kept` counts.
+ */
+export type Stretch = { withoutPct: number; kept: number; extraMs: number | null }
+export function stretch(w: { pct: number; resetsAt: number | null }, lengthMs: number | null, ratio: number, now: number): Stretch | null {
+  if (!(ratio > 0) || ratio >= 0.995 || !(w.pct > 0)) return null // nothing saved, or more spent on stronger models
+  const withoutPct = w.pct / ratio
+  let extraMs: number | null = null
+  if (lengthMs && w.resetsAt) {
+    const left = w.resetsAt - now
+    const elapsed = lengthMs - left
+    if (elapsed > 60_000 && left > 0) {
+      const rate = w.pct / elapsed // percent per millisecond, with Mapshift
+      const lastsWith = (100 - w.pct) / rate
+      const lastsWithout = withoutPct >= 100 ? 0 : (100 - withoutPct) / (rate / ratio)
+      if (lastsWithout < left) extraMs = Math.min(lastsWith, left) - lastsWithout
+    }
+  }
+  return { withoutPct, kept: withoutPct - w.pct, extraMs }
+}
+
 /** One period's savings from its money and its map figures (null when the map's log could not be read). */
 export const savingsFor = (m: Money, stats: MapStats | null, usd: number | null): Savings => savings(m, stats ? { tokens: stats.saved, usd } : null)
 

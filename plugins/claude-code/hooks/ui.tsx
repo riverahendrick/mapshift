@@ -1,9 +1,9 @@
 // Everything Mapshift draws: the dashboard pane (four tabs), its small widget form, and the band above the prompt.
 
 import type { AgentRow, Cfg, Effort, Family, Health, Last, LimitWindow, Live, LogRow, MapInfo, MapStats, Mode, Snap, StepRow, Tier, Totals, View } from '../types'
-import { EFFORTS, FAMILIES, cap, familyOf, fmtTok, fmtUsd, hitPct, isWarm, limitPressure } from './brain'
-import { mapStatsLine, moneyVerdict, savingsFor, signedUsd, tokenVerdict, toolLine } from './savings'
-import type { Savings } from './savings'
+import { EFFORTS, FAMILIES, cap, familyOf, fmtTok, fmtUsd, hitPct, isWarm, limitPressure, windowLengthMs } from './brain'
+import { mapStatsLine, moneyVerdict, savingsFor, signedUsd, stretch, tokenVerdict, toolLine } from './savings'
+import type { Savings, Stretch } from './savings'
 import type { Ledger } from './brain'
 import { ACCENT, STATUS, compareBars, familyColor, levelMeter, ringGauge, sparkBars, statusColor } from './charts'
 import { project } from './state'
@@ -380,6 +380,26 @@ function LimitsCard(c: Ctx, act: Act) {
   if (!windows.length && ctx === null) return Card(c, { title: '⏱️ Limits', children: Muted(c.t, 'Shows after the first reply.') })
   const resetText = (w: LimitWindow) => (w.resetsAt ? `resets in ${inText(w.resetsAt - now)}` : 'reset time not known yet')
   const gaugeSize = c.cols >= 70 ? 92 : 80
+  // 🔋 how much each limit was stretched, from today's with/without (an estimate, labelled as one)
+  const today = savingsFor(c.d.totals.today, c.d.map.available ? c.d.map.statsToday : null, c.d.map.available ? c.d.map.usdToday : null)
+  const ratio = today.without.usd > 0 ? today.with.usd / today.without.usd : 0
+  const stretched = windows
+    .map(w => ({ w, s: stretch(w, windowLengthMs(w.kind), ratio, now) }))
+    .filter((x): x is { w: LimitWindow; s: Stretch } => x.s !== null && x.s.kept >= 0.5)
+  const stretchLines = stretched.length ? (
+    <Box flexDirection="column" marginTop={1}>
+      {stretched.map(({ w, s }) => (
+        <Text key={`stretch-${w.kind}`} wrap="wrap">
+          <Text color={STATUS.ok}>{`🔋 ${w.name}: `}</Text>
+          {`you'd be at ${Math.round(Math.min(s.withoutPct, 999))}% without Mapshift, not ${Math.round(w.pct)}%`}
+          {s.extraMs !== null && s.extraMs >= 60_000 ? <Text color={STATUS.ok}>{` · about ${inText(s.extraMs)} more before it runs out`}</Text> : null}
+        </Text>
+      ))}
+      <Text dimColor size="footnote" wrap="wrap">
+        Estimate from today's savings and your pace since each limit reset.
+      </Text>
+    </Box>
+  ) : null
   const warning =
     runsOut.length || pressure > 0 ? (
       <Box flexDirection="column" marginTop={1}>
@@ -409,6 +429,7 @@ function LimitsCard(c: Ctx, act: Act) {
               <Svg key="gauge-context" source={ringGauge({ pct: ctx, label: 'Context', sub: 'Of this chat', size: gaugeSize, dark: c.d.dark })} alt={`Context ${Math.round(ctx)}% full`} />
             ) : null}
           </Box>
+          {stretchLines}
           {warning}
         </Box>
       ),
@@ -433,6 +454,7 @@ function LimitsCard(c: Ctx, act: Act) {
       <Box flexDirection="column">
         {windows.map(w => line(`limit-${w.kind}`, w.name, w.pct, resetText(w)))}
         {ctx !== null ? line('limit-context', 'Context', ctx, 'of this chat') : null}
+        {stretchLines}
         {warning}
       </Box>
     ),

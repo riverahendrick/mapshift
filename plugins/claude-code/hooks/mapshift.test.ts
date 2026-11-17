@@ -26,7 +26,7 @@ import type { MapInfo } from '../types'
 import type { DecideInput } from './brain'
 import { STATUS, statusColor } from './charts'
 import { addStats, launchers, mapSavings, mapToolOf, parseRoute, parseStatus, raises, routeText, savedPct } from './map'
-import { mapStatsLine, mapUsd, moneyVerdict, savingsFor, savingsLines, signedUsd, tokenVerdict, toolLine } from './savings'
+import { mapStatsLine, mapUsd, moneyVerdict, savingsFor, savingsLines, signedUsd, stretch, tokenVerdict, toolLine } from './savings'
 import { projectKey } from './state'
 import { bandText, inText, shortWhy } from './ui'
 
@@ -730,6 +730,23 @@ test('programs never start inside the project, so a project cannot plant its own
   for (const r of runs.filter(x => x.argv.includes('route') || x.argv.includes('status'))) {
     expect(r.argv[r.argv.indexOf('--project') + 1]).toBe('C:/work/alpha')
   }
+})
+
+test('limit stretch: where a limit would be without Mapshift, and how much longer it lasts at this pace', async () => {
+  const H = 3_600_000
+  // 5-hour window, 2 h gone, 40% used, today cost 0.6 of what it would have: without, 66.7% at the same work
+  const s = stretch({ pct: 40, resetsAt: NOW + 3 * H }, 5 * H, 0.6, NOW)!
+  expect(Math.round(s.withoutPct * 10) / 10).toBe(66.7)
+  expect(Math.round(s.kept * 10) / 10).toBe(26.7)
+  // with Mapshift: 20%/h, lasts 3 h (past the reset, so capped at the 3 h left); without: 33.3%/h, lasts 1 h
+  expect(Math.round(s.extraMs! / 60_000)).toBe(120)
+  // neither runs out before the reset: only the share kept free counts
+  const calm = stretch({ pct: 10, resetsAt: NOW + 3 * H }, 5 * H, 0.6, NOW)!
+  expect(calm.extraMs).toBe(null)
+  // nothing saved, or more spent on stronger models: nothing to claim
+  expect(stretch({ pct: 40, resetsAt: NOW + 3 * H }, 5 * H, 1, NOW)).toBe(null)
+  expect(stretch({ pct: 40, resetsAt: NOW + 3 * H }, 5 * H, 1.2, NOW)).toBe(null)
+  expect(stretch({ pct: 40, resetsAt: NOW + 3 * H }, 5 * H, 0, NOW)).toBe(null)
 })
 
 test('starting points from the map are attached to a prompt, quietly, and only when there are some', async ($, on) => {
