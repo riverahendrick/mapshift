@@ -4,6 +4,8 @@ import { findRepoRoot } from '../core/paths.ts'
 import { buildNow, closeMaps, ensureFresh, openMap, status } from '../map/indexer.ts'
 import { fileApi, find, langCounts, overview, search, trace } from '../map/query.ts'
 import { runMcp } from '../mcp/server.ts'
+import { providerOf, type ProviderId } from '../router/catalog.ts'
+import { advise } from '../router/route.ts'
 import { VERSION } from '../version.ts'
 import { ago, bad, bold, dim, good, header, n, progress, rows, warn } from './ui.ts'
 
@@ -16,6 +18,7 @@ ${bold('Usage')}
   mapshift map file <path>      A file's outline: every definition and its lines
   mapshift map overview         The whole project at a glance
   mapshift map search <text>    Every matching line  ${dim('(--regex · --case · --path <folder>)')}
+  mapshift route <request>      Which model and effort a request needs  ${dim('(--model <id> · --provider <name> · --json)')}
   mapshift mcp                  Run the tool server that coding agents connect to
 
 ${bold('Options')}
@@ -42,6 +45,10 @@ async function main(argv: string[]): Promise<number> {
       regex: { type: 'boolean' },
       case: { type: 'boolean' },
       path: { type: 'string' },
+      provider: { type: 'string' },
+      model: { type: 'string' },
+      json: { type: 'boolean' },
+      frontier: { type: 'boolean' },
     },
   })
   if (values.version) {
@@ -57,6 +64,54 @@ async function main(argv: string[]): Promise<number> {
 
   if (cmd === 'mcp') {
     await runMcp()
+    return 0
+  }
+
+  if (cmd === 'route') {
+    const text = [sub, ...rest].filter(Boolean).join(' ').trim()
+    if (!text) {
+      console.error(`${bad('✗')} Give the request to judge, for example: ${bold('mapshift route "fix the login race condition"')}`)
+      return 2
+    }
+    const model = typeof values.model === 'string' ? values.model : undefined
+    const provider = (typeof values.provider === 'string' ? values.provider : model ? providerOf(model) : null) ?? 'anthropic'
+    if (!['anthropic', 'openai', 'google', 'xai'].includes(provider)) {
+      console.error(`${bad('✗')} Unknown provider "${provider}". Use anthropic, openai, google or xai.`)
+      return 2
+    }
+    let store = null
+    try {
+      if (status(root).state !== 'empty') store = openMap(root)
+    } catch {
+      store = null // no map here: judge by wording alone
+    }
+    const a = advise({ text, provider: provider as ProviderId, currentModel: model, store, allowFrontier: !!values.frontier })
+    if (values.json) {
+      console.log(
+        JSON.stringify({
+          tier: a.tier,
+          model: a.model.id,
+          effort: a.effort,
+          change: a.change,
+          helper: a.helper.id,
+          reasons: a.reasons,
+          map: a.signals && !a.signals.silent ? { matched: a.signals.matched, reach: a.signals.reach, files: a.signals.files, areas: a.signals.areas } : null,
+        }),
+      )
+      return 0
+    }
+    const level = { trivial: 'Quick', routine: 'Standard', complex: 'Complex', critical: 'Critical' }[a.tier]
+    console.log(header('Routing advice'))
+    console.log(
+      rows([
+        ['Level', bold(level)],
+        ['Model', `${bold(a.model.label)}  ${dim(`· ${a.effort === 'xhigh' ? 'extra high' : a.effort} effort`)}`],
+        ...(a.current && a.change !== 'none' ? ([['Now on', `${a.current.label}  ${a.change === 'up' ? warn('↑ step up') : good('↓ step down')}`]] as [string, string][]) : []),
+        ['Helpers', `${a.helper.label} ${dim('for searching, summaries and test runs')}`],
+        ['Why', a.reasons.join('; ')],
+      ]),
+    )
+    console.log('')
     return 0
   }
 
