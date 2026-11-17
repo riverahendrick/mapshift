@@ -70,7 +70,8 @@ export function moneyVerdict(s: Savings): string {
 /** "37.8k tokens saved (13%)", or "No tokens saved". */
 export function tokenVerdict(s: Savings): string {
   const d = s.saved.tokens
-  if (d <= 0) return 'No tokens saved'
+  if (d < 0) return `${fmtTok(-d)} more tokens: the map answers cost more than the reads they spared`
+  if (d === 0) return 'No tokens saved'
   const p = pct(d, s.without.tokens)
   return `${fmtTok(d)} tokens saved${p !== null ? ` (${p}%)` : ''}`
 }
@@ -92,7 +93,7 @@ const TOOL_LABEL: [keyof MapStats['byTool'], string][] = [
   ['file', 'File outline'],
   ['overview', 'Overview'],
   ['search', 'Search'],
-  ['other', 'Other'],
+  ['other', 'Starting points'],
 ]
 const n0 = (n: number) => Math.round(n).toLocaleString('en-US')
 const plural = (n: number, one: string, many = `${one}s`) => `${n0(n)} ${n === 1 ? one : many}`
@@ -106,5 +107,7 @@ export const toolLine = (s: MapStats): string =>
 /** "🔍 12 lookups · 📄 9 files not opened · 💚 37.8k tokens saved (92%)". */
 export function mapStatsLine(s: MapStats): string {
   const p = savedPct(s)
-  return `🔍 ${plural(s.lookups, 'lookup')} · 📄 ${plural(s.filesSkipped, 'file')} not opened · 💚 ${fmtTok(s.saved)} tokens saved${p !== null ? ` (${p}%)` : ''}`
+  const head = `🔍 ${plural(s.lookups, 'lookup')} · 📄 ${plural(s.filesSkipped, 'file')} not opened`
+  if (s.saved < 0) return `${head} · ${fmtTok(-s.saved)} more tokens than the reads they spared`
+  return `${head} · 💚 ${fmtTok(s.saved)} tokens saved${p !== null ? ` (${p}%)` : ''}`
 }

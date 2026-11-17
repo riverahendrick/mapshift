@@ -73,7 +73,7 @@ const LEDGER_STATS = {
   byTool: { find: 1, trace: 1, file: 1, overview: 1, search: 1, other: 0 },
   answerTokens: 1600, // 300 + 250 + 400 + 500 + 150
   wouldRead: 18_500, // 4000 + 1500 + 9000 + 0 + 4000
-  saved: 17_400, // 3700 + 1250 + 8600 + 0 + 3850
+  saved: 16_900, // 18,500 would have been read, less 1,600 for the answers (the search answer spared nothing and costs its 500)
   filesSkipped: 3, // a.ts, c.ts, d.ts
 }
 /** Another chat of the same day, as the store keeps it. */
@@ -553,7 +553,7 @@ test('map savings: files the map pointed to and that were not read anyway, less 
   ].join('\n')
   expect(mapSavings(log, { root: 'c:\\work\\alpha', since: NOW - 1000, reads: [] }).saved).toBe(2700)
   expect(mapSavings(log, { root: 'C:/work/alpha', since: NOW - 1000, reads: ['C:\\work\\alpha\\src\\a.ts'] }).saved).toBe(700)
-  expect(mapSavings(ev({ files: [] }), { root: 'C:/work/alpha', since: 0, reads: [] }).saved).toBe(0) // never below zero
+  expect(mapSavings(ev({ files: [] }), { root: 'C:/work/alpha', since: 0, reads: [] }).saved).toBe(-300) // an answer that spared nothing costs its own size
 })
 
 test('map numbers: three answers, one pointed file read afterwards (the worked example)', async () => {
@@ -577,10 +577,10 @@ test('map numbers: three answers, one pointed file read afterwards (the worked e
   expect(toolLine(s)).toBe('Find 1 · Trace 1 · File outline 1')
 })
 
-test('map numbers: an answer that spared nothing counts 0, a file pointed at twice is one file, other chats and projects stay out', async () => {
+test('map numbers: an answer that spared nothing counts against the savings, a file pointed at twice is one file, other chats and projects stay out', async () => {
   const s = mapSavings(LEDGER.map(x => JSON.stringify(x)).join('\n') + '\nnot json', { root: 'C:/work/alpha', since: NOW, reads: ['C:/work/alpha/src/b.ts'] })
   expect(s).toEqual(LEDGER_STATS)
-  expect(savedPct(s)).toBe(94) // 17400 / 18500 = 94.05%
+  expect(savedPct(s)).toBe(91) // 16900 / 18500 = 91.4%
   // today: chats add field by field, and the percent comes from the sums
   const both = addStats([s, OTHER_CHAT])
   expect(both).toEqual({
@@ -588,10 +588,10 @@ test('map numbers: an answer that spared nothing counts 0, a file pointed at twi
     byTool: { find: 3, trace: 1, file: 1, overview: 1, search: 1, other: 0 },
     answerTokens: 2000,
     wouldRead: 28500,
-    saved: 27000,
+    saved: 26500,
     filesSkipped: 5,
   })
-  expect(savedPct(both)).toBe(95) // 27000 / 28500 = 94.7%
+  expect(savedPct(both)).toBe(93) // 26500 / 28500 = 93.0%
   expect(mapToolOf('mcp__mapshift__map_overview')).toBe('overview')
   expect(mapToolOf('map_rename')).toBe('other')
 })
@@ -604,33 +604,33 @@ test('with and without Mapshift, in money and tokens, to the cent', async () => 
   const micro = (v: number) => Math.round(v * 1e6) // millionths of a dollar: exact for these figures
   expect(cents(s.with.usd)).toBe(120)
   expect(s.with.tokens).toBe(250_000)
-  expect(micro(s.without.usd)).toBe(1_569_600) // $1.50 + 17,400 × $4 / 1M = $1.5696
+  expect(micro(s.without.usd)).toBe(1_567_600) // $1.50 + 16,900 × $4 / 1M = $1.5676
   expect(cents(s.without.usd)).toBe(157)
-  expect(s.without.tokens).toBe(267_400)
-  expect(micro(s.saved.usd)).toBe(369_600) // $0.30 switching + $0.0696 map
+  expect(s.without.tokens).toBe(266_900)
+  expect(micro(s.saved.usd)).toBe(367_600) // $0.30 switching + $0.0676 map
   expect(cents(s.saved.usd)).toBe(37)
-  expect(s.saved.tokens).toBe(17_400)
+  expect(s.saved.tokens).toBe(16_900)
   expect(cents(s.routingUsd)).toBe(30)
-  expect(micro(s.map.usd!)).toBe(69_600)
+  expect(micro(s.map.usd!)).toBe(67_600)
   expect(cents(s.cache.usd)).toBe(40) // shown, not added
   expect(s.cache.tokens).toBe(200_000)
   expect(micro(s.map.usd! + s.routingUsd)).toBe(micro(s.saved.usd)) // the rows add up to the total
-  expect(moneyVerdict(s)).toBe('Saved $0.370 (24%)') // 0.3696 / 1.5696 = 23.5%
-  expect(tokenVerdict(s)).toBe('17.4k tokens saved (7%)') // 17,400 / 267,400 = 6.5%
+  expect(moneyVerdict(s)).toBe('Saved $0.368 (23%)') // 0.3676 / 1.5676 = 23.4%
+  expect(tokenVerdict(s)).toBe('16.9k tokens saved (6%)') // 16,900 / 266,900 = 6.3%
   expect(savingsLines('This chat', s, 'Opus 5.5')).toEqual([
     'This chat with Mapshift: $1.20 · 250.0k tokens',
-    'This chat without Mapshift: $1.57 · 267.4k tokens (every request on Opus 5.5, no map)',
-    'This chat difference: Saved $0.370 (24%) · 17.4k tokens saved (7%)',
+    'This chat without Mapshift: $1.57 · 266.9k tokens (every request on Opus 5.5, no map)',
+    'This chat difference: Saved $0.368 (23%) · 16.9k tokens saved (6%)',
   ])
   // stronger models for harder work cost more than the map saved: said plainly, never hidden
   const more = savingsFor({ ...m, usd: 2, baseUsd: 1.5 }, LEDGER_STATS, mapUsd(LEDGER_STATS.saved, PRICES.opus.in))
-  expect(micro(more.saved.usd)).toBe(-430_400) // $1.5696 − $2.00
-  expect(moneyVerdict(more)).toBe('$0.430 more, spent on stronger models for harder work')
+  expect(micro(more.saved.usd)).toBe(-432_400) // $1.5676 − $2.00
+  expect(moneyVerdict(more)).toBe('$0.432 more, spent on stronger models for harder work')
   expect(signedUsd(more.routingUsd)).toBe('$0.500 more')
   // an app model with no known price: the map's tokens still count, its dollars are not guessed
   const unpriced = savingsFor(m, LEDGER_STATS, mapUsd(LEDGER_STATS.saved, null))
   expect(unpriced.map.usd).toBe(null)
-  expect(unpriced.without.tokens).toBe(267_400)
+  expect(unpriced.without.tokens).toBe(266_900)
   expect(cents(unpriced.saved.usd)).toBe(30)
   // no map log: nothing is added for the map, and nothing is invented for switching
   const noMap = savingsFor(m, null, null)
@@ -730,6 +730,27 @@ test('programs never start inside the project, so a project cannot plant its own
   for (const r of runs.filter(x => x.argv.includes('route') || x.argv.includes('status'))) {
     expect(r.argv[r.argv.indexOf('--project') + 1]).toBe('C:/work/alpha')
   }
+})
+
+test('starting points from the map are attached to a prompt, quietly, and only when there are some', async ($, on) => {
+  let hint = 'Mapshift code map: likely starting points for this request.\n- saveOrder · function · src/orders.ts:3-9'
+  const { clock, runs } = engine(on, { run: argv => (argv[1] === 'hint' ? { exitCode: 0, stdout: hint } : mapCli('ready')(argv)) })
+  const got: any[] = []
+  on('prompt.submit', (_: unknown, e: any) => {
+    got.push(e)
+    return { text: e.text, context: e.context }
+  })
+  await $.session.start({ cwd: 'C:/work/alpha', surface: 'desktop', isInteractive: true })
+  await settle(clock)
+  await $.prompt.submit({ text: 'make saveOrder reject empty carts' } as any)
+  expect((got[0].context ?? []).some((c: string) => c.startsWith('Mapshift code map:'))).toBe(true)
+  const asked = runs.find(r => r.argv.includes('hint'))!
+  expect(asked.argv.slice(-2)).toEqual(['--', 'make saveOrder reject empty carts'])
+  expect(asked.init.timeoutMs).toBe(1500)
+  expect(String(asked.init.cwd).toLowerCase().startsWith('c:/work/alpha')).toBe(false)
+  hint = '' // the map has nothing clear to say: nothing is attached
+  await $.prompt.submit({ text: 'thanks, that looks good now' } as any)
+  expect(got[1].context ?? []).toEqual([])
 })
 
 test('a map signal raises the level: more thinking effort, and the reason is logged', async ($, on) => {
@@ -1156,29 +1177,29 @@ test('the Map and Savings cards show every figure, exactly, on the terminal and 
   expect(Object.keys((captured.mapStats as any).bySid).sort()).toEqual(['sess-0', 'sess-1'])
   expect((captured.mapStats as any).bySid['sess-1'].stats).toEqual(LEDGER_STATS)
   const texts = [
-    '🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)',
+    '🔍 5 lookups · 📄 3 files not opened · 💚 16.9k tokens saved (91%)',
     'Find 1 · Trace 1 · File outline 1 · Overview 1 · Search 1',
     // Map card, today: this chat + the other chat (2 lookups, 9,600 saved of 10,000)
-    '🔍 7 lookups · 📄 5 files not opened · 💚 27.0k tokens saved (95%)',
+    '🔍 7 lookups · 📄 5 files not opened · 💚 26.5k tokens saved (93%)',
     'Find 3 · Trace 1 · File outline 1 · Overview 1 · Search 1 · with the map 2.0k tokens, without 28.5k tokens',
-    // Savings card: with $0.02304 / 90,560 tokens; without $0.02304 + 17,400 × $4/M = $0.09264 / 107,960 tokens
-    'This chat: Saved $0.070 (75%) · 17.4k tokens saved (16%)',
-    // today: with $2.02304 / 490,560; without $1.52304 + 27,000 × $4/M = $1.63104 / 517,560
-    'Today: $0.392 more, spent on stronger models for harder work · 27.0k tokens saved (5%)',
+    // Savings card: with $0.02304 / 90,560 tokens; without $0.02304 + 16,900 × $4/M = $0.09064 / 107,460 tokens
+    'This chat: Saved $0.068 (75%) · 16.9k tokens saved (16%)',
+    // today: with $2.02304 / 490,560; without $1.52304 + 26,500 × $4/M = $1.62904 / 517,060
+    'Today: $0.394 more, spent on stronger models for harder work · 26.5k tokens saved (5%)',
     'This chat',
     'Today',
     '$0.023', // with, this chat
     '90.6k tokens',
-    '$0.093', // without, this chat
-    '108.0k tokens',
+    '$0.091', // without, this chat
+    '107.5k tokens',
     '$2.02', // with, today
     '490.6k tokens',
     '$1.63', // without, today
-    '517.6k tokens',
-    '$0.070', // map this chat (also the total)
-    '17.4k tokens',
-    '$0.108', // map today: (17,400 + 9,600) × $4/M
-    '27.0k tokens',
+    '517.1k tokens',
+    '$0.068', // map this chat (also the total)
+    '16.9k tokens',
+    '$0.106', // map today: (16,900 + 9,600) × $4/M
+    '26.5k tokens',
     '$0', // model switching this chat: same model
     '$0.500 more', // model switching today
     'same tokens',
@@ -1186,7 +1207,7 @@ test('the Map and Savings cards show every figure, exactly, on the terminal and 
     '90.0k from cache',
     '$0.842', // cache today
     '390.0k from cache',
-    '$0.392 more', // total today
+    '$0.394 more', // total today
   ]
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui: any = await $.ui.mount({ ...PANE, surface })
@@ -1213,15 +1234,15 @@ test('the Map and Savings cards show every figure, exactly, on the terminal and 
   const out: any = await $.command.run({ command: 'mapshift', args: 'status' } as any)
   for (const line of [
     'This chat with Mapshift: $0.023 · 90.6k tokens',
-    'This chat without Mapshift: $0.093 · 108.0k tokens (every request on Opus 5.5, no map)',
-    'This chat difference: Saved $0.070 (75%) · 17.4k tokens saved (16%)',
+    'This chat without Mapshift: $0.091 · 107.5k tokens (every request on Opus 5.5, no map)',
+    'This chat difference: Saved $0.068 (75%) · 16.9k tokens saved (16%)',
     'Today with Mapshift: $2.02 · 490.6k tokens',
-    'Today without Mapshift: $1.63 · 517.6k tokens (every request on Opus 5.5, no map)',
-    'Today difference: $0.392 more, spent on stronger models for harder work · 27.0k tokens saved (5%)',
+    'Today without Mapshift: $1.63 · 517.1k tokens (every request on Opus 5.5, no map)',
+    'Today difference: $0.394 more, spent on stronger models for harder work · 26.5k tokens saved (5%)',
     'Cache (in both figures, not added): $0.342 this chat · $0.842 today',
-    'Map this chat: 🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)',
+    'Map this chat: 🔍 5 lookups · 📄 3 files not opened · 💚 16.9k tokens saved (91%)',
     '  Find 1 · Trace 1 · File outline 1 · Overview 1 · Search 1 · answers 1.6k tokens, without the map 18.5k tokens',
-    'Map today: 🔍 7 lookups · 📄 5 files not opened · 💚 27.0k tokens saved (95%)',
+    'Map today: 🔍 7 lookups · 📄 5 files not opened · 💚 26.5k tokens saved (93%)',
   ])
     if (!String(out.text).split('\n').includes(line)) throw new Error(`status has no line "${line}"\n${out.text}`)
 })
@@ -1239,11 +1260,11 @@ test('today never counts a chat twice, and a stored day that is over is dropped'
   expect((captured.mapStats as any).day).toBe(LOCAL_DAY)
   const out: any = await $.command.run({ command: 'mapshift', args: 'status' } as any)
   const lines = String(out.text).split('\n')
-  expect(lines.includes('Map this chat: 🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)')).toBe(true)
-  expect(lines.includes('Map today: 🔍 5 lookups · 📄 3 files not opened · 💚 17.4k tokens saved (94%)')).toBe(true)
-  // three requests of 90,560 tokens; the map's 17,400 tokens are added once, not three times
+  expect(lines.includes('Map this chat: 🔍 5 lookups · 📄 3 files not opened · 💚 16.9k tokens saved (91%)')).toBe(true)
+  expect(lines.includes('Map today: 🔍 5 lookups · 📄 3 files not opened · 💚 16.9k tokens saved (91%)')).toBe(true)
+  // three requests of 90,560 tokens; the map's 16,900 tokens are added once, not three times
   expect(lines.includes('Today with Mapshift: $0.069 · 271.7k tokens')).toBe(true)
-  expect(lines.includes('Today without Mapshift: $0.139 · 289.1k tokens (every request on Opus 5.5, no map)')).toBe(true)
+  expect(lines.includes('Today without Mapshift: $0.137 · 288.6k tokens (every request on Opus 5.5, no map)')).toBe(true)
 })
 
 test('Help says how the numbers are counted, on every surface', async ($, on) => {

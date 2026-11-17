@@ -119,6 +119,37 @@ async function main(argv: string[]): Promise<number> {
     return cmd === 'setup' ? s.runSetup(o) : cmd === 'off' ? s.runOff(o) : cmd === 'on' ? s.runOn(o) : s.runUninstall(o)
   }
 
+  // starting points for one request, for agents' prompt hooks: quiet (prints nothing) when the map has no clear answer
+  if (cmd === 'hint') {
+    const text = [sub, ...rest].filter(Boolean).join(' ').trim()
+    if (!text) return 0
+    const { findRepoRoot } = await import('../core/paths.ts')
+    const root = findRepoRoot(opt('project') ?? process.cwd())
+    // answered from the map as it is: the tool server keeps it fresh, and a prompt must not wait for a rescan
+    const { openMap, status } = await import('../map/indexer.ts')
+    if (status(root).state === 'empty') return 0
+    const { startingPoints } = await import('../map/hint.ts')
+    const store = openMap(root)
+    const a = startingPoints(store, text)
+    if (!a) {
+      if (values.json) console.log(JSON.stringify({ text: '', files: [] }))
+      return 0
+    }
+    const { record, tokensOf } = await import('../core/ledger.ts')
+    const sizes = store.sql('SELECT size FROM files WHERE path = ?')
+    record({
+      kind: 'map',
+      ts: Date.now(),
+      agent: opt('agent') ?? 'unknown',
+      repo: root,
+      tool: 'map_hint',
+      answerTokens: tokensOf(a.text.length),
+      files: a.files.map(path => ({ path, tokens: tokensOf((sizes.get(path) as { size: number } | undefined)?.size ?? 0) })),
+    })
+    console.log(values.json ? JSON.stringify(a) : a.text)
+    return 0
+  }
+
   if (cmd === 'update') {
     const { runUpdate } = await import('../setup/update.ts')
     return runUpdate({ current: VERSION, check: !!values.check })

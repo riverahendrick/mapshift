@@ -89,7 +89,10 @@ export function ledgerFiles(now: number): string[] {
 const norm = (p: string) => p.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase()
 
 const TOOL_NAMES: MapTool[] = ['find', 'trace', 'file', 'overview', 'search']
-/** 'map_find' or 'mcp__mapshift__map_find' is 'find'; a name the map does not have is 'other'. */
+/**
+ * 'map_find' or 'mcp__mapshift__map_find' is 'find'. Anything else the map logs is 'other': today that is
+ * 'map_hint', the starting points handed over with a prompt, which the dashboard calls "Starting points".
+ */
 export const mapToolOf = (tool: string): MapTool => {
   const t = tool.replace(/^mcp__mapshift__/, '').replace(/^map_/, '') as MapTool
   return TOOL_NAMES.includes(t) ? t : 'other'
@@ -109,7 +112,7 @@ export const emptyStats = (): MapStats => ({
  * - answerTokens: what the answers cost (the map logs characters / 4);
  * - wouldRead: the full size of the files each answer pointed at that the agent did not open in this
  *   chat (`reads`, before or after the answer), i.e. what it would have read without the map;
- * - saved: per answer, those files less the answer itself, never below 0 for any one answer; summed;
+ * - saved: wouldRead less answerTokens, exactly (it can be negative: then the map cost more than it spared);
  * - filesSkipped: the distinct files pointed at and not opened.
  * Estimates: sizes are characters / 4.
  */
@@ -139,7 +142,7 @@ export function mapSavings(log: string, o: { root: string; since: number; reads:
     s.byTool[mapToolOf(typeof e.tool === 'string' ? e.tool : '')] += 1
     s.answerTokens += answer
     s.wouldRead += spared
-    s.saved += Math.max(0, spared - answer)
+    s.saved += spared - answer // net, so "with" and "without" always add up
     for (const f of notOpened) skipped.add(norm(f.path))
   }
   s.filesSkipped = skipped.size

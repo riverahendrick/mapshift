@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { findRepoRoot } from '../core/paths.ts'
 import { ensureFresh } from '../map/indexer.ts'
 import { VERSION } from '../version.ts'
-import { callTool, INSTRUCTIONS, TOOLS } from './tools.ts'
+import { ALWAYS_LOAD, callTool, INSTRUCTIONS, TOOLS } from './tools.ts'
 
 type Msg = { jsonrpc: '2.0'; id?: number | string | null; method?: string; params?: Record<string, unknown>; result?: unknown; error?: unknown }
 
@@ -68,7 +68,7 @@ export async function runMcp(input: NodeJS.ReadableStream = process.stdin, outpu
         reply(m.id, {})
         return
       case 'tools/list':
-        reply(m.id, { tools: TOOLS })
+        reply(m.id, { tools: TOOLS.map(t => ({ ...t, _meta: ALWAYS_LOAD })) })
         return
       case 'tools/call': {
         const name = String(m.params?.name ?? '')

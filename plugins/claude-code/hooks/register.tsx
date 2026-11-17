@@ -399,7 +399,16 @@ export const register: Register = on => {
     const { text, force } = parseOverride(e.text)
     pendingForce = force ?? (nextTurn.force ? { ...nextTurn.force } : undefined)
     nextTurn.force = undefined
-    return next(force ? { ...e, text } : e)
+    const out = force ? { ...e, text } : e
+    // starting points from the map, handed to Claude beside the prompt (never shown, never blocking)
+    let hint: string | null = null
+    try {
+      const cfg = await read($, cfgA)
+      if (cfg.mapReminder && cfg.mode !== 'off') hint = await askHint($, out.text)
+    } catch {
+      hint = null
+    }
+    return next(hint ? { ...out, context: [...(out.context ?? []), hint] } : out)
   })
 
   // ------------------------------------------------------------------ one decision per turn
@@ -1070,6 +1079,25 @@ async function askMap($: $, text: string): Promise<MapAsk> {
   } catch (err) {
     const ms = t0 ? (await $.clock.now().catch(() => t0)) - t0 : 0
     return { route: null, failed: /time/i.test(String((err as Error)?.message ?? err)) ? 'timeout' : 'error', ms }
+  }
+}
+
+/**
+ * Starting points for one prompt (`mapshift hint`): the few definitions the request is clearly about, read
+ * from the map and handed to Claude beside the prompt, so it starts in the right place instead of searching.
+ * One attempt with the launcher the status check proved, 1.5 seconds at most; quiet on any failure. The
+ * map logs each hint, so it counts as a lookup on the dashboard and in the savings.
+ */
+async function askHint($: $, text: string): Promise<string | null> {
+  const m = await read($, mapA)
+  const words = routeText(text)
+  if (!launcher || !rootDir || (m.state !== 'ready' && m.state !== 'building') || words.length < 8) return null
+  try {
+    const r = await $.process.run([...launcher, 'hint', '--project', rootDir, '--agent', 'claude-code', '--', words], { cwd: neutralCwd(), timeoutMs: 1500 })
+    const out = r.exitCode === 0 ? r.stdout.trim() : ''
+    return out.startsWith('Mapshift code map:') ? out.slice(0, 2000) : null
+  } catch {
+    return null
   }
 }
 

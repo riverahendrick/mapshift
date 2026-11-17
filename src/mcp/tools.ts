@@ -69,7 +69,12 @@ export const TOOLS: ToolDef[] = [
 export const INSTRUCTIONS =
   'Mapshift keeps a map of this project, built and refreshed automatically. Before grepping or opening files to find code, call map_find; ' +
   'for a file\'s API use map_file; before changing a function use map_trace with direction "impact". Answers include exact file:line ranges ' +
-  'and the relevant code, so read a file only when you need lines the answer did not show.'
+  'and the relevant code, so read a file only when you need lines the answer did not show. ' +
+  'If these tools are listed but not loaded yet (deferred), load all five in one tool search: ' +
+  '"select:mcp__mapshift__map_find,mcp__mapshift__map_trace,mcp__mapshift__map_file,mcp__mapshift__map_overview,mcp__mapshift__map_search".'
+
+/** Claude Code reads this to load a tool up front instead of hiding it behind a tool search. */
+export const ALWAYS_LOAD = { 'anthropic/alwaysLoad': true }
 
 const text = (a: unknown, k: string): string => (typeof (a as Record<string, unknown>)?.[k] === 'string' ? ((a as Record<string, string>)[k] as string) : '')
 const num = (a: unknown, k: string): number | undefined => {
