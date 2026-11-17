@@ -141,6 +141,23 @@ async function main(argv: string[]): Promise<number> {
     }
     case 'status':
     case undefined: {
+      if (values.json) {
+        const st = status(root)
+        console.log(
+          JSON.stringify({
+            root: st.root,
+            state: st.state,
+            percent: st.percent,
+            files: st.files,
+            symbols: st.symbols,
+            links: st.links,
+            skipped: st.skipped.length,
+            builtAt: st.builtAt,
+            languages: langCounts(openMap(root)).slice(0, 6),
+          }),
+        )
+        return 0
+      }
       console.log(header(root))
       printStatus(status(root))
       return 0
