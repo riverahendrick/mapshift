@@ -12,6 +12,7 @@ ${bold('Get started')}
   mapshift report               Map, savings and limits as text  ${dim('(--agent codex · --project <folder>)')}
   mapshift dash                 Open the local dashboard in your browser  ${dim('(--port <n> · --no-open)')}
   mapshift off | on             Pause Mapshift in every agent, or bring it back
+  mapshift update               Get the newest version  ${dim('(--check: only look)')}
   mapshift uninstall            Take out everything setup added
 
 ${bold('The map')}
@@ -63,6 +64,7 @@ async function main(argv: string[]): Promise<number> {
       'dry-run': { type: 'boolean' },
       port: { type: 'string' },
       'no-open': { type: 'boolean' },
+      check: { type: 'boolean' },
     },
   })
   const opt = (k: string): string | undefined => (typeof values[k] === 'string' ? (values[k] as string) : undefined)
@@ -115,6 +117,11 @@ async function main(argv: string[]): Promise<number> {
     const s = await import('../setup/setup.ts')
     const o = { home: opt('home'), agents: opt('agents'), yes: !!values.yes, dryRun: !!values['dry-run'] }
     return cmd === 'setup' ? s.runSetup(o) : cmd === 'off' ? s.runOff(o) : cmd === 'on' ? s.runOn(o) : s.runUninstall(o)
+  }
+
+  if (cmd === 'update') {
+    const { runUpdate } = await import('../setup/update.ts')
+    return runUpdate({ current: VERSION, check: !!values.check })
   }
 
   if (cmd === 'report') return report(opt('agent'), opt('project'), opt('home'))
