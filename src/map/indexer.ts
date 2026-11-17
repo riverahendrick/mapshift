@@ -32,7 +32,7 @@ export function openMap(root: string): Store {
   if (!store) {
     store = new Store(mapDbPath(root))
     if (store.meta('format') !== String(MAP_FORMAT)) {
-      store.wipe()
+      store.reset() // an older format: rebuilt from scratch, its tables included
       store.setMeta('format', String(MAP_FORMAT))
     }
     stores.set(root, store)

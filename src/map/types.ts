@@ -12,6 +12,8 @@ export type Sym = {
   /** The declaration line(s) without the body, whitespace collapsed. */
   signature: string
   exported: boolean
+  /** The comment or docstring that explains it, markers removed, up to 300 characters ('' when none). */
+  doc: string
 }
 
 /** A use of a name: a call, or a `new`. */

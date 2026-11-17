@@ -141,6 +141,43 @@ function isExported(lang: LangId, def: Node, name: string, signature: string): b
   }
 }
 
+/** Comment markers off, whitespace collapsed, at most 300 characters. */
+function cleanDoc(raw: string): string {
+  const text = raw
+    .replace(/^\s*(\/\*\*?|\/\/\/?|#+|--|"""|''')/gm, '')
+    .replace(/(\*\/|"""|''')\s*$/gm, '')
+    .replace(/^\s*\*+\s?/gm, '')
+    .replace(/@\w+\s*(\{[^}]*\})?/g, '') // JSDoc tags: keep their words, drop the tag and type
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text.length > 300 ? `${text.slice(0, 299)}…` : text
+}
+
+/**
+ * The comment that explains a definition: the comments right above it (above its export or decorator too),
+ * or a Python docstring, the first string in its body. Plain-English questions match these words.
+ */
+function docOf(def: Node, source: string): string {
+  let anchor: Node = def
+  while (anchor.parent && /^(export_statement|decorated_definition|lexical_declaration|variable_declaration|annotation|attribute_item)$/.test(anchor.parent.type)) {
+    anchor = anchor.parent
+  }
+  const parts: string[] = []
+  let line = anchor.startPosition.row
+  for (let s = anchor.previousSibling; s && /comment/.test(s.type) && s.endPosition.row >= line - 1; s = s.previousSibling) {
+    parts.unshift(source.slice(s.startIndex, s.endIndex))
+    line = s.startPosition.row
+  }
+  if (parts.length) return cleanDoc(parts.join('\n'))
+  // a Python docstring: the first statement of the body is a string
+  const body = def.childForFieldName('body')
+  const first = body?.namedChildren[0]
+  if (first?.type === 'expression_statement' && first.namedChildren[0]?.type === 'string') {
+    return cleanDoc(source.slice(first.startIndex, first.endIndex).replace(/^[rubRUB]*/, ''))
+  }
+  return ''
+}
+
 /** Text before the name inside its parent node: `this.repo` for `this.repo.save`. */
 function receiverOf(name: Node, source: string): string | null {
   let p = name.parent
@@ -204,7 +241,7 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
       // a member is public when its container is and its own modifiers or naming allow it
       const own = parent && JS_FAMILY.has(lang) ? true : isExported(lang, d.node, d.name, signature)
       const exported = parent ? parent.exported && own : own
-      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + 1, signature, exported })
+      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + 1, signature, exported, doc: docOf(d.node, text) })
       stack.push({ end: d.node.endIndex, qualified, kind, exported })
       ranges.push({ start: d.node.startIndex, end: d.node.endIndex, qualified })
     }

@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE TABLE IF NOT EXISTS symbols (
   id INTEGER PRIMARY KEY, file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
   name TEXT NOT NULL, qualified TEXT NOT NULL, kind TEXT NOT NULL, start INTEGER NOT NULL, end INTEGER NOT NULL,
-  signature TEXT NOT NULL, exported INTEGER NOT NULL, rank REAL NOT NULL DEFAULT 0
+  signature TEXT NOT NULL, exported INTEGER NOT NULL, doc TEXT NOT NULL DEFAULT '', rank REAL NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS symbols_name ON symbols(name);
 CREATE INDEX IF NOT EXISTS symbols_file ON symbols(file_id);
@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS edges_src ON edges(src);
 CREATE INDEX IF NOT EXISTS edges_dst ON edges(dst);
 CREATE INDEX IF NOT EXISTS edges_ref ON edges(ref_id);
 CREATE TABLE IF NOT EXISTS skipped (path TEXT PRIMARY KEY, reason TEXT NOT NULL);
-CREATE VIRTUAL TABLE IF NOT EXISTS symbols_fts USING fts5(name, words, signature, path, tokenize = 'unicode61');
+CREATE VIRTUAL TABLE IF NOT EXISTS symbols_fts USING fts5(name, words, signature, path, doc, tokenize = 'unicode61');
 `
 
 /** `getTotalPrice` and `get_total_price` both become `get total price`, so a search for "total" finds them. */
@@ -134,11 +134,12 @@ export class Store {
       f.path, f.lang, f.size, f.mtime, f.hash, f.lines,
     )
     const fileId = Number(lastInsertRowid)
-    const addSym = this.sql('INSERT INTO symbols(file_id, name, qualified, kind, start, end, signature, exported) VALUES(?, ?, ?, ?, ?, ?, ?, ?)')
-    const addFts = this.sql('INSERT INTO symbols_fts(rowid, name, words, signature, path) VALUES(?, ?, ?, ?, ?)')
+    const addSym = this.sql('INSERT INTO symbols(file_id, name, qualified, kind, start, end, signature, exported, doc) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    const addFts = this.sql('INSERT INTO symbols_fts(rowid, name, words, signature, path, doc) VALUES(?, ?, ?, ?, ?, ?)')
     for (const s of facts.syms) {
-      const id = Number(addSym.run(fileId, s.name, s.qualified, s.kind, s.start, s.end, s.signature, s.exported ? 1 : 0).lastInsertRowid)
-      addFts.run(id, s.name, `${nameWords(s.qualified)} ${s.qualified}`, s.signature, f.path)
+      const doc = s.doc ?? ''
+      const id = Number(addSym.run(fileId, s.name, s.qualified, s.kind, s.start, s.end, s.signature, s.exported ? 1 : 0, doc).lastInsertRowid)
+      addFts.run(id, s.name, `${nameWords(s.qualified)} ${s.qualified}`, s.signature, f.path, doc)
     }
     const addRef = this.sql('INSERT INTO refs(file_id, name, receiver, line, from_qualified, kind) VALUES(?, ?, ?, ?, ?, ?)')
     for (const r of facts.refs) addRef.run(fileId, r.name, r.receiver, r.line, r.from, r.kind)
@@ -174,7 +175,16 @@ export class Store {
     return { files: n('files'), symbols: n('symbols'), edges: n('edges') }
   }
 
-  /** Empties the map, keeping the file itself (used when the map format changes). */
+  /** Drops every table and creates them again in the current format (used when the map format changes). */
+  reset(): void {
+    this.stmts.clear()
+    this.db.exec(
+      'DROP TABLE IF EXISTS edges; DROP TABLE IF EXISTS imports; DROP TABLE IF EXISTS refs; DROP TABLE IF EXISTS symbols_fts; DROP TABLE IF EXISTS symbols; DROP TABLE IF EXISTS skipped; DROP TABLE IF EXISTS files; DROP TABLE IF EXISTS meta;',
+    )
+    this.db.exec(SCHEMA)
+  }
+
+  /** Empties the map, keeping the file itself. */
   wipe(): void {
     this.db.exec('DELETE FROM edges; DELETE FROM imports; DELETE FROM refs; DELETE FROM symbols; DELETE FROM symbols_fts; DELETE FROM files; DELETE FROM skipped; DELETE FROM meta;')
   }

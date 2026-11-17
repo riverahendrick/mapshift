@@ -54,7 +54,7 @@ export function startingPoints(store: Store, prompt: string, max = HINT_LIMITS.p
   const w = [...new Set(words.filter(x => x.length > 2 && /^\w+$/.test(x) && !VERBS.has(x)).map(stem))].slice(0, 6)
   if (w.length >= 2) {
     const fts = store.sql(
-      `${base.replace('FROM symbols s', ', bm25(symbols_fts, 10.0, 6.0, 1.0, 2.0) AS bm FROM symbols_fts JOIN symbols s ON s.id = symbols_fts.rowid')}
+      `${base.replace('FROM symbols s', ', bm25(symbols_fts, 10.0, 6.0, 1.0, 2.0, 3.0) AS bm FROM symbols_fts JOIN symbols s ON s.id = symbols_fts.rowid')}
        WHERE symbols_fts MATCH ? AND s.kind != 'variable' ORDER BY bm LIMIT 8`,
     )
     const groups: string[][] = [w]

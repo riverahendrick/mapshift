@@ -140,7 +140,7 @@ export function find(store: Store, root: string, q: string, opts: { limit?: numb
     try {
       const rows = store
         .sql(
-          `SELECT s.*, f.path, f.lang, bm25(symbols_fts, 10.0, 6.0, 1.5, 2.5) AS bm FROM symbols_fts
+          `SELECT s.*, f.path, f.lang, bm25(symbols_fts, 10.0, 6.0, 1.5, 2.5, 3.0) AS bm FROM symbols_fts
            JOIN symbols s ON s.id = symbols_fts.rowid JOIN files f ON f.id = s.file_id
            WHERE symbols_fts MATCH ? ORDER BY bm LIMIT 300`,
         )
