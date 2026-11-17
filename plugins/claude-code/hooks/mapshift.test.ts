@@ -751,6 +751,15 @@ test('starting points from the map are attached to a prompt, quietly, and only w
   hint = '' // the map has nothing clear to say: nothing is attached
   await $.prompt.submit({ text: 'thanks, that looks good now' } as any)
   expect(got[1].context ?? []).toEqual([])
+  // model switching Off: the map is its own feature and keeps working
+  hint = 'Mapshift code map: likely starting points for this request.\n- saveOrder · function · src/orders.ts:3-9'
+  await $.command.run({ command: 'mapshift', args: 'off' } as any)
+  await $.prompt.submit({ text: 'make saveOrder reject empty carts' } as any)
+  expect((got[2].context ?? []).some((c: string) => c.startsWith('Mapshift code map:'))).toBe(true)
+  // the map turned off on its own: nothing attached
+  await $.command.run({ command: 'mapshift', args: 'map off' } as any)
+  await $.prompt.submit({ text: 'make saveOrder reject empty carts' } as any)
+  expect(got[3].context ?? []).toEqual([])
 })
 
 test('a map signal raises the level: more thinking effort, and the reason is logged', async ($, on) => {
@@ -1028,7 +1037,7 @@ test('the pane draws every tab on every surface, clean Overview first', async ($
     expect(await ui.find({ type: 'Text', text: /^Health$/ })).toBeUndefined()
     const expectations: [string, RegExp][] = [
       ['tab-activity', /Requests/],
-      ['tab-settings', /Map reminder/],
+      ['tab-settings', /Separate from model switching/],
       ['tab-help', /30 seconds/],
       ['tab-overview', /💭 Thinking/],
     ]
@@ -1273,7 +1282,7 @@ test('Help says how the numbers are counted, on every surface', async ($, on) =>
     const ui: any = await $.ui.mount({ ...PANE, surface })
     await ui.press({ key: 'tab-help' })
     const drawn = JSON.stringify(await ui.drawn())
-    for (const words of ['How the numbers are counted', 'characters / 4', 'did not read it anywhere in the same chat', 'never below 0 for one answer', 'plus the map', 'list prices', 'adds each chat of the day once'])
+    for (const words of ['How the numbers are counted', 'characters / 4', 'did not read it anywhere in the same chat', 'An answer that spared nothing counts against it', 'plus the map', 'list prices', 'adds each chat of the day once'])
       if (!drawn.includes(words)) throw new Error(`${surface}: Help lacks "${words}"`)
     await ui.unmount()
   }

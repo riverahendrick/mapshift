@@ -323,7 +323,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'mapshift',
-      description: 'Mapshift: open the dashboard, or /mapshift auto|quality|saver|manual|off|use <model> [effort]|flag|status|trace|doctor|help',
+      description: 'Mapshift: open the dashboard, or /mapshift auto|quality|saver|manual|off|map on|map off|use <model> [effort]|flag|status|trace|doctor|help',
     })
     try {
       const saved = (await $.store.get('cfg')) as (Partial<Cfg> & { mode?: string }) | undefined
@@ -404,7 +404,8 @@ export const register: Register = on => {
     let hint: string | null = null
     try {
       const cfg = await read($, cfgA)
-      if (cfg.mapReminder && cfg.mode !== 'off') hint = await askHint($, out.text)
+      // the map is its own feature: it keeps saving tokens even when model switching is Off
+      if (cfg.mapReminder) hint = await askHint($, out.text)
     } catch {
       hint = null
     }
@@ -748,7 +749,7 @@ export const register: Register = on => {
       if (e.traits.includes('analysis')) return out
       const cfg = await read($, cfgA)
       const m = await read($, mapA)
-      if (!cfg.mapReminder || cfg.mode === 'off') return out
+      if (!cfg.mapReminder) return out // independent of the routing mode
       // added once a map exists, then kept for the rest of the session even if a later status check fails
       if (!reminderOn && m.state !== 'ready' && m.state !== 'building') return out
       if (out.sections.some(s => s.id === 'mapshift:map')) return out
@@ -862,7 +863,22 @@ export const register: Register = on => {
     }
     if ((modes as string[]).includes(cmd)) {
       await patchCfg($, { mode: cmd as Mode })
-      return { text: `Mapshift mode: ${cap(cmd)}.` }
+      return {
+        text:
+          cmd === 'off'
+            ? 'Model switching is off: your own model picker is used. The map keeps working (/mapshift map off turns it off too).'
+            : `Mapshift mode: ${cap(cmd)}.`,
+      }
+    }
+    // the map on its own: separate from model switching
+    if (cmd === 'map' && (a1 === 'on' || a1 === 'off')) {
+      await patchCfg($, { mapReminder: a1 === 'on' })
+      return {
+        text:
+          a1 === 'on'
+            ? '🗺️ Map on: Claude gets starting points from the map with each prompt.'
+            : '🗺️ Map off: no starting points or map reminder. The map tools stay available if Claude asks for them.',
+      }
     }
     if (cmd === 'use' || cmd === 'lock') {
       const fam = FAMILIES.find(f => f === a1)
@@ -931,7 +947,8 @@ export const register: Register = on => {
       text: [
         'Mapshift commands:',
         '  /mapshift                  open the dashboard',
-        '  /mapshift auto|quality|saver|manual|off',
+        '  /mapshift auto|quality|saver|manual|off   model switching (Off: your own model picker)',
+        '  /mapshift map on|off       the map, on its own: starting points with each prompt',
         '  /mapshift use opus high    pick one model and effort (Manual mode)',
         '  /mapshift flag             the last pick was wrong: think harder next',
         '  /mapshift budget 3         most a one-time upgrade may cost before it only recommends',

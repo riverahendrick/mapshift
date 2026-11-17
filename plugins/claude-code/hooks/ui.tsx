@@ -44,7 +44,7 @@ export const MODE_INFO: Record<Mode, { label: string; color: string; text: strin
   quality: { label: 'Quality', color: ACCENT.purple, text: 'Never goes cheaper and thinks harder. Moving up to a stronger model is allowed even when it costs more.' },
   saver: { label: 'Saver', color: ACCENT.teal, text: 'Goes cheaper more often for small, safe requests. Risky or complex work still gets the strong model.' },
   manual: { label: 'Manual', color: ACCENT.slate, text: 'You pick one model and thinking effort below; Mapshift only tracks and reports.' },
-  off: { label: 'Off', color: ACCENT.gray, text: 'No routing at all: Claude Code uses your own model picker as set. Tracking still works.' },
+  off: { label: 'Off', color: ACCENT.gray, text: 'No model switching: Claude Code uses your own model picker as set. The map keeps saving tokens, and tracking still works.' },
 }
 
 export const TIER_LABEL: Record<Tier, string> = { trivial: 'Quick', routine: 'Standard', complex: 'Complex', critical: 'Critical' }
@@ -314,7 +314,7 @@ function NowCard(c: Ctx, act: Act) {
     return Card(c, {
       title: '🎯 Right now',
       aside,
-      children: Muted(c.t, cfg.mode === 'off' ? 'Mapshift is off for this project: your own model picker is used.' : 'Send a prompt and what it runs on shows here.'),
+      children: Muted(c.t, cfg.mode === 'off' ? 'Model switching is off for this project: your own model picker is used. The map still works.' : 'Send a prompt and what it runs on shows here.'),
     })
   const shown = famVer(last.family, last.answeredBy ?? last.appModel)
   const differs = !!last.family && last.family !== familyOf(last.appModel)
@@ -917,7 +917,7 @@ function Settings(c: Ctx, act: Act) {
         title: 'Options',
         children: (
           <Box flexDirection="column" gap={1}>
-            {row('mapReminder', 'Map reminder', "Adds one short section to Claude's instructions while this project has a map: look code up with the map before grepping or reading files. It stays the same all session, so it does not disturb the cache.")}
+            {row('mapReminder', '🗺️ Map', "Hands Claude the map's starting points with each prompt, and adds one short line to its instructions to look code up in the map before grepping or reading files. Separate from model switching: it keeps saving tokens even when the mode is Off.")}
             {row('classifier', 'Smart check for unclear prompts', 'When the rules cannot tell how hard a prompt is, a tiny Haiku call rates it. It can only raise the level, never lower it.')}
             {row('allowDowngrade', 'Cheaper model for small tasks', 'Small, safe requests may run on a cheaper model, but only with a small conversation and only if the switch pays back. Off: never go below your current model.')}
             {row('subagents', 'Pick the model for each helper', 'Helpers (subagents) start fresh, so their model costs no cache. Lookups go to Haiku, analysis and ordinary edits to Sonnet, planning and risky work to Opus. A model Claude names itself, custom agents and forks are never changed.')}
@@ -998,13 +998,14 @@ function Help(c: Ctx) {
     '- or anywhere: `[model:opus]`  `[effort:high]`',
     '',
     '**Commands**',
-    '- `/mapshift` open this dashboard  ·  `/mapshift auto|quality|saver|manual|off`',
+    '- `/mapshift` open this dashboard  ·  `/mapshift auto|quality|saver|manual|off` model switching',
+    '- `/mapshift map on|off` the map on its own: it keeps saving tokens even when model switching is Off',
     '- `/mapshift use opus high` one model for everything  ·  `/mapshift flag` the last pick was wrong',
     '- `/mapshift status`  ·  `/mapshift trace`  ·  `/mapshift doctor`',
     '',
     '**How the numbers are counted**',
     '- *Map*: each map answer logs its own size and the files it pointed at, both in tokens estimated as characters / 4. A file counts as not opened only if Claude did not read it anywhere in the same chat.',
-    '- *Map saved*: for each answer, the files it pointed at that Claude did not open, less the answer itself, never below 0 for one answer. The percent is saved out of what Claude would have read without the map.',
+    '- *Map saved*: the files the answers pointed at that Claude did not open, less what all the answers cost, exactly. An answer that spared nothing counts against it. The percent is saved out of what Claude would have read without the map.',
     '- *With Mapshift*: what the requests cost on the models used, and the tokens they processed as logged (new input, cache reads, cache writes and output).',
     "- *Without Mapshift*: every request on the model you picked in the app, plus the map's saved tokens at that model's input price; tokens are the same plus the map's saved tokens. Switching models does not change token counts.",
     "- *Saved* = without − with. When stronger models for harder work cost more than was saved, it says so. *Cache* is Claude Code's own prompt cache: it is in both figures, so it is shown but not added.",
