@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { mapDbPath, normalizeKey, repoDir, repoId } from '../src/core/paths.ts'
@@ -121,6 +121,45 @@ test('a plain folder without git is mapped, skipping big, generated and ignored 
   } finally {
     r.cleanup()
   }
+})
+
+test('symbolic links are never followed out of the project', async t => {
+  const r = makeRepo({ 'app.ts': 'export function a() {}\n' }, { git: false })
+  try {
+    const outside = join(r.home, 'secret.ts')
+    mkdirSync(r.home, { recursive: true })
+    writeFileSync(outside, 'export const token = "x"\n')
+    try {
+      symlinkSync(outside, join(r.root, 'link.ts'))
+    } catch {
+      t.skip('this system does not allow creating symbolic links')
+      return
+    }
+    assert.deepEqual(listFiles(r.root).files.map(f => f.path), ['app.ts'])
+  } finally {
+    r.cleanup()
+  }
+})
+
+test('a repository cannot make git run a program while it is mapped', async () => {
+  const r = makeRepo({ 'a.ts': 'export const a = 1\n' })
+  try {
+    const marker = join(r.home, 'ran.txt').replace(/\\/g, '/')
+    mkdirSync(r.home, { recursive: true })
+    execFileSync('git', ['config', 'core.fsmonitor', `node -e "require('fs').writeFileSync('${marker}','x')"`], { cwd: r.root, windowsHide: true })
+    listFiles(r.root)
+    assert.equal(existsSync(marker), false)
+  } finally {
+    r.cleanup()
+  }
+})
+
+test('a Vue file with many unclosed script tags is read in linear time', async () => {
+  const { extract } = await import('../src/map/extract.ts')
+  const evil = '<script>'.repeat(60_000)
+  const t0 = Date.now()
+  await extract('vue', evil)
+  assert.ok(Date.now() - t0 < 3000)
 })
 
 test('an unreadable file is listed and the build goes on', async () => {

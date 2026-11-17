@@ -13,10 +13,16 @@ export function homeDir(): string {
   return custom ? resolve(custom) : join(homedir(), '.mapshift')
 }
 
+/**
+ * Settings that stop a repository's own git config from running programs while the map reads it
+ * (an fsmonitor hook in a cloned repo would otherwise run on `git ls-files`).
+ */
+const SAFE_GIT = ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=', '-c', 'core.untrackedCache=false']
+
 /** Runs git quietly. Returns null when git is missing or the folder is not a repository. */
 export function git(args: string[], cwd: string, timeoutMs = 5000): string | null {
   try {
-    return execFileSync('git', args, {
+    return execFileSync('git', [...SAFE_GIT, ...args], {
       cwd,
       encoding: 'utf8',
       windowsHide: true,

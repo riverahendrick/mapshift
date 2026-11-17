@@ -86,14 +86,23 @@ function splitPatterns(scm: string): string[] {
 
 /** Keeps line numbers by blanking everything outside `<script>` blocks (Vue, Svelte). */
 function scriptsOnly(source: string): string {
+  // one linear pass with indexOf: no regular expression can be made to backtrack on a hostile file
+  const lower = source.toLowerCase()
   const keep = new Uint8Array(source.length)
-  for (const m of source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)) {
-    const start = (m.index ?? 0) + m[0].indexOf('>') + 1
-    keep.fill(1, start, start + (m[1]?.length ?? 0))
+  let at = 0
+  for (;;) {
+    const open = lower.indexOf('<script', at)
+    if (open < 0) break
+    const bodyStart = lower.indexOf('>', open)
+    if (bodyStart < 0) break
+    const close = lower.indexOf('</script', bodyStart)
+    if (close < 0) break
+    keep.fill(1, bodyStart + 1, close)
+    at = close + 8
   }
-  let out = ''
-  for (let i = 0; i < source.length; i++) out += keep[i] || source[i] === '\n' ? source[i] : ' '
-  return out
+  const out = new Array<string>(source.length)
+  for (let i = 0; i < source.length; i++) out[i] = keep[i] || source[i] === '\n' ? source[i]! : ' '
+  return out.join('')
 }
 
 const oneLine = (s: string, max = 200): string => {

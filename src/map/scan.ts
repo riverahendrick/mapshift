@@ -1,4 +1,4 @@
-import { openSync, readSync, closeSync, readdirSync, statSync } from 'node:fs'
+import { closeSync, lstatSync, openSync, readdirSync, readSync } from 'node:fs'
 import { join } from 'node:path'
 import { git, slash } from '../core/paths.ts'
 import { langOf, type LangId } from './languages.ts'
@@ -77,7 +77,7 @@ export function listFiles(root: string): { files: FileEntry[]; skipped: Skipped[
     const abs = join(root, path)
     let st
     try {
-      st = statSync(abs)
+      st = lstatSync(abs) // a symbolic link is never followed: it could point outside the project
     } catch {
       continue // listed by git but deleted on disk
     }
