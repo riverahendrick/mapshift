@@ -2,8 +2,12 @@ import { styleText } from 'node:util'
 
 type Style = Parameters<typeof styleText>[0]
 
-/** Colours only when the output is a terminal and NO_COLOR is not set. */
-const colorOn = (): boolean => !!process.stdout.isTTY && !process.env.NO_COLOR && process.env.TERM !== 'dumb'
+/** Colours on a terminal unless NO_COLOR is set; FORCE_COLOR turns them on anywhere (or off with 0). */
+const colorOn = (): boolean => {
+  const force = process.env.FORCE_COLOR
+  if (force !== undefined && force !== '') return force !== '0'
+  return !!process.stdout.isTTY && !process.env.NO_COLOR && process.env.TERM !== 'dumb'
+}
 export const paint = (style: Style, s: string): string => (colorOn() ? styleText(style, s) : s)
 
 export const brand = (s: string) => paint(['bold', 'cyan'], s)

@@ -128,7 +128,7 @@ ${LOGO_SVG.replace('<svg ', '<svg aria-hidden="true" ')}
     return box;
   }
   function render(s) {
-    $('project').textContent = s.project.root;
+    $('project').textContent = s.project.name + '  ·  ' + s.project.shown;
     const m = s.map;
     $('map-state').textContent = m.state === 'ready' ? 'Ready' : m.state === 'building' ? 'Building ' + m.percent + '%' : 'Not built yet';
     $('map-detail').textContent = m.state === 'none' ? 'It builds the first time an agent asks the map something here.'
@@ -161,7 +161,7 @@ ${LOGO_SVG.replace('<svg ', '<svg aria-hidden="true" ')}
     }
     for (const r of s.recent) {
       const tr = el('tr');
-      tr.appendChild(el('td', {}, r.agent + ' · ' + r.tool.replace('map_', '') + ' · pointed to ' + r.files + ' file' + (r.files === 1 ? '' : 's') + ' (' + fmt(r.pointedTokens) + ' tokens) for ' + fmt(r.answerTokens)));
+      tr.appendChild(el('td', {}, r.agent + ' · ' + r.tool.replace('map_', '') + ' · pointed to ' + r.files + ' file' + (r.files === 1 ? '' : 's') + ' (' + fmt(r.pointedTokens) + ' tokens) · answer ' + fmt(r.answerTokens) + ' tokens'));
       tr.appendChild(el('td', { class: 'muted' }, ago(r.ts)));
       body.appendChild(tr);
     }

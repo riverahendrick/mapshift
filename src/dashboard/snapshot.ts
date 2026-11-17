@@ -1,10 +1,17 @@
 // One picture of how Mapshift is doing, shared by `mapshift report`, the status line and the web dashboard,
 // so all three always show the same figures.
 import { readFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { readCodexUsage, type CodexUsage } from '../agents/codex-usage.ts'
 import { homeDir, logsDir, normalizeKey } from '../core/paths.ts'
 import { quickMap, type QuickMap } from './map-status.ts'
+/** A folder with the person's home folder written as ~ (`C:/Users/ana/code/app` → `~/code/app`). */
+export function tildePath(path: string, home: string = homedir()): string {
+  const p = path.replace(/\\/g, '/')
+  const h = home.replace(/\\/g, '/').replace(/\/+$/, '')
+  return p.toLowerCase().startsWith(`${h.toLowerCase()}/`) || p.toLowerCase() === h.toLowerCase() ? `~${p.slice(h.length)}` : p
+}
 
 export type MapEventLite = { ts: number; agent: string; repo: string; tool: string; answerTokens: number; files: { path: string; tokens: number }[] }
 
@@ -100,7 +107,7 @@ export function mapStats(events: MapEventLite[], root?: string): MapStats {
 
 export type Snapshot = {
   generatedAt: number
-  project: { root: string; name: string }
+  project: { root: string; name: string; /** The folder with the home folder shown as ~, so a screenshot never shows a user name. */ shown: string }
   map: QuickMap
   today: MapStats
   week: MapStats
@@ -126,7 +133,7 @@ export function snapshot(o: { root: string; codexHome: string | null; now?: numb
   }
   return {
     generatedAt: now,
-    project: { root: map.root, name: basename(map.root) || map.root },
+    project: { root: map.root, name: basename(map.root) || map.root, shown: tildePath(map.root) },
     map,
     today: mapStats(here.filter(e => e.ts >= midnight)),
     week: mapStats(here),

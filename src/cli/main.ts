@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util'
 import { VERSION } from '../version.ts'
+import { plainReason, pretty } from './format.ts'
 import { ago, bad, bold, dim, good, header, n, progress, rows, warn } from './ui.ts'
 
 // The map engine, the tool server and the router load only when a command needs them, so quick commands
@@ -73,6 +74,15 @@ async function main(argv: string[]): Promise<number> {
     return 0
   }
   const [cmd, sub, ...rest] = positionals
+  // a mistyped --project must say so, not answer "up to date" for a folder with nothing in it
+  const projectOpt = opt('project')
+  if (projectOpt !== undefined && cmd !== 'statusline') {
+    const { existsSync, statSync } = await import('node:fs')
+    if (!existsSync(projectOpt) || !statSync(projectOpt).isDirectory()) {
+      console.error(`${bad('✗')} That project folder was not found: ${projectOpt}`)
+      return 2
+    }
+  }
 
   // the status line first and on its own: it must answer within a blink and never fail
   if (cmd === 'statusline') {
@@ -212,7 +222,7 @@ async function main(argv: string[]): Promise<number> {
         ['Model', `${bold(a.model.label)}  ${dim(`· ${a.effort === 'xhigh' ? 'extra high' : a.effort} effort`)}`],
         ...(a.current && a.change !== 'none' ? ([['Now on', `${a.current.label}  ${a.change === 'up' ? warn('↑ step up') : good('↓ step down')}`]] as [string, string][]) : []),
         ['Helpers', `${a.helper.label} ${dim('for searching, summaries and test runs')}`],
-        ['Why', a.reasons.join('; ')],
+        ['Why', a.reasons.slice(0, 3).map(plainReason).join(' · ')],
       ]),
     )
     console.log('')
@@ -309,7 +319,7 @@ async function main(argv: string[]): Promise<number> {
               : sub === 'overview'
                 ? overview(store, root)
                 : search(store, root, words, { regex: !!values.regex, ignoreCase: !values.case, path: opt('path') })
-      console.log(answer.text)
+      console.log(pretty(answer.text))
       return 0
     }
     default:

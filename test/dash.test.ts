@@ -10,7 +10,7 @@ import type { Snapshot } from '../src/dashboard/snapshot.ts'
 
 const DATA: Snapshot = {
   generatedAt: 1,
-  project: { root: '/work/app', name: 'app' },
+  project: { root: '/work/app', name: 'app', shown: '/work/app' },
   map: { root: '/work/app', state: 'ready', percent: 100, files: 3, symbols: 9, builtAt: 1 },
   today: { lookups: 2, byAgent: [{ agent: 'codex', label: 'Codex', n: 2 }], withMap: 100, withoutMap: 900, savedUpperBound: 800 },
   week: { lookups: 2, byAgent: [], withMap: 100, withoutMap: 900, savedUpperBound: 800 },
