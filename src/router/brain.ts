@@ -26,7 +26,7 @@ export const DEFAULT_CFG: Cfg = {
   band: true,
   maxSwitchUsd: 1,
   notifyLongTurns: true,
-  graftReminder: true,
+  mapReminder: true,
   respectAppEffort: true,
   view: 'overview',
 }
@@ -832,7 +832,7 @@ export function verifyAudit(events: AuditEvent[], prices: Prices): { ok: boolean
   // 3. asked vs answered
   const mism = steps.filter(s => familyOf(s.sent) && familyOf(s.answered) && familyOf(s.sent) !== familyOf(s.answered))
   if (mism.length) bad(`${mism.length} requests were answered by a different model than requested (first: asked ${mism[0]!.sent}, got ${mism[0]!.answered})`)
-  else if (steps.length) lines.push('✓ every request was answered by the model Smart Route sent')
+  else if (steps.length) lines.push('✓ every request was answered by the model Mapshift sent')
 
   // 4. evidence that an effort-only change keeps the cache
   let effortChanges = 0
@@ -879,7 +879,7 @@ export function verifyAudit(events: AuditEvent[], prices: Prices): { ok: boolean
   }
 }
 
-/** One readable line per event for /route log. */
+/** One readable line per event for /mapshift log. */
 export function formatEvent(e: AuditEvent): string {
   const t = new Date(e.ts).toISOString().slice(11, 19)
   const n = (x: unknown) => (typeof x === 'number' ? fmtTok(x) : String(x))

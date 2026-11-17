@@ -1,0 +1,5 @@
+{
+  "name": "mapshift",
+  "owner": { "name": "riverahendrick" },
+  "plugins": [{ "name": "mapshift", "source": "./plugins/claude-code" }]
+}

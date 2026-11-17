@@ -32,7 +32,7 @@ export type Cfg = {
   /** Never think less than the effort chosen in the app, except for quick read-only questions. */
   respectAppEffort: boolean
   /** Remind the agent (one short line in its instructions) to use the map. */
-  graftReminder: boolean
+  mapReminder: boolean
   /** Which tab of the pane is open. */
   view: View
 }
