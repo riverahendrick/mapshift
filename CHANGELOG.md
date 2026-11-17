@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-17)
 
 The first release.
 
@@ -10,3 +10,4 @@ The first release.
 - 📊 Claude Code add-on: automatic routing on every request, and a dashboard with limits, savings and the map.
 - ⚙️ One-line setup for Codex, Gemini CLI, Antigravity, Grok, Cursor and Claude Code, with `off`, `on` and `uninstall`.
 - 🌐 A local web dashboard and a text report for agents that cannot draw panels.
+- ⬆️ `mapshift update` gets the newest version and updates the Claude Code add-on too.
