@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
-import { AGENTS } from '../src/agents/registry.ts'
+import { AGENTS, agyStatusLine } from '../src/agents/registry.ts'
 import { targets, which } from '../src/setup/env.ts'
 import { loadHome } from '../src/setup/pieces.ts'
 import { runOff, runOn, runSetup, runUninstall, type RunOptions } from '../src/setup/setup.ts'
@@ -77,7 +77,18 @@ test('setup writes every agent, backs up first, and uninstall gives back the exa
     const agyStatus = JSON.parse(s.read('.gemini/antigravity-cli/settings.json')!).statusLine
     assert.equal(agyStatus.type, 'command')
     assert.equal(agyStatus.stack_with_default, true)
-    assert.ok(agyStatus.command.includes('statusline --agent agy'))
+    if (process.platform === 'win32') {
+      // agy runs this through cmd.exe and passes quotes on as \" (which cmd.exe cannot read): no quotes at all
+      assert.ok(!agyStatus.command.includes('"'), agyStatus.command)
+      assert.match(agyStatus.command, /statusline-agy\.cmd$/)
+      assert.ok(readFileSync(agyStatus.command, 'utf8').includes('statusline --agent agy'), 'the launcher starts the status line')
+    } else assert.ok(agyStatus.command.includes('statusline --agent agy'))
+    // the quote-free launcher for every system, checked here whatever this machine is
+    const tg = targets({ home: s.home, env: s.env })
+    const win = agyStatusLine(tg, { node: 'C:\\Program Files\\nodejs\\node.exe', script: 'C:\\x\\main.js' }, 'win32')
+    assert.ok(!(win[1] as { value: { command: string } }).value.command.includes('"'))
+    assert.match((win[0] as { content: string }).content, /"C:\\Program Files\\nodejs\\node\.exe" "C:\\x\\main\.js" statusline --agent agy/)
+    assert.equal(agyStatusLine(tg, { node: '/usr/bin/node', script: '/x/main.js' }, 'linux').length, 1, 'elsewhere the plain command')
     const grok = s.read('.grok/config.toml')!
     assert.ok(grok.startsWith(USER_FILES['.grok/config.toml']!))
     assert.ok(grok.includes('[ui.status_line]\r\ntype = "command"'), 'CRLF file gets CRLF lines')

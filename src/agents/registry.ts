@@ -4,7 +4,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { mdFence, tomlArray, tomlFence, tomlString } from '../setup/blocks.ts'
 import { shellLine, which, type Env, type Runtime, type Targets } from '../setup/env.ts'
-import type { AgentId, Piece } from '../setup/pieces.ts'
+import { MANAGED, type AgentId, type Piece } from '../setup/pieces.ts'
 import { codexPrompt, geminiCommand, grokRules, instructionLines, kiroSteering, skill } from './content.ts'
 
 export type AgentDef = {
@@ -87,6 +87,38 @@ const mdRules = (agent: AgentId, path: string): Piece => ({
   lines: instructionLines({ helpers: false }),
 })
 
+/**
+ * agy's status line. On Windows agy runs the command through cmd.exe and passes its quotes on as `\"`, which
+ * cmd.exe cannot read, so a command with quoted paths (Node lives in "Program Files") fails every time. There
+ * the command is a small launcher file, named without quotes, that starts Mapshift with the quoted paths inside.
+ */
+export function agyStatusLine(t: Targets, rt: Runtime, platform: NodeJS.Platform = process.platform): Piece[] {
+  const settings = join(t.gemini, 'antigravity-cli', 'settings.json')
+  const entry = (command: string): Piece => ({
+    agent: 'agy',
+    label: 'Status line',
+    path: settings,
+    kind: 'json',
+    key: ['statusLine'],
+    value: { type: 'command', command, enabled: true, stack_with_default: true },
+    replaceIf: emptyStatusLine,
+  })
+  const launcher = join(t.mapshift, 'bin', 'statusline-agy.cmd')
+  // a home folder with a space would need quotes again; there the plain command is the best there is
+  if (platform !== 'win32' || /\s/.test(launcher)) return [entry(shellLine(rt, ['statusline', '--agent', 'agy']))]
+  const win = (s: string) => s.replace(/\//g, '\\')
+  return [
+    {
+      agent: 'agy',
+      label: 'Status line launcher',
+      path: launcher,
+      kind: 'file',
+      content: `@echo off\r\nrem ${MANAGED}: added by "mapshift setup"; "mapshift uninstall" removes it\r\n"${win(rt.node)}" "${win(rt.script)}" statusline --agent agy\r\n`,
+    },
+    entry(launcher.replace(/\\/g, '/')),
+  ]
+}
+
 /** opencode reads `opencode.jsonc` or `opencode.json`; an existing one is used, a new file is `.jsonc` (what opencode makes itself). */
 function opencodeConfig(t: Targets): string {
   const jsonc = join(t.opencode, 'opencode.jsonc')
@@ -153,15 +185,7 @@ export const AGENTS: AgentDef[] = [
       jsonMcp('agy', join(t.gemini, 'config', 'mcp_config.json'), rt),
       geminiRules('agy', t),
       { agent: 'agy', label: '/mapshift', path: join(t.gemini, 'config', 'skills', 'mapshift', 'SKILL.md'), kind: 'file', content: skill(rt, 'agy') },
-      {
-        agent: 'agy',
-        label: 'Status line',
-        path: join(t.gemini, 'antigravity-cli', 'settings.json'),
-        kind: 'json',
-        key: ['statusLine'],
-        value: { type: 'command', command: shellLine(rt, ['statusline', '--agent', 'agy']), enabled: true, stack_with_default: true },
-        replaceIf: emptyStatusLine,
-      },
+      ...agyStatusLine(t, rt),
     ],
     next: 'Restart agy. Type /mapshift for the report; the Mapshift line shows under the built-in status line.',
   },
