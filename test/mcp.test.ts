@@ -45,7 +45,13 @@ test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry',
     const list = await s.call('tools/list')
     assert.deepEqual(list.result.tools.map((t: { name: string }) => t.name), ['map_find', 'map_trace', 'map_file', 'map_overview', 'map_search'])
 
-    const res = await s.call('tools/call', { name: 'map_find', arguments: { query: 'checkout' } })
+    // a new map answers within 2 s or says it is still being built; on a busy machine (the whole test suite
+    // runs at once) the build can take longer, so ask again the way an agent would
+    let res = await s.call('tools/call', { name: 'map_find', arguments: { query: 'checkout' } })
+    for (let i = 0; i < 60 && /still being built|% built/.test(res.result?.content?.[0]?.text ?? ''); i++) {
+      await new Promise(r => setTimeout(r, 500))
+      res = await s.call('tools/call', { name: 'map_find', arguments: { query: 'checkout' } })
+    }
     assert.equal(res.result.isError, false)
     assert.match(res.result.content[0].text, /### 1\. checkout · function · src\/cart\.ts:2/)
     assert.match(res.result.content[0].text, /Calls: save \(src\/store\.ts:1\)/)
@@ -60,7 +66,7 @@ test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry',
   }
   const logs = readdirSync(join(r.home, 'logs'))
   const lines = readFileSync(join(r.home, 'logs', logs[0]!), 'utf8').trim().split('\n').map(l => JSON.parse(l))
-  const entry = lines.find(l => l.tool === 'map_find')
+  const entry = lines.filter(l => l.tool === 'map_find' && l.files?.length).at(-1)
   assert.equal(entry.agent, 'test-agent')
   assert.deepEqual(entry.files.map((f: { path: string }) => f.path), ['src/cart.ts'])
   assert.ok(entry.answerTokens > 0)
