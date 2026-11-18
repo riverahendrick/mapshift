@@ -1,0 +1,120 @@
+[
+  {
+    "id": "httpx-dev-1",
+    "kind": "developer",
+    "question": "When a 302 or 303 response is followed, where does the client switch the HTTP verb to GET?",
+    "answers": [{ "file": "httpx/_client.py", "qualified": "BaseClient._redirect_method" }]
+  },
+  {
+    "id": "httpx-dev-2",
+    "kind": "developer",
+    "question": "When a redirect points at a different host, where is the Authorization header dropped from the follow-up request?",
+    "answers": [{ "file": "httpx/_client.py", "qualified": "BaseClient._redirect_headers" }]
+  },
+  {
+    "id": "httpx-dev-3",
+    "kind": "developer",
+    "question": "Where does the digest authentication scheme compute the hashed response value from the server nonce and a client nonce?",
+    "answers": [{ "file": "httpx/_auth.py", "qualified": "DigestAuth._build_auth_header" }]
+  },
+  {
+    "id": "httpx-dev-4",
+    "kind": "developer",
+    "question": "How are proxy settings such as HTTPS_PROXY and NO_PROXY picked up from environment variables?",
+    "answers": [
+      { "file": "httpx/_utils.py", "qualified": "get_environment_proxies" },
+      { "file": "httpx/_client.py", "qualified": "BaseClient._get_proxy_map" }
+    ]
+  },
+  {
+    "id": "httpx-dev-5",
+    "kind": "developer",
+    "question": "When some hosts go through a proxy and others do not, how does the client choose which transport handles a given URL?",
+    "answers": [
+      { "file": "httpx/_client.py", "qualified": "Client._transport_for_url" },
+      { "file": "httpx/_client.py", "qualified": "AsyncClient._transport_for_url" }
+    ]
+  },
+  {
+    "id": "httpx-dev-6",
+    "kind": "developer",
+    "question": "When a streamed response is read line by line, how is a carriage return that lands at the end of one chunk handled?",
+    "answers": [{ "file": "httpx/_decoders.py", "qualified": "LineDecoder.decode" }]
+  },
+  {
+    "id": "httpx-agent-1",
+    "kind": "agent",
+    "question": "parse Link header rel next pagination",
+    "answers": [
+      { "file": "httpx/_models.py", "qualified": "_parse_header_links" },
+      { "file": "httpx/_models.py", "qualified": "Response.links" }
+    ]
+  },
+  {
+    "id": "httpx-agent-2",
+    "kind": "agent",
+    "question": "remove_dot_segments rfc3986 path parent dir collapse",
+    "answers": [{ "file": "httpx/_urlparse.py", "qualified": "normalize_path" }]
+  },
+  {
+    "id": "httpx-agent-3",
+    "kind": "agent",
+    "question": "idna punycode hostname non-ascii encode",
+    "answers": [{ "file": "httpx/_urlparse.py", "qualified": "encode_host" }]
+  },
+  {
+    "id": "httpx-agent-4",
+    "kind": "agent",
+    "question": "mask secret headers in repr Authorization Proxy-Authorization",
+    "answers": [{ "file": "httpx/_models.py", "qualified": "_obfuscate_sensitive_headers" }]
+  },
+  {
+    "id": "httpx-agent-5",
+    "kind": "agent",
+    "question": "wrap low-level transport errors ConnectTimeout ReadError mapping context manager",
+    "answers": [
+      { "file": "httpx/_transports/default.py", "qualified": "map_httpcore_exceptions" },
+      { "file": "httpx/_transports/default.py", "qualified": "_load_httpcore_exceptions" }
+    ]
+  },
+  {
+    "id": "httpx-agent-6",
+    "kind": "agent",
+    "question": "wsgi environ start_response call app transport",
+    "answers": [{ "file": "httpx/_transports/wsgi.py", "qualified": "WSGITransport.handle_request" }]
+  },
+  {
+    "id": "httpx-name-1",
+    "kind": "name",
+    "question": "Where is `UseClientDefault` defined?",
+    "symbol": "UseClientDefault",
+    "answers": [{ "file": "httpx/_client.py", "qualified": "UseClientDefault" }]
+  },
+  {
+    "id": "httpx-name-2",
+    "kind": "name",
+    "question": "Where is `URLPattern` defined?",
+    "symbol": "URLPattern",
+    "answers": [{ "file": "httpx/_utils.py", "qualified": "URLPattern" }]
+  },
+  {
+    "id": "httpx-callers-1",
+    "kind": "callers",
+    "question": "What calls `peek_filelike_length`?",
+    "symbol": "peek_filelike_length",
+    "answers": [
+      { "file": "httpx/_content.py", "qualified": "encode_content" },
+      { "file": "httpx/_multipart.py", "qualified": "FileField.get_length" }
+    ]
+  },
+  {
+    "id": "httpx-callers-2",
+    "kind": "callers",
+    "question": "What calls `_port_or_default`?",
+    "symbol": "_port_or_default",
+    "answers": [
+      { "file": "httpx/_client.py", "qualified": "_is_https_redirect" },
+      { "file": "httpx/_client.py", "qualified": "_same_origin" }
+    ]
+  }
+]

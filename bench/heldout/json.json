@@ -1,0 +1,130 @@
+[
+  {
+    "id": "json-dev-1",
+    "kind": "developer",
+    "question": "After a value has been read, where does the parser check that only whitespace remains in the input?",
+    "answers": [
+      { "file": "src/de.rs", "qualified": "Deserializer.end" },
+      { "file": "src/de.rs", "qualified": "from_trait" }
+    ]
+  },
+  {
+    "id": "json-dev-2",
+    "kind": "developer",
+    "question": "How does the library follow a slash-separated path such as /a/0/b to reach a nested element of a dynamically typed document?",
+    "answers": [
+      { "file": "src/value/mod.rs", "qualified": "Value.pointer" },
+      { "file": "src/value/mod.rs", "qualified": "Value.pointer_mut" }
+    ]
+  },
+  {
+    "id": "json-dev-3",
+    "kind": "developer",
+    "question": "While reading a string literal, how is a pair of \\u escapes that together encode one astral-plane character turned into a single code point?",
+    "answers": [{ "file": "src/read.rs", "qualified": "parse_unicode_escape" }]
+  },
+  {
+    "id": "json-dev-4",
+    "kind": "developer",
+    "question": "When serializing a map whose keys are floating-point numbers, where are NaN and infinite keys rejected?",
+    "answers": [
+      { "file": "src/ser.rs", "qualified": "MapKeySerializer.serialize_f64" },
+      { "file": "src/value/ser.rs", "qualified": "MapKeySerializer.serialize_f64" }
+    ]
+  },
+  {
+    "id": "json-dev-5",
+    "kind": "developer",
+    "question": "When reading several concatenated documents from one input, where is each subsequent document produced and the byte offset advanced?",
+    "answers": [{ "file": "src/de.rs", "qualified": "StreamDeserializer.next" }]
+  },
+  {
+    "id": "json-dev-6",
+    "kind": "developer",
+    "question": "How does an error built from a free-form message recover the line and column numbers embedded in its text?",
+    "answers": [
+      { "file": "src/error.rs", "qualified": "parse_line_col" },
+      { "file": "src/error.rs", "qualified": "make_error" }
+    ]
+  },
+  {
+    "id": "json-agent-1",
+    "kind": "agent",
+    "question": "escape control chars quote backslash when writing string",
+    "answers": [
+      { "file": "src/ser.rs", "qualified": "format_escaped_str_contents" },
+      { "file": "src/ser.rs", "qualified": "format_escaped_str" }
+    ]
+  },
+  {
+    "id": "json-agent-2",
+    "kind": "agent",
+    "question": "skip_value discard unknown field without allocating",
+    "answers": [{ "file": "src/de.rs", "qualified": "Deserializer.ignore_value" }]
+  },
+  {
+    "id": "json-agent-3",
+    "kind": "agent",
+    "question": "SWAR scan string slice for quote or backslash fast",
+    "answers": [{ "file": "src/read.rs", "qualified": "SliceRead.skip_to_escape" }]
+  },
+  {
+    "id": "json-agent-4",
+    "kind": "agent",
+    "question": "json error kind eof vs syntax vs data category",
+    "answers": [{ "file": "src/error.rs", "qualified": "Error.classify" }]
+  },
+  {
+    "id": "json-agent-5",
+    "kind": "agent",
+    "question": "pretty print nesting depth whitespace newline per object member",
+    "answers": [
+      { "file": "src/ser.rs", "qualified": "PrettyFormatter.begin_object_key" },
+      { "file": "src/ser.rs", "qualified": "indent" }
+    ]
+  },
+  {
+    "id": "json-agent-6",
+    "kind": "agent",
+    "question": "signed i128 big integer deserialize digit buffer",
+    "answers": [
+      { "file": "src/de.rs", "qualified": "Deserializer.do_deserialize_i128" },
+      { "file": "src/de.rs", "qualified": "Deserializer.scan_integer128" }
+    ]
+  },
+  {
+    "id": "json-name-1",
+    "kind": "name",
+    "question": "Where is `ParserNumber` defined?",
+    "symbol": "ParserNumber",
+    "answers": [{ "file": "src/de.rs", "qualified": "ParserNumber" }]
+  },
+  {
+    "id": "json-name-2",
+    "kind": "name",
+    "question": "Where is `RawValueStrEmitter` defined?",
+    "symbol": "RawValueStrEmitter",
+    "answers": [{ "file": "src/ser.rs", "qualified": "RawValueStrEmitter" }]
+  },
+  {
+    "id": "json-callers-1",
+    "kind": "callers",
+    "question": "What calls `decode_four_hex_digits`?",
+    "symbol": "decode_four_hex_digits",
+    "answers": [
+      { "file": "src/read.rs", "qualified": "IoRead.decode_hex_escape" },
+      { "file": "src/read.rs", "qualified": "SliceRead.decode_hex_escape" }
+    ]
+  },
+  {
+    "id": "json-callers-2",
+    "kind": "callers",
+    "question": "What calls `parse_escape`?",
+    "symbol": "parse_escape",
+    "answers": [
+      { "file": "src/read.rs", "qualified": "IoRead.parse_str_bytes" },
+      { "file": "src/read.rs", "qualified": "SliceRead.parse_str_bytes" },
+      { "file": "src/read.rs", "qualified": "parse_unicode_escape" }
+    ]
+  }
+]

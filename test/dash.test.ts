@@ -16,6 +16,9 @@ const DATA: Snapshot = {
   week: { lookups: 2, byAgent: [], withMap: 100, withoutMap: 900, savedUpperBound: 800 },
   codex: null,
   recent: [],
+  claude: null,
+  tools: [],
+  mapDetail: null,
 }
 
 /** A raw request, so the Host header can be set to anything. */
@@ -55,7 +58,7 @@ test('the dashboard listens on 127.0.0.1 only and answers only with its token', 
     assert.equal(api.status, 200)
     assert.match(String(api.headers['content-type']), /application\/json/)
     const s = JSON.parse(api.body) as Snapshot
-    assert.deepEqual(Object.keys(s).sort(), ['codex', 'generatedAt', 'map', 'project', 'recent', 'today', 'week'])
+    assert.deepEqual(Object.keys(s).sort(), ['claude', 'codex', 'generatedAt', 'map', 'mapDetail', 'project', 'recent', 'today', 'tools', 'week'])
     assert.equal(s.today.savedUpperBound, 800)
   } finally {
     d.close()

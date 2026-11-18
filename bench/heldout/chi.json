@@ -1,0 +1,124 @@
+[
+  {
+    "id": "chi-dev-1",
+    "kind": "developer",
+    "question": "When a path matches a route but the request's HTTP verb has no handler, where is the 405 reply written together with the list of permitted verbs?",
+    "answers": [
+      { "file": "mux.go", "qualified": "methodNotAllowedHandler" },
+      { "file": "mux.go", "qualified": "Mux.MethodNotAllowedHandler" }
+    ]
+  },
+  {
+    "id": "chi-dev-2",
+    "kind": "developer",
+    "question": "When a sub-router is attached under a prefix, where is the remaining part of the URL computed for the child router to match against?",
+    "answers": [
+      { "file": "mux.go", "qualified": "Mux.nextRoutePath" },
+      { "file": "mux.go", "qualified": "Mux.Mount" }
+    ]
+  },
+  {
+    "id": "chi-dev-3",
+    "kind": "developer",
+    "question": "How does the routing tree split an existing node when a newly registered route shares only part of its static prefix?",
+    "answers": [{ "file": "tree.go", "qualified": "node.InsertRoute" }]
+  },
+  {
+    "id": "chi-dev-4",
+    "kind": "developer",
+    "question": "How is a panic inside a handler caught so the server replies with a 500 instead of crashing?",
+    "answers": [{ "file": "middleware/recoverer.go", "qualified": "Recoverer" }]
+  },
+  {
+    "id": "chi-dev-5",
+    "kind": "developer",
+    "question": "Where does the response compression middleware choose between gzip, deflate or another algorithm based on what the client says it accepts?",
+    "answers": [
+      { "file": "middleware/compress.go", "qualified": "Compressor.selectEncoder" },
+      { "file": "middleware/compress.go", "qualified": "matchAcceptEncoding" }
+    ]
+  },
+  {
+    "id": "chi-dev-6",
+    "kind": "developer",
+    "question": "How does the concurrency limiter make excess requests wait in a backlog and reject them once they have waited too long?",
+    "answers": [{ "file": "middleware/throttle.go", "qualified": "ThrottleWithOpts" }]
+  },
+  {
+    "id": "chi-agent-1",
+    "kind": "agent",
+    "question": "route pattern {param:regex} segment tokenize",
+    "answers": [{ "file": "tree.go", "qualified": "patNextSegment" }]
+  },
+  {
+    "id": "chi-agent-2",
+    "kind": "agent",
+    "question": "X-Forwarded-For hop list allowlisted CIDR prefixes real client ip",
+    "answers": [
+      { "file": "middleware/client_ip.go", "qualified": "ClientIPFromXFF" },
+      { "file": "middleware/client_ip.go", "qualified": "walkXFF" }
+    ]
+  },
+  {
+    "id": "chi-agent-3",
+    "kind": "agent",
+    "question": "request context deadline 504 gateway middleware",
+    "answers": [{ "file": "middleware/timeout.go", "qualified": "Timeout" }]
+  },
+  {
+    "id": "chi-agent-4",
+    "kind": "agent",
+    "question": "getMatchedPattern full route template wildcards",
+    "answers": [{ "file": "context.go", "qualified": "Context.RoutePattern" }]
+  },
+  {
+    "id": "chi-agent-5",
+    "kind": "agent",
+    "question": "responseWriter wrapper capture status code bytes written",
+    "answers": [
+      { "file": "middleware/wrap_writer.go", "qualified": "NewWrapResponseWriter" },
+      { "file": "middleware/wrap_writer.go", "qualified": "basicWriter" }
+    ]
+  },
+  {
+    "id": "chi-agent-6",
+    "kind": "agent",
+    "question": "url extension .json .xml suffix strip into context",
+    "answers": [{ "file": "middleware/url_format.go", "qualified": "URLFormat" }]
+  },
+  {
+    "id": "chi-name-1",
+    "kind": "name",
+    "question": "Where is `ChainHandler` defined?",
+    "symbol": "ChainHandler",
+    "answers": [{ "file": "chain.go", "qualified": "ChainHandler" }]
+  },
+  {
+    "id": "chi-name-2",
+    "kind": "name",
+    "question": "Where is `RegisterMethod` defined?",
+    "symbol": "RegisterMethod",
+    "answers": [{ "file": "tree.go", "qualified": "RegisterMethod" }]
+  },
+  {
+    "id": "chi-callers-1",
+    "kind": "callers",
+    "question": "What calls `patNextSegment`?",
+    "symbol": "patNextSegment",
+    "answers": [
+      { "file": "tree.go", "qualified": "node.InsertRoute" },
+      { "file": "tree.go", "qualified": "node.addChild" },
+      { "file": "tree.go", "qualified": "patParamKeys" }
+    ]
+  },
+  {
+    "id": "chi-callers-2",
+    "kind": "callers",
+    "question": "What calls `parseRemoteAddr`?",
+    "symbol": "parseRemoteAddr",
+    "answers": [
+      { "file": "middleware/client_ip.go", "qualified": "ClientIPFromRemoteAddr" },
+      { "file": "middleware/client_ip.go", "qualified": "untrustedPeer" }
+    ]
+  }
+]

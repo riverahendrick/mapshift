@@ -1,0 +1,125 @@
+[
+  {
+    "id": "axios-dev-1",
+    "kind": "developer",
+    "question": "Where does the client decide whether a completed HTTP response resolves the promise or rejects it, based on the status code?",
+    "answers": [{ "file": "lib/core/settle.js", "qualified": "settle" }]
+  },
+  {
+    "id": "axios-dev-2",
+    "kind": "developer",
+    "question": "Where are the hooks that users register for outgoing calls and incoming replies arranged into a promise sequence around the actual network dispatch?",
+    "answers": [
+      { "file": "lib/core/Axios.js", "qualified": "Axios._request" },
+      { "file": "lib/core/Axios.js", "qualified": "Axios.request" }
+    ]
+  },
+  {
+    "id": "axios-dev-3",
+    "kind": "developer",
+    "question": "When the Node transport follows a redirect to a different origin, where are credential and cookie headers removed before the next hop?",
+    "answers": [
+      { "file": "lib/adapters/http.js", "qualified": "dispatchBeforeRedirect" },
+      { "file": "lib/adapters/http.js", "qualified": "stripMatchingHeaders" }
+    ]
+  },
+  {
+    "id": "axios-dev-4",
+    "kind": "developer",
+    "question": "How is the transfer speed in bytes per second estimated for upload and download progress events?",
+    "answers": [
+      { "file": "lib/helpers/speedometer.js", "qualified": "speedometer" },
+      { "file": "lib/helpers/progressEventReducer.js", "qualified": "progressEventReducer" }
+    ]
+  },
+  {
+    "id": "axios-dev-5",
+    "kind": "developer",
+    "question": "In a browser, where is the anti-forgery token read from a cookie and attached as a header to the outgoing request?",
+    "answers": [{ "file": "lib/helpers/resolveConfig.js", "qualified": "resolveConfig" }]
+  },
+  {
+    "id": "axios-dev-6",
+    "kind": "developer",
+    "question": "How does the library pick which transport implementation to use (XMLHttpRequest, fetch or Node's http module), and explain why none is usable?",
+    "answers": [{ "file": "lib/adapters/adapters.js", "qualified": "getAdapter" }]
+  },
+  {
+    "id": "axios-agent-1",
+    "kind": "agent",
+    "question": "combineAbortSignals timeout AbortController merge",
+    "answers": [{ "file": "lib/helpers/composeSignals.js", "qualified": "composeSignals" }]
+  },
+  {
+    "id": "axios-agent-2",
+    "kind": "agent",
+    "question": "serializeQueryParams append to url strip hash fragment",
+    "answers": [
+      { "file": "lib/helpers/buildURL.js", "qualified": "buildURL" },
+      { "file": "lib/helpers/AxiosURLSearchParams.js", "qualified": "AxiosURLSearchParams" }
+    ]
+  },
+  {
+    "id": "axios-agent-3",
+    "kind": "agent",
+    "question": "no_proxy CIDR prefix match ip address bytes",
+    "answers": [
+      { "file": "lib/helpers/shouldBypassProxy.js", "qualified": "isInSubnet" },
+      { "file": "lib/helpers/shouldBypassProxy.js", "qualified": "shouldBypassProxy" }
+    ]
+  },
+  {
+    "id": "axios-agent-4",
+    "kind": "agent",
+    "question": "validateConfig option types schema unknown key throw",
+    "answers": [{ "file": "lib/helpers/validator.js", "qualified": "assertOptions" }]
+  },
+  {
+    "id": "axios-agent-5",
+    "kind": "agent",
+    "question": "data: uri decode base64 mime to blob or buffer",
+    "answers": [{ "file": "lib/helpers/fromDataURI.js", "qualified": "fromDataURI" }]
+  },
+  {
+    "id": "axios-agent-6",
+    "kind": "agent",
+    "question": "http2 session pool reuse per authority",
+    "answers": [{ "file": "lib/helpers/Http2Sessions.js", "qualified": "Http2Sessions.getSession" }]
+  },
+  {
+    "id": "axios-name-1",
+    "kind": "name",
+    "question": "Where is `AxiosTransformStream` defined?",
+    "symbol": "AxiosTransformStream",
+    "answers": [{ "file": "lib/helpers/AxiosTransformStream.js", "qualified": "AxiosTransformStream" }]
+  },
+  {
+    "id": "axios-name-2",
+    "kind": "name",
+    "question": "Where is `estimateDataURLDecodedBytes` defined?",
+    "symbol": "estimateDataURLDecodedBytes",
+    "answers": [{ "file": "lib/helpers/estimateDataURLDecodedBytes.js", "qualified": "estimateDataURLDecodedBytes" }]
+  },
+  {
+    "id": "axios-callers-1",
+    "kind": "callers",
+    "question": "What calls `buildFullPath`?",
+    "symbol": "buildFullPath",
+    "answers": [
+      { "file": "lib/core/Axios.js", "qualified": "Axios.getUri" },
+      { "file": "lib/helpers/resolveConfig.js", "qualified": "resolveConfig" },
+      { "file": "lib/adapters/http.js", "qualified": "dispatchHttpRequest" }
+    ]
+  },
+  {
+    "id": "axios-callers-2",
+    "kind": "callers",
+    "question": "What calls `transformData`?",
+    "symbol": "transformData",
+    "answers": [
+      { "file": "lib/core/dispatchRequest.js", "qualified": "dispatchRequest" },
+      { "file": "lib/core/dispatchRequest.js", "qualified": "onAdapterResolution" },
+      { "file": "lib/core/dispatchRequest.js", "qualified": "onAdapterRejection" }
+    ]
+  }
+]

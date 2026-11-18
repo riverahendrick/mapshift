@@ -1,0 +1,6 @@
+[
+  { "name": "axios", "lang": "javascript", "url": "https://github.com/axios/axios.git", "commit": "c0d4c900515a55bd1e258eee16adb25c404d56ed" },
+  { "name": "httpx", "lang": "python", "url": "https://github.com/encode/httpx.git", "commit": "7cff5f79bc78649bbcd3fd9aa7a74c86e0f63016" },
+  { "name": "chi", "lang": "go", "url": "https://github.com/go-chi/chi.git", "commit": "c64ed7d6635f33a8b2feaff7dcfa55677023ac7d" },
+  { "name": "json", "lang": "rust", "url": "https://github.com/serde-rs/json.git", "commit": "f51fa15a7015c7d02817a46d2db44c899a0016e8" }
+]

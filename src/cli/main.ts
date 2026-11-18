@@ -12,6 +12,7 @@ ${bold('Get started')}
   mapshift setup                Add Mapshift to your coding agents  ${dim('(--agents codex,grok · --yes · --dry-run · --home <folder>)')}
   mapshift report               Map, savings and limits as text  ${dim('(--agent codex · --project <folder>)')}
   mapshift dash                 Open the local dashboard in your browser  ${dim('(--port <n> · --no-open)')}
+  mapshift ui                   The dashboard right here in the terminal  ${dim('(--once · --width <n> · --tab map)')}
   mapshift off | on             Pause Mapshift in every agent, or bring it back
   mapshift update               Get the newest version  ${dim('(--check: only look)')}
   mapshift uninstall            Take out everything setup added
@@ -66,6 +67,9 @@ async function main(argv: string[]): Promise<number> {
       port: { type: 'string' },
       'no-open': { type: 'boolean' },
       check: { type: 'boolean' },
+      once: { type: 'boolean' },
+      width: { type: 'string' },
+      tab: { type: 'string' },
     },
   })
   const opt = (k: string): string | undefined => (typeof values[k] === 'string' ? (values[k] as string) : undefined)
@@ -94,6 +98,11 @@ async function main(argv: string[]): Promise<number> {
     const { runStatusline } = await import('../agents/statusline.ts')
     await runStatusline(agent)
     return 0
+  }
+
+  // `mapshift` alone on an interactive terminal opens the terminal dashboard; anywhere else it prints help
+  if (!values.help && (cmd === 'ui' || (!cmd && process.stdout.isTTY && process.stdin.isTTY))) {
+    return ui({ once: !!values.once, width: opt('width'), tab: opt('tab'), project: opt('project'), home: opt('home') })
   }
 
   if (values.help || !cmd || cmd === 'help') {
@@ -319,7 +328,9 @@ async function main(argv: string[]): Promise<number> {
               : sub === 'overview'
                 ? overview(store, root)
                 : search(store, root, words, { regex: !!values.regex, ignoreCase: !values.case, path: opt('path') })
-      console.log(pretty(answer.text))
+      // a person at a terminal gets styled text; a script or another program gets the plain answer, unchanged
+      const forPerson = process.env.FORCE_COLOR ? process.env.FORCE_COLOR !== '0' : !!process.stdout.isTTY
+      console.log(forPerson ? pretty(answer.text) : answer.text)
       return 0
     }
     default:
@@ -378,6 +389,31 @@ async function dash(portText: string | undefined, open: boolean, project: string
   await d.closed
   console.log(`  ${dim('Dashboard stopped.')}\n`)
   return 0
+}
+
+/** `mapshift ui`: the terminal dashboard. `--once` (or no interactive terminal) prints one frame and stops. */
+async function ui(o: { once: boolean; width: string | undefined; tab: string | undefined; project: string | undefined; home: string | undefined }): Promise<number> {
+  const { parseTab, renderOnce, runUi } = await import('../tui/app.ts')
+  const tab = parseTab(o.tab)
+  if (o.tab !== undefined && !tab) {
+    console.error(`${bad('✗')} Unknown tab "${o.tab}". Choose from: overview, activity, map, help.`)
+    return 2
+  }
+  const width = o.width === undefined ? undefined : Number(o.width)
+  if (width !== undefined && (!Number.isInteger(width) || width < 20 || width > 1000)) {
+    console.error(`${bad('✗')} The width must be a whole number from 20 to 1000.`)
+    return 2
+  }
+  const { snapshot } = await import('../dashboard/snapshot.ts')
+  const { targets } = await import('../setup/env.ts')
+  const codexHome = targets({ home: o.home }).codex
+  const root = o.project ?? process.cwd()
+  const data = () => snapshot({ root, codexHome })
+  if (o.once || !process.stdout.isTTY || !process.stdin.isTTY) {
+    process.stdout.write(renderOnce({ data: data(), width: width ?? process.stdout.columns ?? 100, tab: tab ?? undefined, version: VERSION }))
+    return 0
+  }
+  return runUi({ data, tab: tab ?? undefined, version: VERSION })
 }
 
 /** The map engine, loaded on first use; remembered so open maps can be closed on the way out. */
