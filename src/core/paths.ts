@@ -60,14 +60,22 @@ export function normalizeKey(p: string): string {
   return s
 }
 
+const repoIds = new Map<string, string>()
+
 /**
  * A short id for a project. Every git worktree of one repository shares the same git common folder,
  * so they share one map instead of building the same one again.
  */
 export function repoId(root: string): string {
+  // a git process costs tens of milliseconds on Windows and every map answer asks this several times,
+  // so a found repository is remembered for the life of the process (a folder that is not one yet is asked again)
+  const known = repoIds.get(root)
+  if (known) return known
   const common = git(['rev-parse', '--path-format=absolute', '--git-common-dir'], root)?.trim()
   const key = normalizeKey(common ? resolve(root, common) : root)
-  return createHash('sha1').update(key).digest('hex').slice(0, 16)
+  const id = createHash('sha1').update(key).digest('hex').slice(0, 16)
+  if (common) repoIds.set(root, id)
+  return id
 }
 
 export const repoDir = (root: string): string => join(homeDir(), 'repos', repoId(root))

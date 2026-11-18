@@ -7,7 +7,7 @@ import { nameWords, type Store, type SymRow } from './store.ts'
 /** What every map tool returns: the text for the agent, and the files it points at (for the savings ledger). */
 export type Answer = { text: string; files: string[] }
 
-export const LIMITS = { findChars: 6000, codeLines: 12, searchHits: 200, traceNodes: 60 }
+export const LIMITS = { findChars: 6000, codeLines: 12, otherCodeLines: 6, searchHits: 200, traceNodes: 60 }
 
 type Hit = SymRow & { path: string; lang: LangId; score: number }
 
@@ -24,6 +24,114 @@ export function terms(q: string): { words: string[]; names: string[] } {
     .filter(t => /[A-Z_$.]/.test(t.slice(1)) || /[a-z][A-Z]/.test(t) || t.includes('_'))
   const words = [...new Set(nameWords(q.replace(/[^\w$. ]+/g, ' ')).split(/\s+/))].filter(w => w.length > 1 && !STOP.has(w))
   return { words, names: [...new Set(names)] }
+}
+
+/**
+ * Words of a question that say nothing about where code is: quantifiers, numerals, auxiliaries, pronouns
+ * and the words people use to ask about code ("defined", "located"). find() drops them; terms() keeps them
+ * because hints and routing read its words as they are.
+ */
+const FILLER = new Set(
+  `all any both each either every few many most much neither none several some such one two three
+  am was were been being has have had having did done doing will shall should may might must could
+  he she they them their there these those we us our you your its itself
+  also just very really actually so too thus whether while than
+  defined declared located lives happen happens happened`.split(/\s+/),
+)
+
+/** Words that only join the parts of a name (`retryFromError`, `getOrCreate`, `isEmpty`). */
+const NAME_GLUE = new Set('an and as at by for from in into is it of on or the to with'.split(' '))
+
+/**
+ * A plural made singular ("headers" → "header", "retries" → "retry", "matches" → "match"), so a prefix
+ * search finds both forms. Only plurals: stripping "-ed" and "-ing" too matched more wrong names than right ones.
+ */
+export function stemWord(word: string): string {
+  if (word.length <= 4 || !/^[a-z]+$/.test(word)) return word
+  if (word.endsWith('ies')) return `${word.slice(0, -3)}y`
+  if (/(ss|us|is)$/.test(word)) return word
+  if (/(ss|sh|ch|x|z)es$/.test(word)) return word.slice(0, -2)
+  if (word.endsWith('s')) return word.slice(0, -1)
+  return word
+}
+
+/** Short and long spellings of the same thing in code: a search for either finds both. */
+const ABBREVIATIONS = groups(`auth authenticate authentication authorize authorization | config configuration cfg | init initialize initialise
+  | err error | msg message | req request | res response resp | ctx context | env environment | arg argument args | param parameter params
+  | opt option opts | dir directory | fn func function | str string | num number | len length | idx index | val value | var variable
+  | max maximum | min minimum | prev previous | src source | dst dest destination | tmp temp temporary | buf buffer | db database
+  | repo repository | impl implementation | info information | doc documentation docs | util utility utils | attr attribute
+  | pkg package | gen generate | calc calculate | exec execute | conn connection | addr address | char character | col column
+  | cmd command | cb callback | bool boolean | int integer | obj object | proc process | spec specification`)
+
+/** Everyday words for the same idea in code, matched with less weight than the question's own words. */
+const SYNONYMS = groups(`combine merge join | remove delete strip drop | check validate verify | wait delay sleep | cancel abort
+  | fail error | create make build | start begin launch | stop finish | colour color | show display render | print write echo
+  | read load | save store persist | find search lookup | fetch download | send emit dispatch | retry attempt | mandatory required
+  | convert parse coerce | copy clone | compare equal | split separate | hide hidden mask | escape encode | unescape decode
+  | timeout deadline expire | listener hook callback | folder directory | size length count | limit bound | quote escape`)
+
+/** The other spellings listed for a word, also under its plain form ("combined" → combine, "checking" → check). */
+function listed(list: Map<string, string[]>, word: string): string[] {
+  const plain = [word, stemWord(word), word.replace(/d$/, ''), word.replace(/ed$/, ''), word.replace(/ing$/, ''), word.replace(/ing$/, 'e')]
+  for (const w of plain) {
+    const found = list.get(w)
+    if (found) return found
+  }
+  return []
+}
+
+function groups(spec: string): Map<string, string[]> {
+  const by = new Map<string, string[]>()
+  for (const g of spec.split('|').map(s => s.trim().split(/\s+/))) for (const w of g) by.set(w, [...new Set([...(by.get(w) ?? []), ...g.filter(x => x !== w)])])
+  return by
+}
+
+const WEIGHT = { abbreviation: 0.9, synonym: 0.5, projectName: 0.25 }
+
+/**
+ * One spelling of a term: a word prefix (`header` finds `headers`), or a whole word when it is a short form
+ * of a longer word in the question ("response" also finds the word `res`, not `result` or `resolve`).
+ */
+export type Form = { prefix: string; weight: number; whole: boolean }
+/** One meaning in the question: its spellings, how much it counts (1, less for the project's name), and its rarity. */
+export type QueryTerm = { word: string; forms: Form[]; weight: number; idf: number }
+
+/**
+ * The words of a question as search terms: plurals made singular, and other spellings added: abbreviations
+ * at almost full weight, synonyms at half. The project's own name ("how does cobra …" in cobra) counts for
+ * little. Filler words are left out of a sentence-like question (unless nothing else is left), but kept in
+ * a keyword bag ("has all flags"), where they may be part of a name.
+ */
+export function queryTerms(words: string[], nameParts: string[], project = '', sentence = true): QueryTerm[] {
+  const kept = sentence ? words.filter(w => !FILLER.has(w)) : words
+  const base = [...new Set([...(kept.length ? kept : words), ...nameParts])].filter(t => /^\w+$/.test(t) && t.length > 1)
+  return base.map(word => {
+    const forms = new Map<string, Form>()
+    const put = (w: string, weight: number) => {
+      const prefix = stemWord(w)
+      // a short form of a longer question word only counts as a whole word: "response" → `res`, never `result`
+      const whole = weight < 1 && prefix.length <= 3 && prefix.length < stemWord(word).length
+      if (prefix.length > 1 && (forms.get(prefix)?.weight ?? 0) < weight) forms.set(prefix, { prefix, weight, whole })
+    }
+    put(word, 1)
+    for (const a of listed(ABBREVIATIONS, word)) put(a, WEIGHT.abbreviation)
+    for (const a of listed(SYNONYMS, word)) put(a, WEIGHT.synonym)
+    return { word, forms: [...forms.values()], weight: word === project ? WEIGHT.projectName : 1, idf: 1 }
+  })
+}
+
+/** A form as a full-text search token: a prefix search, or the exact word. */
+const ftsToken = (f: Form): string => (f.whole ? `"${f.prefix}"` : `"${f.prefix}"*`)
+
+/** Space-joined lower-case words of a text with a space at both ends, so `includes(' ' + prefix)` is a word-prefix test. */
+const wordText = (s: string): string => ` ${nameWords(s.replace(/[^\w$]+/g, ' ')).replace(/\s+/g, ' ')} `
+
+/** How much of a term a text holds: the weight of the best form found, or 0. */
+function termHit(t: QueryTerm, text: string): number {
+  let best = 0
+  for (const f of t.forms) if (f.weight > best && text.includes(f.whole ? ` ${f.prefix} ` : ` ${f.prefix}`)) best = f.weight
+  return best
 }
 
 const row = (store: Store, sql: string, ...args: (string | number)[]) => store.sql(sql).all(...args) as unknown as Hit[]
@@ -112,12 +220,83 @@ function score(h: Hit, base: number, names: Set<string>, words: string[]): numbe
   return s
 }
 
+/**
+ * How much of the question a definition covers, from 0 to 1: the share of the question's terms, each
+ * weighted by how rare it is in the project, found anywhere in the definition's indexed text.
+ */
+export function coverage(qt: QueryTerm[], text: string): number {
+  let got = 0
+  let all = 0
+  for (const t of qt) {
+    all += t.idf
+    got += t.idf * termHit(t, text)
+  }
+  return all ? got / all : 0
+}
+
+/**
+ * The share of a definition's own name words that the question mentions, from 0 to 1, so that
+ * `normalizeRetryOpts` fits `normalizeRetryOptions` better than `normalizeRetryMethod`.
+ */
+export function nameFit(qt: QueryTerm[], name: string): number {
+  // joining words in a name (`retryFromError`, `getOrCreate`) are left out: a question drops them too
+  const parts = nameWords(name.replace(/[^\w$]+/g, ' '))
+    .split(' ')
+    .filter(p => p.length > 1 && !NAME_GLUE.has(p))
+  if (!parts.length) return 0
+  let got = 0
+  for (const p of parts) {
+    let best = 0
+    for (const t of qt) {
+      for (const f of t.forms) {
+        const w = f.weight * t.weight
+        const fits = f.whole ? p === f.prefix : p.startsWith(f.prefix) || (p.length >= 3 && f.prefix.startsWith(p))
+        if (w > best && fits) best = w
+      }
+    }
+    got += best
+  }
+  return got / parts.length
+}
+
+/** How strongly coverage and name fit reorder the full-text results. */
+const RERANK = { floor: 0.2, power: 2, nameFit: 0.5, pool: 300, depth: 60 }
+
+/**
+ * Same-name definitions in one file (overload stubs, a getter and its setter) are listed once first, the
+ * longest one (the implementation) in place of the group; the others follow every distinct definition.
+ */
+export function distinctFirst<H extends { path: string; qualified: string; start: number; end: number }>(ranked: H[]): H[] {
+  const firsts: H[] = []
+  const rest: H[] = []
+  const at = new Map<string, number>()
+  for (const h of ranked) {
+    const key = `${h.path}\u0000${h.qualified}`
+    const i = at.get(key)
+    if (i === undefined) {
+      at.set(key, firsts.length)
+      firsts.push(h)
+    } else if (h.end - h.start > firsts[i]!.end - firsts[i]!.start) {
+      rest.push(firsts[i]!)
+      firsts[i] = h
+    } else rest.push(h)
+  }
+  const order = new Map(ranked.map((h, i) => [h, i]))
+  return [...firsts, ...rest.sort((a, b) => order.get(a)! - order.get(b)!)]
+}
+
 /** Ranked definitions for a question or a list of names, with their code. */
 export function find(store: Store, root: string, q: string, opts: { limit?: number } = {}): Answer {
   const limit = Math.max(1, Math.min(opts.limit ?? 6, 15))
   const st = mapStatus(root, store)
-  const { words, names } = terms(q)
+  const { words: allWords, names } = terms(q)
   const nameSet = new Set(names)
+  // a question in words ("where does …?") rather than a keyword bag ("has all flags")
+  const sentence = /\?/.test(q) || /\b(how|where|what|which|why|when|who|does)\b/i.test(q) || q.trim().split(/\s+/).length >= 6
+  const project = posix.basename(root.replace(/\\/g, '/')).toLowerCase()
+  const qt = queryTerms(allWords, names.flatMap(n => nameWords(n).split(' ')), project, sentence)
+  const kept = sentence ? allWords.filter(w => !FILLER.has(w)) : allWords
+  const words = kept.length ? kept : allWords
   const scored = new Map<number, Hit>()
 
   const add = (rows: Hit[], base: (h: Hit, i: number) => number) => {
@@ -133,16 +312,16 @@ export function find(store: Store, root: string, q: string, opts: { limit?: numb
     const last = n.includes('.') ? n.slice(n.lastIndexOf('.') + 1) : n
     add(row(store, `${HIT_SQL} WHERE s.qualified = ? OR s.name = ? COLLATE NOCASE LIMIT 30`, n, last), () => 10)
   }
-  // then full-text over names, name words, signatures and paths
-  const ftsTerms = [...new Set([...words, ...names.flatMap(n => nameWords(n).split(' '))])].filter(t => /^[\w]+$/.test(t) && t.length > 1)
-  if (ftsTerms.length) {
-    const match = ftsTerms.map(t => `"${t}"*`).join(' OR ')
+  // then full-text over names, name words, signatures, paths, comments and body words, every spelling of every term
+  const tokens = [...new Set(qt.flatMap(t => t.forms.map(ftsToken)))]
+  if (tokens.length) {
+    const match = tokens.join(' OR ')
     try {
       const rows = store
         .sql(
           `SELECT s.*, f.path, f.lang, bm25(symbols_fts, 10.0, 6.0, 1.5, 2.5, 3.0, 0.8) AS bm FROM symbols_fts
            JOIN symbols s ON s.id = symbols_fts.rowid JOIN files f ON f.id = s.file_id
-           WHERE symbols_fts MATCH ? ORDER BY bm LIMIT 300`,
+           WHERE symbols_fts MATCH ? ORDER BY bm LIMIT ${RERANK.pool}`,
         )
         .all(match) as unknown as (Hit & { bm: number })[]
       add(rows, h => Math.max(0.05, -(h as Hit & { bm: number }).bm))
@@ -151,7 +330,33 @@ export function find(store: Store, root: string, q: string, opts: { limit?: numb
     }
   }
 
-  const hits = [...scored.values()].sort((a, b) => b.score - a.score).slice(0, limit)
+  // reorder (never filter) by how much of the question each definition covers and how well its name fits
+  if (qt.length > 1 && scored.size) {
+    const total = (store.sql('SELECT COUNT(*) AS n FROM symbols').get() as { n: number }).n || 1
+    const df = store.sql('SELECT COUNT(*) AS n FROM symbols_fts WHERE symbols_fts MATCH ?')
+    for (const t of qt) {
+      let n = 1
+      try {
+        n = (df.get(t.forms.map(ftsToken).join(' OR ')) as { n: number }).n
+      } catch {
+        /* a term the search syntax cannot take: count it as rare */
+      }
+      t.idf = t.weight * Math.log(1 + total / Math.max(1, n))
+    }
+    const textOf = store.sql('SELECT words, signature, path, doc, body FROM symbols_fts WHERE rowid = ?')
+    // only the best-scored candidates are read again; the rest count as covering nothing
+    for (const [i, h] of [...scored.values()].sort((a, b) => b.score - a.score).entries()) {
+      const x = i < RERANK.depth ? (textOf.get(h.id) as { words: string; signature: string; path: string; doc: string; body: string } | undefined) : undefined
+      if (!x) {
+        h.score *= Math.pow(RERANK.floor, RERANK.power)
+        continue
+      }
+      const text = wordText(`${x.words} ${x.signature} ${x.path} ${x.doc} ${x.body}`)
+      h.score *= Math.pow(RERANK.floor + coverage(qt, text), RERANK.power) * (1 + RERANK.nameFit * nameFit(qt, h.name))
+    }
+  }
+
+  const hits = distinctFirst([...scored.values()].sort((a, b) => b.score - a.score)).slice(0, limit)
   const head = notices(st)
   if (!hits.length) {
     return { text: [...head, `Map · no matches for "${q}". Try other words, a function or class name, or map_search for exact text.`].join('\n'), files: [] }
@@ -167,7 +372,8 @@ export function find(store: Store, root: string, q: string, opts: { limit?: numb
       `### ${i + 1}. ${h.qualified} · ${h.kind} · ${where(h)}`,
       l.callers.length ? `Called by: ${l.callers.join(', ')}` : '',
       l.calls.length ? `Calls: ${l.calls.join(', ')}` : '',
-      codeBlock(root, h, i < 3 ? LIMITS.codeLines : 6),
+      // the best match shows the most code; the others show their start (their line range says where to read on)
+      codeBlock(root, h, i === 0 ? LIMITS.codeLines : LIMITS.otherCodeLines),
     ]
       .filter(Boolean)
       .join('\n')

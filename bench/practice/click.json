@@ -1,0 +1,73 @@
+{
+  "repo": "click",
+  "note": "Practice (tuning) questions, written before any ranking change. Same shape as questions/click.json. concept = plain-English developer question; agent = terse keyword bag, near-miss identifier guess or qualified name, the way a coding agent searches.",
+  "questions": [
+    {
+      "id": "click-p1",
+      "kind": "concept",
+      "question": "How can I strip terminal colour escape codes out of a piece of text?",
+      "truth": [{ "file": "src/click/termui.py", "name": "unstyle", "line": 768, "end": 777 }]
+    },
+    {
+      "id": "click-p2",
+      "kind": "concept",
+      "question": "Where does click launch the user's preferred text editor on a temporary file?",
+      "truth": [
+        { "file": "src/click/_termui_impl.py", "name": "Editor.edit_files", "line": 711, "end": 739 },
+        { "file": "src/click/_termui_impl.py", "name": "Editor.edit", "line": 749, "end": 794 },
+        { "file": "src/click/termui.py", "name": "edit", "line": 848, "end": 920 }
+      ]
+    },
+    {
+      "id": "click-p3",
+      "kind": "concept",
+      "question": "Where does click turn words such as yes, on or 1 into a boolean?",
+      "truth": [
+        { "file": "src/click/types.py", "name": "BoolParamType.str_to_bool", "line": 827, "end": 839 },
+        { "file": "src/click/types.py", "name": "BoolParamType.convert", "line": 841, "end": 853 }
+      ]
+    },
+    {
+      "id": "click-p4",
+      "kind": "concept",
+      "question": "How does click figure out the program name to print in the usage line when it is started with python -m?",
+      "truth": [{ "file": "src/click/utils.py", "name": "_detect_program_name", "line": 546, "end": 598 }]
+    },
+    {
+      "id": "click-p5",
+      "kind": "concept",
+      "question": "When a number is out of bounds, where is it pulled back to the nearest allowed limit instead of failing?",
+      "truth": [{ "file": "src/click/types.py", "name": "_NumberRangeBase._clamp", "line": 671, "end": 686 }]
+    },
+    {
+      "id": "click-p6",
+      "kind": "agent",
+      "question": "split envvar value multiple",
+      "truth": [{ "file": "src/click/types.py", "name": "ParamType.split_envvar_value", "line": 205, "end": 213 }]
+    },
+    {
+      "id": "click-p7",
+      "kind": "agent",
+      "question": "expandArgs glob",
+      "truth": [{ "file": "src/click/utils.py", "name": "_expand_args", "line": 601, "end": 650 }]
+    },
+    {
+      "id": "click-p8",
+      "kind": "agent",
+      "question": "Choice.normalize()",
+      "truth": [{ "file": "src/click/types.py", "name": "Choice.normalize_choice", "line": 388, "end": 406 }]
+    },
+    {
+      "id": "click-p9",
+      "kind": "agent",
+      "question": "ctx invoke callback kwargs",
+      "truth": [{ "file": "src/click/core.py", "name": "Context.invoke", "line": 884, "end": 934 }]
+    },
+    {
+      "id": "click-p10",
+      "kind": "agent",
+      "question": "default_map lookup",
+      "truth": [{ "file": "src/click/core.py", "name": "Context.lookup_default", "line": 812, "end": 832 }]
+    }
+  ]
+}

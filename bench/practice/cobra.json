@@ -1,0 +1,81 @@
+{
+  "repo": "cobra",
+  "note": "Practice (tuning) questions, written before any ranking change. Same shape as questions/cobra.json. concept = plain-English developer question; agent = terse keyword bag, near-miss identifier guess or qualified name, the way a coding agent searches.",
+  "questions": [
+    {
+      "id": "cobra-p1",
+      "kind": "concept",
+      "question": "Where does cobra check that every flag marked as mandatory was actually passed?",
+      "truth": [{ "file": "command.go", "name": "ValidateRequiredFlags", "line": 1180, "end": 1201 }]
+    },
+    {
+      "id": "cobra-p2",
+      "kind": "concept",
+      "question": "How do I register my own helper functions so the usage and help templates can call them?",
+      "truth": [
+        { "file": "cobra.go", "name": "AddTemplateFunc", "line": 85, "end": 87 },
+        { "file": "cobra.go", "name": "AddTemplateFuncs", "line": 91, "end": 95 }
+      ]
+    },
+    {
+      "id": "cobra-p3",
+      "kind": "concept",
+      "question": "Where does cobra add the built-in help subcommand to a program?",
+      "truth": [{ "file": "command.go", "name": "InitDefaultHelpCmd", "line": 1263, "end": 1314 }]
+    },
+    {
+      "id": "cobra-p4",
+      "kind": "concept",
+      "question": "Where are the flags a subcommand receives from its parent commands collected?",
+      "truth": [
+        { "file": "command.go", "name": "InheritedFlags", "line": 1744, "end": 1766 },
+        { "file": "command.go", "name": "updateParentsPflags", "line": 1907, "end": 1923 }
+      ]
+    },
+    {
+      "id": "cobra-p5",
+      "kind": "concept",
+      "question": "Where is the completion script for the fish shell written out?",
+      "truth": [
+        { "file": "fish_completions.go", "name": "genFishComp", "line": 25, "end": 273 },
+        { "file": "fish_completions.go", "name": "GenFishCompletion", "line": 276, "end": 281 }
+      ]
+    },
+    {
+      "id": "cobra-p6",
+      "kind": "agent",
+      "question": "flag groups completion enforce",
+      "truth": [{ "file": "flag_groups.go", "name": "enforceFlagGroupsForCompletion", "line": 225, "end": 290 }]
+    },
+    {
+      "id": "cobra-p7",
+      "kind": "agent",
+      "question": "ExecuteCtx",
+      "truth": [
+        { "file": "command.go", "name": "ExecuteContext", "line": 1062, "end": 1065 },
+        { "file": "command.go", "name": "ExecuteContextC", "line": 1078, "end": 1081 }
+      ]
+    },
+    {
+      "id": "cobra-p8",
+      "kind": "agent",
+      "question": "args validator exact N",
+      "truth": [{ "file": "args.go", "name": "ExactArgs", "line": 107, "end": 114 }]
+    },
+    {
+      "id": "cobra-p9",
+      "kind": "agent",
+      "question": "gen rest docs tree",
+      "truth": [
+        { "file": "doc/rest_docs.go", "name": "GenReSTTree", "line": 138, "end": 141 },
+        { "file": "doc/rest_docs.go", "name": "GenReSTTreeCustom", "line": 145, "end": 170 }
+      ]
+    },
+    {
+      "id": "cobra-p10",
+      "kind": "agent",
+      "question": "cmd.Traverse()",
+      "truth": [{ "file": "command.go", "name": "Traverse", "line": 821, "end": 860 }]
+    }
+  ]
+}

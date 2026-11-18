@@ -1,0 +1,75 @@
+{
+  "repo": "ky",
+  "note": "Practice (tuning) questions, written before any ranking change. Same shape as questions/ky.json. concept = plain-English developer question; agent = terse keyword bag, near-miss identifier guess or qualified name, the way a coding agent searches.",
+  "questions": [
+    {
+      "id": "ky-p1",
+      "kind": "concept",
+      "question": "Where does ky stop reading a response body once it grows past the allowed number of bytes?",
+      "truth": [
+        { "file": "source/utils/body.ts", "name": "limitResponseSize", "line": 176, "end": 198 },
+        { "file": "source/core/Ky.ts", "name": "Ky.#limitResponseSize", "line": 1364, "end": 1367 }
+      ]
+    },
+    {
+      "id": "ky-p2",
+      "kind": "concept",
+      "question": "Where does ky sleep between attempts and wake up early if the user aborts?",
+      "truth": [{ "file": "source/utils/delay.ts", "name": "delay", "line": 9, "end": 29 }]
+    },
+    {
+      "id": "ky-p3",
+      "kind": "concept",
+      "question": "Where is the HTTP verb turned into upper case before the request is made?",
+      "truth": [{ "file": "source/utils/normalize.ts", "name": "normalizeRequestMethod", "line": 6, "end": 7 }]
+    },
+    {
+      "id": "ky-p4",
+      "kind": "concept",
+      "question": "Where does ky check parsed JSON against a schema the caller passed in?",
+      "truth": [{ "file": "source/core/Ky.ts", "name": "validateJsonWithSchema", "line": 329, "end": 346 }]
+    },
+    {
+      "id": "ky-p5",
+      "kind": "concept",
+      "question": "How does ky tell that a thrown TypeError came from a failed connection rather than from a bug?",
+      "truth": [{ "file": "source/utils/is-network-error.ts", "name": "isRawNetworkError", "line": 15, "end": 46 }]
+    },
+    {
+      "id": "ky-p6",
+      "kind": "agent",
+      "question": "searchParams append merge",
+      "truth": [
+        { "file": "source/utils/merge.ts", "name": "appendSearchParameters", "line": 273, "end": 337 },
+        { "file": "source/core/Ky.ts", "name": "applySearchParameters", "line": 280, "end": 309 }
+      ]
+    },
+    {
+      "id": "ky-p7",
+      "kind": "agent",
+      "question": "retry from error handler Ky",
+      "truth": [{ "file": "source/core/Ky.ts", "name": "Ky.#retryFromError", "line": 1125, "end": 1216 }]
+    },
+    {
+      "id": "ky-p8",
+      "kind": "agent",
+      "question": "run beforeRequest hooks",
+      "truth": [{ "file": "source/core/Ky.ts", "name": "Ky.#runBeforeRequestHooks", "line": 1041, "end": 1063 }]
+    },
+    {
+      "id": "ky-p9",
+      "kind": "agent",
+      "question": "normalizeRetryOpts()",
+      "truth": [{ "file": "source/utils/normalize.ts", "name": "normalizeRetryOptions", "line": 37, "end": 100 }]
+    },
+    {
+      "id": "ky-p10",
+      "kind": "agent",
+      "question": "totalTimeout remaining budget",
+      "truth": [
+        { "file": "source/core/Ky.ts", "name": "Ky.#getRemainingTotalTimeout", "line": 1282, "end": 1284 },
+        { "file": "source/core/Ky.ts", "name": "Ky.#getEffectiveTimeout", "line": 869, "end": 877 }
+      ]
+    }
+  ]
+}
