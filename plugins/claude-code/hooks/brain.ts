@@ -428,15 +428,27 @@ export function limitedNow(l: Limited, now: number): Family[] {
   return FAMILIES.filter(f => (l[f]?.until ?? 0) > now)
 }
 
+/** The account-wide windows: when one of these is full, every model is out. */
+const ACCOUNT_WINDOW = /^(five_hour|seven_day)$/
+
 /**
  * What a request refused for its usage limit means. When an account-wide window (5-hour, weekly) is full,
- * every model is out and no other one can help: null. Otherwise only the model that was asked for is out,
- * until its own window resets, or for LIMIT_RETRY_MS when no window says.
+ * every model is out and no other one can help: null. Otherwise only the model that was asked for is out:
+ * until its own window resets when that window is full, else for LIMIT_RETRY_MS (the readings may lag a
+ * refusal, so a short wait and a retry is safer than trusting a reset days away).
  */
 export function onLimitFailure(family: Family, windows: readonly WindowReading[], now: number): { until: number } | null {
-  if (windows.some(w => !windowFamily(w.kind) && w.pct >= 100)) return null
-  const own = windows.find(w => windowFamily(w.kind) === family && w.resetsAt !== null && w.resetsAt > now)
+  if (windows.some(w => ACCOUNT_WINDOW.test(w.kind) && w.pct >= 100)) return null
+  const own = windows.find(w => windowFamily(w.kind) === family && w.pct >= 100 && w.resetsAt !== null && w.resetsAt > now)
   return { until: own?.resetsAt ?? now + LIMIT_RETRY_MS }
+}
+
+/** A model that just answered is usable: whatever said it was out no longer holds. */
+export function answeredBy(l: Limited, family: Family | undefined): Limited {
+  if (!family || !l[family]) return l
+  const next: Limited = { ...l }
+  delete next[family]
+  return next
 }
 
 /** A per-model window at 100% puts that model out until it resets; once the window reads under 100% it is usable again. */

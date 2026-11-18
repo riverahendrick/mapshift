@@ -27,6 +27,7 @@ import {
   limitedNow,
   windowFamily,
   LIMIT_RETRY_MS,
+  answeredBy,
 } from './brain'
 import type { MapInfo } from '../types'
 import type { DecideInput } from './brain'
@@ -447,6 +448,14 @@ test('usage limits: a refused request puts only its model out, unless the whole 
   expect(limitedNow(l, reset + 1)).toEqual([])
   l = limitsFromWindows({ ...l, fable: { until: reset, source: 'failure' } }, [{ kind: 'seven_day_opus', pct: 20, resetsAt: reset }], NOW)
   expect(limitedNow(l, NOW)).toEqual(['fable'])
+  // a model window that is not full does not set a reset days away: the readings may lag the refusal
+  const week = NOW + 6 * 86_400_000
+  expect(onLimitFailure('opus', [{ kind: 'seven_day_opus', pct: 40, resetsAt: week }], NOW)).toEqual({ until: NOW + LIMIT_RETRY_MS })
+  // a full extra-usage spend window is not the account's model limit
+  expect(onLimitFailure('opus', [{ kind: 'spend_limit', pct: 100, resetsAt: week }], NOW)).toEqual({ until: NOW + LIMIT_RETRY_MS })
+  // a model that answers is usable again at once
+  expect(limitedNow(answeredBy(l, 'fable'), NOW)).toEqual([])
+  expect(answeredBy(l, undefined)).toBe(l)
 })
 
 test('limit alerts fire once when a line is crossed, not on every reading', async () => {

@@ -16,6 +16,7 @@ import {
   hitPct,
   limitedNow,
   limitsFromWindows,
+  answeredBy,
   maxEffort,
   onLimitFailure,
   standIn,
@@ -373,7 +374,7 @@ export const register: Register = on => {
     try {
       await syncSession($)
       const v = await $.session.version()
-      log(await $.clock.now(), { k: 'session', project: e.cwd, engine: v.version, mod: '0.1.2' })
+      log(await $.clock.now(), { k: 'session', project: e.cwd, engine: v.version, mod: '0.1.3' })
       await flushAudit($)
     } catch (err) {
       void logErr($, 'session.start audit', err)
@@ -829,9 +830,17 @@ export const register: Register = on => {
         $.ui.toast('Mapshift: your Claude usage limit is reached for every model. Work can continue after it resets.')
         return r
       }
-      limited = { ...limited, [lastSent]: { until: hit.until, source: 'failure' } }
       const cfg = await read($, cfgA)
-      const alt = standIn(lastSent, outNow(now), lastTier, cfg.allowFable || familyOf(appModel) === 'fable')
+      const fableOk = cfg.allowFable || familyOf(appModel) === 'fable'
+      if (!standIn(lastSent, [...outNow(now), lastSent], lastTier, fableOk)) {
+        // every model has now been refused: that is the account's limit, not a model's, so nothing is marked
+        limited = {}
+        log(now, { k: 'limited', family: lastSent, account: true })
+        $.ui.toast('Mapshift: every model was refused for its usage limit, so this is your account limit. Work can continue after it resets.')
+        return r
+      }
+      limited = { ...limited, [lastSent]: { until: hit.until, source: 'failure' } }
+      const alt = standIn(lastSent, outNow(now), lastTier, fableOk)
       log(now, { k: 'limited', family: lastSent, until: hit.until, standIn: alt?.family ?? null })
       await update($, healthA, h => ({ ...h, unavailable: outNow(now) }))
       $.ui.toast(
@@ -1080,6 +1089,7 @@ async function recordStep(
   await update($, stepsA, rows => [...rows, row].slice(-40))
   if (index === 0 || index % 5 === 0) await save($, 'steps', (await read($, stepsA)).slice(-40))
 
+  limited = answeredBy(limited, fam) // a model that answers is not at its limit, whatever was recorded before
   const wanted = tp.plan?.family
   const swapped = !!wanted && !!fam && wanted !== fam && tp.model !== '' && familyOf(tp.model) === wanted
   await update($, lastA, l => (l ? { ...l, answeredBy: usage.model, mismatch: swapped } : l))
