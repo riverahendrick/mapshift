@@ -14,6 +14,7 @@ ${bold('Get started')}
   mapshift dash                 Open the local dashboard in your browser  ${dim('(--port <n> · --no-open)')}
   mapshift ui                   The dashboard right here in the terminal  ${dim('(--once · --width <n> · --tab map)')}
   mapshift off | on             Pause Mapshift in every agent, or bring it back
+  mapshift code-mode on|off     Claude Code's experimental Code Mode, after checking it can run  ${dim('(status)')}
   mapshift update               Get the newest version now  ${dim('(--check: only look)')}
   mapshift auto-update on|off   Keep up to date by itself, every 3 days  ${dim('(on by default · status)')}
   mapshift uninstall            Take out everything setup added
@@ -196,6 +197,11 @@ async function main(argv: string[]): Promise<number> {
     } finally {
       a.releaseAutoUpdateLock()
     }
+  }
+
+  if (cmd === 'code-mode') {
+    const s = await import('../setup/setup.ts')
+    return s.runCodeMode({ action: sub === 'on' || sub === 'off' ? sub : 'status' })
   }
 
   if (cmd === 'auto-update') {

@@ -7,6 +7,7 @@ import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 import { AGENTS, agentById, claudeCommands, claudeUndo, type AgentDef } from '../agents/registry.ts'
 import { bad, bold, dim, good, header, warn } from '../cli/ui.ts'
+import { newer } from './update.ts'
 import { runtime, targets, tilde, which, type Env, type Runtime, type Targets } from './env.ts'
 import {
   applyPiece,
@@ -271,6 +272,115 @@ export function missingAgents(o: Pick<RunOptions, 'home' | 'env' | 'rt'> = {}): 
   const found = AGENTS.filter(a => a.id !== 'claude' && a.detect(c.t, c.env))
   const plan = execute(c, found.flatMap(a => a.pieces(c.t, c.rt)), prev?.state === 'on' ? prev.records : [], false)
   return found.filter(a => plan.outcomes.some(x => x.piece.agent === a.id && x.action === 'add')).map(a => ({ id: a.id, label: a.label }))
+}
+
+// ---- Claude Code's Code Mode: an experimental Claude Code feature in which Claude writes a short program that
+// makes several tool calls in one step. Mapshift only turns it on when asked, after checking it can run here.
+
+const CODE_MODE = 'CLAUDE_CODE_EXPERIMENTAL_CODE_MODE'
+/** The first Claude Code release with Code Mode. */
+export const CODE_MODE_MIN = '2.1.323'
+
+export type CodeModeCheck = { on: boolean; byMapshift: boolean; version: string | null; blockers: string[] }
+
+/**
+ * Whether Code Mode is on in the personal Claude Code settings, and what would stop it from running here.
+ * Reads only that settings file and `claude --version`; never a credential.
+ */
+export function checkCodeMode(o: Pick<RunOptions, 'home' | 'env'> & { version?: string | null } = {}): CodeModeCheck {
+  const c = context({ ...o, out: () => {} })
+  const env = c.env
+  const file = join(c.t.claude, 'settings.json')
+  let settings: { env?: Record<string, unknown>; apiKeyHelper?: unknown } = {}
+  try {
+    settings = JSON.parse(readText(file) ?? '{}') as typeof settings
+  } catch {
+    /* unreadable: treated as empty */
+  }
+  // run from inside a Claude Code session, the environment holds that session's own values (the Desktop app
+  // sets its own ANTHROPIC_BASE_URL, for one): then only the settings file speaks for the person
+  const fromEnv = (k: string) => (env.CLAUDECODE ? undefined : env[k])
+  const val = (k: string) => String(settings.env?.[k] ?? fromEnv(k) ?? '')
+  const version = o.version !== undefined ? o.version : claudeVersion(c)
+  const blockers: string[] = []
+  if (!version) blockers.push('Claude Code was not found on this computer')
+  else if (newer(CODE_MODE_MIN, version)) blockers.push(`Claude Code ${version} is too old: Code Mode needs ${CODE_MODE_MIN} or newer (run: claude update)`)
+  if (settings.apiKeyHelper) blockers.push('an API key helper is set, and Code Mode does not start with one')
+  if (['DISABLE_TELEMETRY', 'CLAUDE_CODE_ENABLE_TELEMETRY'].some(k => val(k) === '1') || val('OTEL_METRICS_EXPORTER') || val('OTEL_LOGS_EXPORTER')) blockers.push('telemetry export or DISABLE_TELEMETRY is set, and Code Mode does not start with either')
+  if (['CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_USE_FOUNDRY'].some(k => val(k) === '1') || val('ANTHROPIC_BASE_URL')) blockers.push('Claude Code goes through a cloud provider or a gateway here, and Code Mode needs a Claude subscription or Console account')
+  if (process.platform === 'win32' && !which('git', env)) blockers.push('Git for Windows is not installed, and Code Mode needs it on Windows')
+  const prev = loadHome(c.t)
+  const byMapshift = !!prev?.records.some(r => r.kind === 'json' && r.key?.join('.') === `env.${CODE_MODE}`)
+  return { on: val(CODE_MODE) === '1', byMapshift, version, blockers }
+}
+
+function claudeVersion(c: Ctx): string | null {
+  const exe = which('claude', c.env)
+  if (!exe) return null
+  try {
+    const out = execFileSync(exe, ['--version'], { cwd: homedir(), encoding: 'utf8', windowsHide: true, timeout: 20_000, stdio: ['ignore', 'pipe', 'ignore'], shell: process.platform === 'win32' && !/\.exe$/i.test(exe) })
+    return /(\d+\.\d+\.\d+)/.exec(out)?.[1] ?? null
+  } catch {
+    return null
+  }
+}
+
+const codeModePiece = (t: Targets): Piece => ({ agent: 'claude', label: 'Code Mode', path: join(t.claude, 'settings.json'), kind: 'json', key: ['env', CODE_MODE], value: '1' })
+
+/** `mapshift code-mode on|off|status`. On only after the checks pass; off takes out only what Mapshift added. */
+export async function runCodeMode(o: RunOptions & { action: string; version?: string | null }): Promise<number> {
+  const c = context(o)
+  const st = checkCodeMode({ ...o, version: o.version })
+  c.out(header('Code Mode in Claude Code'))
+  const what = `  ${dim('Claude writes a short program that makes several tool calls in one step: fewer round trips, less output to read.')}\n  ${dim('Experimental: terminal sessions only (not the Desktop app, VS Code or claude -p), and a Code Mode chat resumes only with it on.')}`
+  if (o.action === 'on') {
+    if (st.on) {
+      c.out(`  ${good('✓')} Already on${st.byMapshift ? '' : ' (you turned it on yourself)'}. New terminal sessions use it.\n`)
+      return 0
+    }
+    if (st.blockers.length) {
+      c.out(`  ${bad('✗')} Not turned on: it would not run here.`)
+      for (const b of st.blockers) c.out(`    - ${b}`)
+      c.out('')
+      return 1
+    }
+    const prev = loadHome(c.t)
+    const res = execute(c, [codeModePiece(c.t)], prev?.records ?? [], true)
+    const skipped = res.outcomes.find(x => x.action === 'skip')
+    if (skipped) {
+      c.out(`  ${warn('!')} ${skipped.reason ?? 'Left as is.'}\n`)
+      return 1
+    }
+    saveHome(c.t, {
+      home: c.t.home,
+      state: prev?.state ?? 'on',
+      agents: prev?.agents ?? [],
+      records: [...res.records.values()],
+      claude: prev?.claude ?? false,
+      updatedAt: new Date().toISOString(),
+    })
+    c.out(`  ${good('✓')} Code Mode is on for new Claude Code terminal sessions. Claude Code asks you to confirm it once, then restarts.`)
+    c.out(`${what}\n  ${dim('Turn it off:')} mapshift code-mode off\n`)
+    return 0
+  }
+  if (o.action === 'off') {
+    const prev = loadHome(c.t)
+    const mine = prev?.records.filter(r => r.kind === 'json' && r.key?.join('.') === `env.${CODE_MODE}`) ?? []
+    if (!mine.length) {
+      c.out(st.on ? `  ${warn('!')} Code Mode was turned on outside Mapshift, so Mapshift left it alone. Remove ${bold(CODE_MODE)} from ~/.claude/settings.json to turn it off.\n` : `  ${good('✓')} Code Mode is already off.\n`)
+      return 0
+    }
+    removeAll(c, mine)
+    saveHome(c.t, { ...prev!, records: prev!.records.filter(r => !mine.includes(r)), updatedAt: new Date().toISOString() })
+    c.out(`  ${good('✓')} Code Mode is off for new Claude Code sessions.\n`)
+    return 0
+  }
+  c.out(`  ${dim('State')}    ${st.on ? good('on') : 'off'}${st.on && !st.byMapshift ? dim(' (turned on outside Mapshift)') : ''}`)
+  c.out(`  ${dim('Claude')}   ${st.version ?? 'not found'}`)
+  if (st.blockers.length) for (const b of st.blockers) c.out(`  ${warn('!')} ${b}`)
+  else if (!st.on) c.out(`  ${good('✓')} It can run here: ${bold('mapshift code-mode on')}`)
+  c.out(`${what}\n`)
+  return 0
 }
 
 /** `mapshift setup --check`: which agents on this computer still need Mapshift, as words or as JSON. */

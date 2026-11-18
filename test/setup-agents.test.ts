@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import { AGENTS } from '../src/agents/registry.ts'
 import { targets, type Targets } from '../src/setup/env.ts'
 import { loadHome } from '../src/setup/pieces.ts'
-import { missingAgents, runOff, runOn, runSetup, runUninstall, type RunOptions } from '../src/setup/setup.ts'
+import { checkCodeMode, missingAgents, runCodeMode, runOff, runOn, runSetup, runUninstall, type RunOptions } from '../src/setup/setup.ts'
 
 // Every test works in a throwaway home; no real agent folder is read or written.
 function sandbox() {
@@ -560,6 +560,43 @@ test('setup --check: agents found without Mapshift are listed, then none after s
     assert.deepEqual(ids(), [])
     await runOff(s.opts())
     assert.deepEqual(ids(), [], 'paused on purpose: nothing to point out')
+  } finally {
+    s.cleanup()
+  }
+})
+test('Code Mode: turned on only where it can run, taken out again by off and by uninstall, never touched when set by hand', async () => {
+  const s = sandbox()
+  try {
+    const settings = join(s.home, '.claude', 'settings.json')
+    s.put('.claude/settings.json', '{\n  "env": {\n    "MCP_TIMEOUT": "30000"\n  }\n}\n')
+    const before = readFileSync(settings, 'utf8')
+    // the real PATH, so Git for Windows (which Code Mode needs there) is found as on a real computer
+    const env = { ...s.env, CLAUDECODE: '', PATH: process.env.PATH ?? '' }
+    // too old: refused, nothing written
+    assert.equal(await runCodeMode({ ...s.opts(), env, action: 'on', version: '2.1.300' }), 1)
+    assert.equal(readFileSync(settings, 'utf8'), before)
+    assert.ok(s.lines.join('\n').includes('too old'))
+    // new enough: on, the person's other settings kept
+    assert.equal(await runCodeMode({ ...s.opts(), env, action: 'on', version: '2.1.330' }), 0)
+    const on = JSON.parse(readFileSync(settings, 'utf8'))
+    assert.equal(on.env.CLAUDE_CODE_EXPERIMENTAL_CODE_MODE, '1')
+    assert.equal(on.env.MCP_TIMEOUT, '30000')
+    assert.equal(checkCodeMode({ home: s.home, env, version: '2.1.330' }).byMapshift, true)
+    // off gives back the file exactly; uninstall would too
+    assert.equal(await runCodeMode({ ...s.opts(), env, action: 'off', version: '2.1.330' }), 0)
+    assert.equal(readFileSync(settings, 'utf8'), before)
+    await runCodeMode({ ...s.opts(), env, action: 'on', version: '2.1.330' })
+    await runUninstall(s.opts({ yes: true }))
+    assert.equal(readFileSync(settings, 'utf8'), before, 'uninstall takes it out too')
+    // an API key helper blocks it; Code Mode the person set by hand is left alone by off
+    s.put('.claude/settings.json', '{\n  "apiKeyHelper": "x"\n}\n')
+    assert.ok(checkCodeMode({ home: s.home, env, version: '2.1.330' }).blockers.some(b => b.includes('API key helper')))
+    s.put('.claude/settings.json', '{\n  "env": {\n    "CLAUDE_CODE_EXPERIMENTAL_CODE_MODE": "1"\n  }\n}\n')
+    const mine = readFileSync(settings, 'utf8')
+    await runCodeMode({ ...s.opts(), env, action: 'off', version: '2.1.330' })
+    assert.equal(readFileSync(settings, 'utf8'), mine)
+    // inside a Claude Code session, that session's own gateway address is not the person's setting
+    assert.equal(checkCodeMode({ home: s.home, env: { ...env, CLAUDECODE: '1', ANTHROPIC_BASE_URL: 'http://127.0.0.1:1' }, version: '2.1.330' }).blockers.length, 0)
   } finally {
     s.cleanup()
   }
