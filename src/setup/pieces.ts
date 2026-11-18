@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { foreignTomlLines, outside, removeBlock, upsertBlock, yamlBlockForeign, type Fence } from './blocks.ts'
 import type { Targets } from './env.ts'
@@ -30,7 +30,7 @@ export const MANAGED = 'mapshift:managed'
 /** One change setup makes in one file. */
 export type Piece = { agent: AgentId; label: string; path: string } & (
   | { kind: 'block'; format: 'md' | 'toml' | 'yaml'; fence: Fence; lines: string[]; own?: string[]; guard?: string; conflicts?: { re: RegExp; why: string }[] }
-  | { kind: 'json'; key: string[]; value: unknown; replaceIf?: (old: unknown) => boolean }
+  | { kind: 'json'; key: string[]; value: unknown; replaceIf?: (old: unknown) => boolean; refuseIf?: { test: (whole: unknown) => boolean; why: string } }
   | { kind: 'file'; content: string }
 )
 
@@ -87,6 +87,8 @@ export function applyPiece(p: Piece, text: string | null, prev: Rec | undefined)
     if (text !== null && text.trim() !== '' && !isStrictJson(text)) {
       return { text, action: 'skip', reason: 'this file is not plain JSON (it may hold comments), so Mapshift left it alone' }
     }
+    // a layout the agent version on this computer may not read the way the entry is written: left alone
+    if (text !== null && text.trim() && p.refuseIf?.test(getAt(text, []))) return { text, action: 'skip', reason: p.refuseIf.why }
     const cur = text && text.trim() ? getAt(text, p.key) : undefined
     let replaced = false
     if (cur !== undefined && !prev) {
@@ -136,14 +138,37 @@ export function readText(path: string): string | null {
   }
 }
 
-/** Writes through a temporary file and a rename, so a crash never leaves half a config file. */
+/**
+ * Writes through a temporary file and a rename, so a crash never leaves half a config file. A config that is
+ * a link (a dotfiles manager) is written where it points, so the link stays a link, and an existing file keeps
+ * its permissions (a config holding a token stays readable by its owner only).
+ */
 export function writeText(path: string, text: string): void {
-  const tmp = `${path}.mapshift-tmp`
-  writeFileSync(tmp, text)
+  let target = path
   try {
-    renameSync(tmp, path)
+    if (lstatSync(path).isSymbolicLink()) target = realpathSync(path)
   } catch {
-    writeFileSync(path, text) // a file held open by a running program on Windows
+    /* a new file */
+  }
+  let mode: number | undefined
+  try {
+    mode = statSync(target).mode & 0o777
+  } catch {
+    /* a new file: the usual permissions */
+  }
+  const tmp = `${target}.mapshift-tmp`
+  writeFileSync(tmp, text, mode === undefined ? undefined : { mode })
+  if (mode !== undefined) {
+    try {
+      chmodSync(tmp, mode) // the mode given when writing is narrowed by the process umask; this sets it exactly
+    } catch {
+      /* a file system without modes */
+    }
+  }
+  try {
+    renameSync(tmp, target)
+  } catch {
+    writeFileSync(target, text) // a file held open by a running program on Windows
     try {
       unlinkSync(tmp)
     } catch {

@@ -54,14 +54,27 @@ function tomlMcp(agent: AgentId, path: string, rt: Runtime): Piece {
 const stdio = (rt: Runtime) => ({ command: rt.node, args: [rt.script, 'mcp'] })
 
 /** A JSON MCP server entry, for agents whose settings are JSON (Gemini CLI, Antigravity, Cursor and most others). */
-const jsonMcp = (agent: AgentId, path: string, rt: Runtime, o: { key?: string[]; value?: unknown } = {}): Piece => ({
+const jsonMcp = (agent: AgentId, path: string, rt: Runtime, o: { key?: string[]; value?: unknown; refuseIf?: { test: (whole: unknown) => boolean; why: string } } = {}): Piece => ({
   agent,
   label: 'MCP server',
   path,
   kind: 'json',
   key: o.key ?? ['mcpServers', 'mapshift'],
   value: o.value ?? stdio(rt),
+  ...(o.refuseIf ? { refuseIf: o.refuseIf } : {}),
 })
+
+/**
+ * opencode 1 keeps each server directly under `mcp` (`mcp.<name>`); version 2 keeps them under `mcp.servers`.
+ * A config already in the old layout would read a `servers` entry as a broken server, so it is left alone.
+ */
+const opencodeOldLayout = {
+  test: (whole: unknown) => {
+    const mcp = whole && typeof whole === 'object' ? (whole as Record<string, unknown>).mcp : undefined
+    return !!mcp && typeof mcp === 'object' && Object.keys(mcp).some(k => k !== 'servers')
+  },
+  why: 'this opencode config keeps servers directly under "mcp" (opencode 1), so Mapshift left it alone. Update opencode, or add the server by hand',
+}
 
 /** The map advice, as a marked block inside the agent's own instructions file. */
 const mdRules = (agent: AgentId, path: string): Piece => ({
@@ -210,7 +223,7 @@ export const AGENTS: AgentDef[] = [
     beta: true,
     detect: (t, env) => existsSync(t.opencode) || !!which('opencode', env),
     pieces: (t, rt) => [
-      jsonMcp('opencode', opencodeConfig(t), rt, { key: ['mcp', 'servers', 'mapshift'], value: { type: 'local', command: [rt.node, rt.script, 'mcp'] } }),
+      jsonMcp('opencode', opencodeConfig(t), rt, { key: ['mcp', 'servers', 'mapshift'], value: { type: 'local', command: [rt.node, rt.script, 'mcp'] }, refuseIf: opencodeOldLayout }),
       mdRules('opencode', join(t.opencode, 'AGENTS.md')),
     ],
     next: 'Beta: restart opencode (version 2 or newer, which keeps servers under "mcp.servers"). A config file with comments is left alone: add the server by hand then.',

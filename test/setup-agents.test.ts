@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
@@ -450,6 +450,62 @@ test('opencode: an existing opencode.jsonc is used before opencode.json, and a n
     assert.equal(existsSync(join(s.home, '.config/opencode/opencode.jsonc')), false)
     await runUninstall(s.opts({ yes: true }))
     assert.equal(s.read('.config/opencode/opencode.json'), '{}\n')
+  } finally {
+    s.cleanup()
+  }
+})
+
+test('opencode: a config in the old layout (servers directly under "mcp") is left alone and said so', async () => {
+  const s = sandbox()
+  try {
+    const old = '{\n  "mcp": {\n    "mine": { "type": "local", "command": ["m"] }\n  }\n}\n'
+    s.put('.config/opencode/opencode.json', old)
+    await runSetup(s.opts({ agents: 'opencode', yes: true }))
+    assert.equal(s.read('.config/opencode/opencode.json'), old)
+    assert.ok(s.lines.join('\n').includes('opencode 1'))
+  } finally {
+    s.cleanup()
+  }
+})
+
+test('a rewritten config keeps its permissions, and a linked config stays a link', async () => {
+  const s = sandbox()
+  try {
+    const rel = '.codeium/windsurf/mcp_config.json'
+    s.put(rel, '{}\n')
+    const file = join(s.home, rel)
+    if (process.platform !== 'win32') chmodSync(file, 0o600)
+    const before = statSync(file).mode & 0o777
+    await runSetup(s.opts({ agents: 'windsurf', yes: true }))
+    assert.ok(JSON.parse(s.read(rel)!).mcpServers.mapshift)
+    assert.equal(statSync(file).mode & 0o777, before, 'the same permissions')
+
+    // a config kept elsewhere and linked into place (a dotfiles manager)
+    const real = join(s.base, 'dotfiles', 'mcp_config.json')
+    mkdirSync(dirname(real), { recursive: true })
+    writeFileSync(real, '{}\n')
+    rmSync(file)
+    try {
+      symlinkSync(real, file)
+    } catch {
+      return // this system does not let a normal user make links
+    }
+    await runSetup(s.opts({ agents: 'windsurf', yes: true }))
+    assert.ok(lstatSync(file).isSymbolicLink(), 'still a link')
+    assert.ok(JSON.parse(readFileSync(real, 'utf8')).mcpServers.mapshift, 'written where the link points')
+  } finally {
+    s.cleanup()
+  }
+})
+
+test('Claude Desktop from the Microsoft Store: its package folder is used when it exists', () => {
+  const s = sandbox()
+  try {
+    const store = join(s.home, 'AppData', 'Local', 'Packages', 'Claude_pzs8sxrjxfjjc', 'LocalCache', 'Roaming', 'Claude')
+    assert.notEqual(targets({ home: s.home, env: s.env, platform: 'win32' }).claudeDesktop, store)
+    mkdirSync(store, { recursive: true })
+    assert.equal(targets({ home: s.home, env: s.env, platform: 'win32' }).claudeDesktop, store)
+    assert.notEqual(targets({ home: s.home, env: s.env, platform: 'darwin' }).claudeDesktop, store, 'only on Windows')
   } finally {
     s.cleanup()
   }

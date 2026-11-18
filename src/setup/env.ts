@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -72,6 +72,8 @@ export function targets(o: { home?: string; env?: Env; platform?: NodeJS.Platfor
     platform === 'win32' && !existsSync(join(home, '.hermes', 'config.yaml')) && existsSync(join(localApp, 'hermes', 'config.yaml'))
       ? join(localApp, 'hermes')
       : join(home, '.hermes')
+  // the Microsoft Store build of Claude Desktop reads its config inside its package folder, not %APPDATA%\Claude
+  const claudeStore = platform === 'win32' ? storeClaudeFolder(localApp) : null
   return {
     home,
     explicit,
@@ -91,9 +93,24 @@ export function targets(o: { home?: string; env?: Env; platform?: NodeJS.Platfor
     opencode: join(xdg, 'opencode'),
     hermes: fromEnv('HERMES_HOME', hermesDefault),
     vscode: join(apps, 'Code', 'User'),
-    claudeDesktop: join(apps, 'Claude'),
+    claudeDesktop: claudeStore ?? join(apps, 'Claude'),
     mapshift: custom ? resolve(custom) : join(home, '.mapshift'),
   }
+}
+
+/** Claude Desktop's config folder inside its Microsoft Store package (`Packages\Claude_<id>\LocalCache\Roaming\Claude`), or null. */
+export function storeClaudeFolder(localApp: string): string | null {
+  let names: string[]
+  try {
+    names = readdirSync(join(localApp, 'Packages')).filter(n => /^Claude_/i.test(n))
+  } catch {
+    return null
+  }
+  for (const n of names) {
+    const dir = join(localApp, 'Packages', n, 'LocalCache', 'Roaming', 'Claude')
+    if (existsSync(dir)) return dir
+  }
+  return null
 }
 
 /**
