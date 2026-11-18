@@ -128,9 +128,11 @@ export const AGENTS: AgentDef[] = [
     pieces: (t, rt) => [
       tomlMcp('codex', join(t.codex, 'config.toml'), rt),
       { agent: 'codex', label: 'Instructions', path: join(t.codex, 'AGENTS.md'), kind: 'block', format: 'md', fence: mdFence(), lines: instructionLines({ helpers: true }) },
+      // Codex 0.170 and newer run skills ($mapshift); older versions read custom prompts (/prompts:mapshift)
+      { agent: 'codex', label: '$mapshift skill', path: join(t.codex, 'skills', 'mapshift', 'SKILL.md'), kind: 'file', content: skill(rt, 'codex') },
       { agent: 'codex', label: '/prompts:mapshift', path: join(t.codex, 'prompts', 'mapshift.md'), kind: 'file', content: codexPrompt(rt) },
     ],
-    next: 'Restart Codex (CLI or IDE). Type /prompts:mapshift for the report; /mcp lists "mapshift".',
+    next: 'Restart Codex (CLI or IDE). Type $mapshift for the report (older Codex: /prompts:mapshift); /mcp lists "mapshift".',
   },
   {
     id: 'gemini',

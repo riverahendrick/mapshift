@@ -46,11 +46,11 @@ export function geminiCommand(rt: Runtime): string {
 }
 
 /** A SKILL.md that shows up as `/mapshift`. Cursor has no global rules file, so its skill also carries the map advice. */
-export function skill(rt: Runtime, agent: 'agy' | 'grok' | 'cursor'): string {
+export function skill(rt: Runtime, agent: 'agy' | 'grok' | 'cursor' | 'codex'): string {
   const front = [
     '---',
     'name: mapshift',
-    `description: ${DESCRIPTION}. Use when the user types /mapshift or asks how Mapshift is doing${agent === 'cursor' ? ', and when looking for code: use the mapshift map tools (map_find, map_file, map_trace) before grepping or reading files' : ''}.`,
+    `description: ${DESCRIPTION}. Use when the user types ${agent === 'codex' ? '$mapshift' : '/mapshift'} or asks how Mapshift is doing${agent === 'cursor' ? ', and when looking for code: use the mapshift map tools (map_find, map_file, map_trace) before grepping or reading files' : ''}.`,
     ...(agent === 'grok' ? ['user-invocable: true'] : []),
     '---',
   ]

@@ -73,7 +73,7 @@ In the desktop app, click **+** next to the prompt box, then **Plugins**, **Add 
 | Agent | 🗺️ Map tools | 🔀 Model routing | 📊 Dashboard |
 |---|---|---|---|
 | **Claude Code** | ✅ | ✅ Automatic, every request | ✅ Panel beside the chat, plus a status band |
-| **Codex** (CLI and IDE) | ✅ | 💡 Advice | `/prompts:mapshift` in the chat (with your 5-hour and weekly limits), and the web dashboard |
+| **Codex** (CLI and IDE) | ✅ | 💡 Advice | `$mapshift` in the chat (with your 5-hour and weekly limits; older Codex: `/prompts:mapshift`), and the terminal and web dashboards |
 | **Gemini CLI** | ✅ | 💡 Advice | `/mapshift` in the chat, and the web dashboard |
 | **Antigravity** (`agy`) | ✅ | 💡 Advice | ✅ Status line, `/mapshift`, and the web dashboard |
 | **Grok CLI** | ✅ | 💡 Advice | ✅ Status line, `/mapshift`, and the web dashboard |
