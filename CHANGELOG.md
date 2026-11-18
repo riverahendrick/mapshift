@@ -8,7 +8,7 @@
 - 🗺️ The map works on its own: switching model routing off no longer stops it, and `/mapshift map on|off` controls the starting points separately.
 - 🌐 The web dashboard shows Claude Code limits and today's cost next to Codex, and writes your home folder as `~`.
 - 💬 Friendlier terminal answers and clearer errors, for example when `--project` names a folder that does not exist.
-- 📏 A benchmark against Graft on questions written before any tuning, in [bench/README.md](bench/README.md).
+- 📏 A benchmark against Graft on a separate set of questions never used for tuning, in [bench/README.md](bench/README.md).
 
 ## 0.1.1 (2026-11-17)
 

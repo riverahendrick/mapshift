@@ -179,18 +179,18 @@ Two other open-source tools give coding agents a code map: [Trail-code](https://
 | Background process | ✅ None | ✅ None | A daemon per project |
 | Picks the model per request | ✅ Claude Code: automatic. Others: advice | ❌ | ❌ |
 | Dashboards | ✅ Claude Code panel, terminal, web | Status line, `trail status`, graph viewer | Graph viewer (hidden behind a setting) |
-| Token savings shown | ✅ Measured: credited only when the agent did not open the files anyway | Estimated from whole-file sizes | Not tracked (a benchmark in the README) |
+| Token savings shown | ✅ Whole-file sizes, credited only if the agent did not open those files anyway (Claude Code); an upper bound elsewhere | Whole-file sizes | Not tracked (a benchmark in the README) |
 | Usage limits and cost | ✅ 5-hour and weekly limits, cost with and without | $ saved in the status line | ❌ |
 | Map tools for agents | 5 | 6 | 8 (1 shown by default) |
-| Languages | 20 | 28 | 32 grammars, 41 listed |
+| Languages | 18, plus Vue and Svelte | 28, plus Vue, Svelte and Astro | 32 grammars, 41 listed |
 | Agents it sets up | 6 | 13 | 20 |
-| **Measured:** right code first, 64 blind questions | **36 (56%)** | 27 (42%) | not measured |
+| **Measured:** right code first, 64 held-out questions | **36 (56%)** | 27 (42%) | not measured |
 | **Measured:** right code in the top 3 | **45 (70%)** | 33 (52%) | not measured |
 | **Measured:** median answer size | **398 tokens** | 630 tokens | not measured |
-| **Measured:** median time per lookup | **0.44 s** | 1.8 s | not measured |
+| **Measured:** median time per command-line lookup, start-up included | **0.44 s** (0.30 s idle) | 1.8 s (1.16 s idle) | not measured |
 | **Measured:** index size, four projects | **1.0 to 2.9 MB** | 2.1 to 7.2 MB | not measured |
 
-The measured rows come from a benchmark against Graft 0.29.0 on four public projects in four languages: axios (JavaScript), httpx (Python), chi (Go) and serde_json (Rust). The 64 questions and their answers were written before the run and never used to tune Mapshift. They mix how a developer asks, how an agent searches, exact names, and "who calls this". Graft found the right *file* about as often (56 against 57). In six real agent runs (Claude Code, Sonnet), both tools led to 6 correct answers out of 6; with Mapshift the agent made fewer tool calls and cost $0.021 per task on average, against $0.027. Every question, answer, loss and caveat is in [bench/README.md](bench/README.md), with the commands to run it yourself.
+The measured rows come from a benchmark against Graft 0.29.0 on four public projects in four languages: axios (JavaScript), httpx (Python), chi (Go) and serde_json (Rust). The 64 questions and their answers were written apart from the questions Mapshift was tuned on, and were never used for tuning. Eight of them were tried by hand in both tools while the scoring rule was being written; no question or answer changed afterwards. They mix how a developer asks, how an agent searches, exact names, and "who calls this". Lookup times were measured on a busy machine; the idle figures are from a re-run on one project. Graft found the right *file* about as often (56 against 57). In six real agent runs (Claude Code, Sonnet), both tools led to 6 correct answers out of 6; with Mapshift the agent made fewer tool calls and cost $0.021 per task on average, against $0.027. Every question, answer, loss and caveat is in [bench/README.md](bench/README.md), with the commands to run it yourself.
 
 **Where they are ahead:** CodeGraph covers more languages and agents, detects web framework routes and finds dead code and import cycles. Trail-code shares team learnings through the repository, draws the code graph, posts a change's blast radius on pull requests, and can add exact call links from language servers. If you need one of those, use them; Mapshift's tools work alongside either.
 
