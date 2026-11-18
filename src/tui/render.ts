@@ -391,7 +391,7 @@ function helpTab(st: Style, W: number): string[] {
       st,
       [
         { title: '🔑 Keys', body: keys.map(([k, v]) => `${st.fg('teal', pad(k, 15), { bold: true })} ${v}`) },
-        { title: '🔒 Privacy', body: ['Everything here is read on this computer.', st.dim('Nothing is sent anywhere.')] },
+        { title: '🔒 Privacy', body: ['Everything here is read on this computer.', st.dim('Nothing about you or your code is sent anywhere.')] },
       ],
       W,
     ),

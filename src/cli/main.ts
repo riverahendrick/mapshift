@@ -14,7 +14,8 @@ ${bold('Get started')}
   mapshift dash                 Open the local dashboard in your browser  ${dim('(--port <n> · --no-open)')}
   mapshift ui                   The dashboard right here in the terminal  ${dim('(--once · --width <n> · --tab map)')}
   mapshift off | on             Pause Mapshift in every agent, or bring it back
-  mapshift update               Get the newest version  ${dim('(--check: only look)')}
+  mapshift update               Get the newest version now  ${dim('(--check: only look)')}
+  mapshift auto-update on|off   Keep up to date by itself, every 3 days  ${dim('(on by default · status)')}
   mapshift uninstall            Take out everything setup added
 
 ${bold('The map')}
@@ -36,7 +37,7 @@ ${bold('Options')}
   -v, --version                 Show the version
   -h, --help                    Show this help
 
-${dim('Everything stays on this computer. Nothing is sent anywhere.')}
+${dim('Your code and your usage stay on this computer. The only request out is the version check for updates.')}
 `
 
 async function main(argv: string[]): Promise<number> {
@@ -67,6 +68,7 @@ async function main(argv: string[]): Promise<number> {
       port: { type: 'string' },
       'no-open': { type: 'boolean' },
       check: { type: 'boolean' },
+      auto: { type: 'boolean' },
       once: { type: 'boolean' },
       width: { type: 'string' },
       tab: { type: 'string' },
@@ -177,7 +179,40 @@ async function main(argv: string[]): Promise<number> {
 
   if (cmd === 'update') {
     const { runUpdate } = await import('../setup/update.ts')
-    return runUpdate({ current: VERSION, check: !!values.check })
+    if (!values.auto) return runUpdate({ current: VERSION, check: !!values.check })
+    // the background run started by the tool server: nothing on screen, every line in the update log
+    const a = await import('../setup/autoupdate.ts')
+    const lines: string[] = []
+    try {
+      const code = await runUpdate({ current: VERSION, out: s => lines.push(s) })
+      // the heading is for a screen; the log and the status keep only what happened
+      const said = lines
+        .flatMap(s => s.split('\n'))
+        .map(s => s.replace(/\x1b\[[\d;]*m/g, '').trim())
+        .filter(s => s && !/^◆/.test(s))
+      for (const l of said) a.logUpdate(l)
+      a.writeAutoUpdate({ ...a.readAutoUpdate(), lastCheck: new Date().toISOString(), lastResult: said.join(' ').replace(/\s+/g, ' ').slice(0, 300) })
+      return code
+    } finally {
+      a.releaseAutoUpdateLock()
+    }
+  }
+
+  if (cmd === 'auto-update') {
+    const a = await import('../setup/autoupdate.ts')
+    const st = a.readAutoUpdate()
+    if (sub === 'on' || sub === 'off') {
+      a.writeAutoUpdate({ ...st, enabled: sub === 'on' })
+      console.log(sub === 'on' ? `${good('✓')} Mapshift keeps itself up to date again (it checks every 3 days).` : `${good('✓')} Automatic updates are off. ${bold('mapshift update')} still updates by hand.`)
+      return 0
+    }
+    console.log(header('Automatic updates'))
+    console.log(`  ${dim('State')}       ${st.enabled ? good('on') : warn('off')}${process.env.MAPSHIFT_AUTO_UPDATE === '0' ? dim(' (paused by MAPSHIFT_AUTO_UPDATE=0)') : ''}`)
+    console.log(`  ${dim('Last check')}  ${st.lastCheck ? ago(Date.parse(st.lastCheck)) : 'not yet'}`)
+    if (st.lastResult) console.log(`  ${dim('Result')}      ${st.lastResult}`)
+    console.log(`\n  ${dim('Every 3 days, when an agent starts Mapshift, it asks npm for the newest version and installs it.')}`)
+    console.log(`  ${dim(st.enabled ? 'Turn it off:' : 'Turn it on:')} ${bold(st.enabled ? 'mapshift auto-update off' : 'mapshift auto-update on')}\n`)
+    return 0
   }
 
   if (cmd === 'report') return report(opt('agent'), opt('project'), opt('home'))
@@ -187,6 +222,13 @@ async function main(argv: string[]): Promise<number> {
   const root = findRepoRoot(opt('project') ?? process.cwd())
 
   if (cmd === 'mcp') {
+    // every few days, a quiet update in the background (see autoupdate.ts); it never delays the tools
+    try {
+      const { builtEntry } = await import('../setup/env.ts')
+      ;(await import('../setup/autoupdate.ts')).maybeAutoUpdate({ script: builtEntry() })
+    } catch {
+      /* never in the way of the tools */
+    }
     await indexer()
     const { runMcp } = await import('../mcp/server.ts')
     await runMcp()

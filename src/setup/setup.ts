@@ -254,7 +254,8 @@ export async function runSetup(o: RunOptions): Promise<number> {
   c.out(`\n${bold('Next steps')}`)
   const w = Math.max(...agents.map(a => a.label.length))
   for (const a of agents) c.out(`  ${a.label.padEnd(w)}  ${a.next}`)
-  c.out(`\n  ${dim('Pause it:')} mapshift off   ${dim('Resume:')} mapshift on   ${dim('Remove:')} mapshift uninstall\n`)
+  c.out(`\n  ${dim('Pause it:')} mapshift off   ${dim('Resume:')} mapshift on   ${dim('Remove:')} mapshift uninstall`)
+  c.out(`  ${dim('Mapshift keeps itself up to date: every 3 days it checks npm for a new version. Turn that off:')} mapshift auto-update off\n`)
   return 0
 }
 

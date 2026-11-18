@@ -2,6 +2,7 @@
 
 ## 0.1.4 (2026-11-18)
 
+- 🔄 Mapshift keeps itself up to date: every 3 days, when an agent starts it, it checks npm for a new version in the background and installs it, along with the Claude Code add-on. `mapshift auto-update off` turns it off, and `mapshift auto-update status` shows the last check. The request carries nothing about you or your code.
 - 🔍 `mapshift setup --check` lists the coding agents on the computer that don't have Mapshift yet; `mapshift update` points them out too, and running `mapshift setup` again adds it only where it is missing.
 - 🤝 In Claude Code, `/mapshift setup` adds Mapshift to the other coding agents on the computer, and the add-on says once a day when it finds one without it.
 - 🧩 Codex 0.170 and newer get a `$mapshift` skill, since they no longer read custom prompts (older Codex keeps `/prompts:mapshift`).

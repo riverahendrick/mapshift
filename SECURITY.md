@@ -10,8 +10,10 @@ Please report security problems privately through GitHub: open the repository's 
 
 ## What Mapshift promises
 
-- No network calls of its own: no telemetry, no background update checks, nothing sent anywhere. The one
-  exception is `mapshift update`, run by you, which asks npm for the newest version.
+- No telemetry, and nothing about you or your code is ever sent anywhere. The one request Mapshift makes is
+  asking npm for its newest version and installing it: every 3 days in the background (unless turned off with
+  `mapshift auto-update off`), or when you run `mapshift update`. Updates come only from the npm registry, and
+  a development checkout never updates itself.
 - Never reads, prints or copies login or credential files.
 - Never starts a program from inside a project folder, and never follows links out of a project.
 - A project's own git settings cannot make Mapshift run anything.

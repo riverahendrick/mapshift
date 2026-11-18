@@ -1,6 +1,6 @@
 // `mapshift update`: the one command that brings an installed Mapshift up to date. It asks npm for the
-// newest version (the only time Mapshift goes online, and only when the person runs this), installs it in
-// place, and updates the Claude Code add-on too. Agents keep pointing at the same install, so nothing
+// newest version (the only request Mapshift makes; the background check in autoupdate.ts runs these same
+// steps every few days), installs it in place, and updates the Claude Code add-on too. Agents keep pointing at the same install, so nothing
 // else needs to change.
 import { spawnSync } from 'node:child_process'
 import { homedir } from 'node:os'

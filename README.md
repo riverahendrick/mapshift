@@ -216,7 +216,8 @@ The measured rows come from a sealed benchmark against Graft 0.29.0: 120 questio
 | `mapshift ui` | The dashboard right in the terminal (also opens when you run `mapshift` alone) |
 | `mapshift dash` | Open the dashboard in your browser |
 | `mapshift off` / `on` | Pause Mapshift in every agent, or bring it back |
-| `mapshift update` | Get the newest version, and update the Claude Code add-on too (`--check` to only look) |
+| `mapshift update` | Get the newest version now, and update the Claude Code add-on too (`--check` to only look) |
+| `mapshift auto-update on` / `off` | Update by itself every 3 days (on by default; `status` shows the last check) |
 | `mapshift uninstall` | Take out everything setup added |
 | `mapshift map build` | Build or update the map of this project |
 | `mapshift map find <words>` | Find code by plain words or by name |
@@ -232,11 +233,14 @@ In Claude Code, `/mapshift` opens the dashboard, `/mapshift auto`, `quality`, `s
 
 ## Update, turn off or remove
 
+**Mapshift keeps itself up to date.** Every 3 days, when one of your agents starts it, it checks npm for a new version in the background and installs it, along with the Claude Code add-on. Nothing waits on it, and new features simply arrive. The next chat you open uses them. `mapshift auto-update status` shows the last check, and `~/.mapshift/logs/update.log` keeps every result.
+
 ```bash
-mapshift update     # get the newest version (your agents keep working, open a new chat after)
-mapshift off        # pause it everywhere
-mapshift on         # bring it back
-mapshift uninstall  # remove everything setup added, exactly
+mapshift update               # get the newest version right now
+mapshift auto-update off      # stop updating by itself (on brings it back)
+mapshift off                  # pause it everywhere
+mapshift on                   # bring it back
+mapshift uninstall            # remove everything setup added, exactly
 ```
 
 Setup backs up every file before changing it and only writes between its own clearly marked lines, so your own settings stay as they were.
@@ -245,7 +249,7 @@ Setup backs up every file before changing it and only writes between its own cle
 
 ## Privacy and safety
 
-- **Fully local.** No telemetry, no background update checks, no accounts. The map and its logs stay in `~/.mapshift/`. The only time Mapshift goes online is when you run `mapshift update`, which asks npm for the newest version.
+- **Fully local.** No telemetry, no accounts. The map and its logs stay in `~/.mapshift/`. The only request Mapshift makes is asking npm for its newest version: every 3 days in the background (see [Updates](#update-turn-off-or-remove)), or when you run `mapshift update`. That request carries nothing about you or your code.
 - **Never touches credentials.** Mapshift never reads your login files and never routes your traffic through anything.
 - **Safe with projects you do not trust.** Mapshift never starts a program from inside a project folder, it never follows links that point outside the project, and a project's own git settings cannot make it run anything.
 - **Your settings only.** Setup changes personal settings only, never files shared with your team.

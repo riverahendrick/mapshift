@@ -82,6 +82,6 @@ export function renderReport(s: Snapshot, o: { agent?: AgentKey; advice?: Advice
   if (o.advice) pairs.push(['💡 Last request', adviceText(o.advice)])
 
   out.push(rows(pairs))
-  out.push(`\n  ${dim('Everything here is read on this computer. Nothing is sent anywhere.')}\n`)
+  out.push(`\n  ${dim('Everything here is read on this computer. Nothing about you or your code is sent anywhere.')}\n`)
   return out.join('\n')
 }
