@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 (2026-11-18)
+
+- 🧭 Smarter search: the map now follows the call graph around the best word matches, so the function that ties them together (the entry point that calls every matched helper) ranks second instead of getting lost below them. The best word match keeps first place.
+- 🔀 Routing never sends work to a model whose usage limit is reached. Until the limit resets, the closest usable model takes over: one step weaker with more thinking effort for small work, one step stronger for hard work. This also works when the limited model is the one picked in the app.
+- 🗣️ 23 more languages: Bash and Zsh, Zig, OCaml, Haskell, Julia, Clojure, Nix, Solidity, R, Erlang, Gleam, Perl, Elm, GDScript, Common Lisp, Emacs Lisp, Racket, Scheme, Ada, ReScript, GLSL, CUDA and Terraform, plus Astro components.
+- 🤝 Setup for 12 more agents: Windsurf, VS Code (Copilot agent mode), GitHub Copilot CLI, opencode, Kiro, Qwen Code, Claude Desktop, Hermes, Factory Droid, Kimi Code, Qoder and Pi. Those not tested on a real install are marked beta.
+- 🔗 Exact callers: two definitions with one name in one file each keep their own callers, Rust methods are named by their type (`SliceRead.decode`), and `fn.call(…)`, `fn.apply(…)` and `fn.bind(…)` count as calls to `fn`.
+- 📏 A sealed benchmark: 120 questions on six new repositories, written by an author who never ran either tool, hashed and published before the run. Results are in [bench/README.md](bench/README.md).
+
 ## 0.1.2 (2026-11-17)
 
 - 🖥️ `mapshift ui`: a live dashboard in the terminal, with tabs you can click, bars and gauges. Running `mapshift` on its own opens it.
