@@ -123,6 +123,7 @@ export function extractImports(lang: LangId, root: Node): Imp[] {
     case 'javascript':
     case 'vue':
     case 'svelte':
+    case 'astro':
       return jsImports(root)
     case 'python':
       return pythonImports(root)

@@ -6,7 +6,7 @@ type S = { id: number; file_id: number; name: string; qualified: string; kind: S
 type R = { id: number; file_id: number; name: string; receiver: string | null; line: number; from_qualified: string | null; kind: 'call' | 'new' }
 type I = { file_id: number; source: string; local: string; imported: string }
 
-const JS_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue', '.svelte', '.d.ts', '.mts', '.cts']
+const JS_EXTS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue', '.svelte', '.astro', '.d.ts', '.mts', '.cts']
 const SELF = /^(this|self|cls|@|Self|super)$/
 const BUILDS = new Set<SymKind>(['class', 'type', 'interface', 'enum'])
 
@@ -14,7 +14,7 @@ const BUILDS = new Set<SymKind>(['class', 'type', 'interface', 'enum'])
  * Languages where a plain call can only reach the same file or an import: `helper()` in one module
  * never means a `helper` defined in another module that was not imported.
  */
-const MODULE_SCOPED = new Set(['typescript', 'tsx', 'javascript', 'vue', 'svelte', 'python'])
+const MODULE_SCOPED = new Set(['typescript', 'tsx', 'javascript', 'vue', 'svelte', 'astro', 'python'])
 /** Languages where a plain call also reaches the rest of the same folder (package or namespace). */
 const PACKAGE_SCOPED = new Set(['go', 'java', 'kotlin', 'csharp', 'swift', 'dart', 'scala'])
 
@@ -90,7 +90,7 @@ class Index {
     const dir = posix.dirname(path)
     const lang = this.langOf.get(fileId)
     const src = imp.source
-    if (lang === 'typescript' || lang === 'tsx' || lang === 'javascript' || lang === 'vue' || lang === 'svelte') {
+    if (lang === 'typescript' || lang === 'tsx' || lang === 'javascript' || lang === 'vue' || lang === 'svelte' || lang === 'astro') {
       const bases: string[] = []
       if (src.startsWith('.')) bases.push(posix.join(dir, src))
       else if (src.startsWith('@/') || src.startsWith('~/')) bases.push(`src/${src.slice(2)}`, src.slice(2))

@@ -26,12 +26,38 @@ export type LangId =
   | 'cpp'
   | 'vue'
   | 'svelte'
+  | 'bash'
+  | 'zig'
+  | 'ocaml'
+  | 'haskell'
+  | 'julia'
+  | 'clojure'
+  | 'nix'
+  | 'solidity'
+  | 'r'
+  | 'erlang'
+  | 'gleam'
+  | 'perl'
+  | 'elm'
+  | 'gdscript'
+  | 'commonlisp'
+  | 'elisp'
+  | 'racket'
+  | 'scheme'
+  | 'ada'
+  | 'rescript'
+  | 'glsl'
+  | 'cuda'
+  | 'terraform'
+  | 'astro'
 
 export type LangInfo = {
   label: string
   exts: string[]
   /** Folder name of the grammar inside the `tree-sitter-wasm` package. */
   grammar: string
+  /** Use only the queries in `queries.ts`, not the tag file the grammar package ships (which is partial or noisy for some grammars). */
+  ownTags?: boolean
   tier: 'deep' | 'broad'
   /** Other grammars' tag queries to add (TypeScript builds on the JavaScript tags). */
   extraTags?: string[]
@@ -61,6 +87,30 @@ export const LANGS: Record<LangId, LangInfo> = {
   cpp: { label: 'C++', exts: ['.cpp', '.cc', '.cxx', '.hpp', '.hh', '.hxx'], grammar: 'cpp', tier: 'broad' },
   vue: { label: 'Vue', exts: ['.vue'], grammar: 'typescript', tier: 'deep', scriptsAs: 'typescript' },
   svelte: { label: 'Svelte', exts: ['.svelte'], grammar: 'typescript', tier: 'deep', scriptsAs: 'typescript' },
+  bash: { label: 'Shell', exts: ['.sh', '.bash', '.zsh'], grammar: 'bash', ownTags: true, tier: 'broad' },
+  zig: { label: 'Zig', exts: ['.zig'], grammar: 'zig', ownTags: true, tier: 'broad' },
+  ocaml: { label: 'OCaml', exts: ['.ml'], grammar: 'ocaml', ownTags: true, tier: 'broad' },
+  haskell: { label: 'Haskell', exts: ['.hs'], grammar: 'haskell', ownTags: true, tier: 'broad' },
+  julia: { label: 'Julia', exts: ['.jl'], grammar: 'julia', ownTags: true, tier: 'broad' },
+  clojure: { label: 'Clojure', exts: ['.clj', '.cljs', '.cljc'], grammar: 'clojure', ownTags: true, tier: 'broad' },
+  nix: { label: 'Nix', exts: ['.nix'], grammar: 'nix', ownTags: true, tier: 'broad' },
+  solidity: { label: 'Solidity', exts: ['.sol'], grammar: 'solidity', ownTags: true, tier: 'broad' },
+  r: { label: 'R', exts: ['.r'], grammar: 'r', ownTags: true, tier: 'broad' },
+  erlang: { label: 'Erlang', exts: ['.erl', '.hrl'], grammar: 'erlang', ownTags: true, tier: 'broad' },
+  gleam: { label: 'Gleam', exts: ['.gleam'], grammar: 'gleam', ownTags: true, tier: 'broad' },
+  perl: { label: 'Perl', exts: ['.pl', '.pm'], grammar: 'perl', ownTags: true, tier: 'broad' },
+  elm: { label: 'Elm', exts: ['.elm'], grammar: 'elm', ownTags: true, tier: 'broad' },
+  gdscript: { label: 'GDScript', exts: ['.gd'], grammar: 'gdscript', ownTags: true, tier: 'broad' },
+  commonlisp: { label: 'Common Lisp', exts: ['.lisp', '.cl', '.lsp', '.asd'], grammar: 'commonlisp', ownTags: true, tier: 'broad' },
+  elisp: { label: 'Emacs Lisp', exts: ['.el'], grammar: 'elisp', ownTags: true, tier: 'broad' },
+  racket: { label: 'Racket', exts: ['.rkt'], grammar: 'racket', ownTags: true, tier: 'broad' },
+  scheme: { label: 'Scheme', exts: ['.scm', '.ss', '.sld'], grammar: 'scheme', ownTags: true, tier: 'broad' },
+  ada: { label: 'Ada', exts: ['.adb', '.ads', '.ada'], grammar: 'ada', ownTags: true, tier: 'broad' },
+  rescript: { label: 'ReScript', exts: ['.res', '.resi'], grammar: 'rescript', ownTags: true, tier: 'broad' },
+  glsl: { label: 'GLSL', exts: ['.glsl', '.vert', '.frag', '.comp'], grammar: 'glsl', ownTags: true, tier: 'broad' },
+  cuda: { label: 'CUDA', exts: ['.cu', '.cuh'], grammar: 'cuda', ownTags: true, tier: 'broad' },
+  terraform: { label: 'Terraform', exts: ['.tf', '.tfvars', '.hcl'], grammar: 'terraform', ownTags: true, tier: 'broad' },
+  astro: { label: 'Astro', exts: ['.astro'], grammar: 'typescript', tier: 'deep', scriptsAs: 'typescript' },
 }
 
 const BY_EXT = new Map<string, LangId>()

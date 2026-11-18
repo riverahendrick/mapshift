@@ -1,4 +1,5 @@
 import type { LangId } from './languages.ts'
+import { BROAD_TAGS } from './queries-broad.ts'
 
 /**
  * JavaScript and TypeScript `#private` members (`#fetch() {}`, `this.#fetch()`): the shipped tags only see
@@ -13,7 +14,7 @@ const PRIVATE_MEMBERS = [
  * Tag patterns the grammar package does not ship, or ships only in part. They follow the standard
  * tags convention: `@name` plus `@definition.<kind>` or `@reference.<kind>`.
  */
-export const EXTRA_TAGS: Partial<Record<LangId, string[]>> = {
+const CORE_TAGS: Partial<Record<LangId, string[]>> = {
   typescript: [
     ...PRIVATE_MEMBERS,
     '(class_declaration name: (type_identifier) @name) @definition.class',
@@ -51,6 +52,8 @@ export const EXTRA_TAGS: Partial<Record<LangId, string[]>> = {
     '(command (command_name) @name) @reference.call',
   ],
 }
+
+export const EXTRA_TAGS: Partial<Record<LangId, string[]>> = { ...CORE_TAGS, ...BROAD_TAGS }
 
 /** Directive predicates (`#strip!`, `#select-adjacent!`) only shape documentation captures; the map does not need them. */
 export const stripDirectives = (scm: string): string => scm.replace(/\(#[a-z-]+!(?:\s+(?:"(?:[^"\\]|\\.)*"|@?[\w.-]+))*\s*\)/g, '')

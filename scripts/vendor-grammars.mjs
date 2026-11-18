@@ -1,5 +1,5 @@
 // Copies only the language parsers Mapshift reads (and their tag queries) into dist/grammars, so the
-// published package carries 21 grammars instead of the parser collection's ~100.
+// published package carries only these grammars instead of the parser collection's ~100.
 // Run by `npm run build`.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -11,7 +11,10 @@ const source = join(dirname(require.resolve('tree-sitter-wasm/manifest.json')), 
 const target = fileURLToPath(new URL('../dist/grammars/', import.meta.url))
 
 // keep in step with src/map/languages.ts (grammar names, plus the extra tag sets they borrow)
-const GRAMMARS = ['typescript', 'tsx', 'javascript', 'python', 'go', 'java', 'kotlin', 'c_sharp', 'rust', 'php', 'dart', 'swift', 'ruby', 'scala', 'lua', 'elixir', 'powershell', 'c', 'cpp']
+const GRAMMARS = [
+  'typescript', 'tsx', 'javascript', 'python', 'go', 'java', 'kotlin', 'c_sharp', 'rust', 'php', 'dart', 'swift', 'ruby', 'scala', 'lua', 'elixir', 'powershell', 'c', 'cpp',
+  'bash', 'zig', 'ocaml', 'haskell', 'julia', 'clojure', 'nix', 'solidity', 'r', 'erlang', 'gleam', 'perl', 'elm', 'gdscript', 'commonlisp', 'elisp', 'racket', 'scheme', 'ada', 'rescript', 'glsl', 'cuda', 'terraform',
+]
 
 let bytes = 0
 for (const g of GRAMMARS) {

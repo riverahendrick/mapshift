@@ -17,7 +17,7 @@ const KIND: Record<string, SymKind> = {
   constant: 'variable', variable: 'variable', field: 'variable', property: 'variable',
 }
 const CONTAINERS = new Set<SymKind>(['class', 'interface', 'module', 'enum'])
-const JS_FAMILY = new Set<LangId>(['typescript', 'tsx', 'javascript', 'vue', 'svelte'])
+const JS_FAMILY = new Set<LangId>(['typescript', 'tsx', 'javascript', 'vue', 'svelte', 'astro'])
 const REF_KINDS: Record<string, Ref['kind']> = { call: 'call', send: 'call', class: 'new' }
 
 /** Builds the tag query for a language, dropping any single pattern its grammar cannot compile. */
@@ -27,7 +27,7 @@ async function tagsQuery(lang: LangId): Promise<Query | null> {
   const target = info.scriptsAs ?? lang
   const parts = [
     ...(LANGS[target].extraTags ?? []).map(g => grammarQuery(g, 'tags')),
-    grammarQuery(grammar, 'tags'),
+    LANGS[target].ownTags ? '' : grammarQuery(grammar, 'tags'),
     ...(EXTRA_TAGS[target] ?? []),
   ].map(stripDirectives).filter(s => s.trim())
   if (parts.length === 0) return null
@@ -86,11 +86,22 @@ function splitPatterns(scm: string): string[] {
 }
 
 /** Keeps line numbers by blanking everything outside `<script>` blocks (Vue, Svelte). */
-function scriptsOnly(source: string): string {
+function scriptsOnly(source: string, frontmatter = false): string {
   // one linear pass with indexOf: no regular expression can be made to backtrack on a hostile file
   const lower = source.toLowerCase()
   const keep = new Uint8Array(source.length)
   let at = 0
+  if (frontmatter) {
+    // Astro: the code between the two `---` fences at the top of the file
+    const open = /^\s*---[ \t]*\r?\n/.exec(source.slice(0, 200))
+    if (open) {
+      const close = source.indexOf('\n---', open[0].length - 1)
+      if (close >= 0) {
+        keep.fill(1, open[0].length, close + 1)
+        at = close + 4
+      }
+    }
+  }
   for (;;) {
     const open = lower.indexOf('<script', at)
     if (open < 0) break
@@ -115,9 +126,11 @@ function signatureOf(def: Node, source: string): string {
   const body =
     def.childForFieldName('body') ??
     def.childForFieldName('value')?.childForFieldName('body') ??
-    def.namedChildren.find(c => c && /^(block|class_body|declaration_list|field_declaration_list|statement_block|function_body|compound_statement|enum_body|interface_body|object_type)$/.test(c.type)) ??
+    def.namedChildren.find(c => c && /^(block|body|class_body|declaration_list|field_declaration_list|statement_block|function_body|compound_statement|enum_body|interface_body|object_type)$/.test(c.type)) ??
     null
   const end = body && body.startIndex > def.startIndex ? body.startIndex : Math.min(def.endIndex, def.startIndex + 240)
+  // a definition that is the whole file (a GDScript `class_name`) is named by its first line
+  if (!def.parent) return oneLine(source.slice(def.startIndex, end).split('\n').find(l => l.trim()) ?? '')
   return oneLine(source.slice(def.startIndex, end).replace(/[\s{:=]+$/, ''))
 }
 
@@ -127,7 +140,8 @@ function isExported(lang: LangId, def: Node, name: string, signature: string): b
     case 'tsx':
     case 'javascript':
     case 'vue':
-    case 'svelte': {
+    case 'svelte':
+    case 'astro': {
       for (let n: Node | null = def, i = 0; n && i < 3; n = n.parent, i++) if (n.type === 'export_statement') return true
       return false
     }
@@ -136,6 +150,7 @@ function isExported(lang: LangId, def: Node, name: string, signature: string): b
     case 'go':
       return /^[A-Z]/.test(name)
     case 'rust':
+    case 'zig':
       return /^pub\b/.test(signature)
     default:
       return !/\b(private|fileprivate|internal)\b/.test(signature)
@@ -215,11 +230,11 @@ function receiverOf(name: Node, source: string): string | null {
     .replace(/^new\b\s*/, '') // `new Repo()` is built, not called on anything
     .replace(/(\?\.|!\.|\.|->|::|\?)\s*$/, '')
     .trim()
-  if (!text || /[=;{}]/.test(text)) return null
+  if (!text || /[=;{}]/.test(text) || /^[([]$/.test(text)) return null // a lone opening bracket is a Lisp call, not an object
   return oneLine(text, 80)
 }
 
-type RawDef = { node: Node; name: string; kind: SymKind }
+type RawDef = { node: Node; name: string; kind: SymKind; at: number }
 
 /**
  * Reads one file: what it defines, what it calls and what it imports. Line numbers count from 1.
@@ -228,14 +243,17 @@ type RawDef = { node: Node; name: string; kind: SymKind }
 export async function extract(lang: LangId, source: string): Promise<Facts> {
   const info = LANGS[lang]
   const target = info.scriptsAs ?? lang
-  const text = info.scriptsAs ? scriptsOnly(source) : source
+  const text = info.scriptsAs ? scriptsOnly(source, lang === 'astro') : source
   const tree = await parse(target, text)
   try {
     const query = await tagsQuery(lang)
     const defs: RawDef[] = []
-    const rawRefs: { name: Node; kind: Ref['kind'] }[] = []
+    const rawRefs: { name: Node; kind: Ref['kind']; bare: boolean; receiver?: Node }[] = []
     const seen = new Set<string>()
+    const ignored = new Set<number>()
     for (const match of query?.matches(tree.rootNode) ?? []) {
+      // `@ignore` names a symbol that only looks like a call (a parameter list, a `let` binding): no call is read there
+      if (info.ownTags) for (const c of match.captures) if (c.name === 'ignore') ignored.add(c.node.startIndex)
       const nameCap = match.captures.find(c => c.name === 'name')
       const role = match.captures.find(c => c.name.startsWith('definition.') || c.name.startsWith('reference.'))
       if (!nameCap || !role) continue
@@ -245,12 +263,14 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
         const key = `${nameCap.node.startIndex}`
         if (!kind || seen.has(key)) continue
         seen.add(key)
-        defs.push({ node: role.node, name: nameCap.node.text, kind })
+        defs.push({ node: role.node, name: nameCap.node.text, kind, at: nameCap.node.startIndex })
       } else {
         const kind = REF_KINDS[sub]
         // a "class reference" is only a use when something is built (`new X`), not a base class or a type
         if (kind === 'new' && !/new_expression|object_creation|instance_creation|constructor_invocation/.test(role.node.type)) continue
-        if (kind) rawRefs.push({ name: nameCap.node, kind })
+        // `@bare` marks a call whose qualifier is only a namespace (`str/join`, `List.map`): it goes by name alone
+        // `@receiver` names the object the call is made on when it is not the text before the name (`player.hit()` in a chain)
+        if (kind) rawRefs.push({ name: nameCap.node, kind, bare: match.captures.some(c => c.name === 'bare'), receiver: match.captures.find(c => c.name === 'receiver')?.node })
       }
     }
 
@@ -269,17 +289,22 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
       const own = parent && JS_FAMILY.has(lang) ? true : isExported(lang, d.node, d.name, signature)
       const exported = parent ? parent.exported && own : own
       const body = kind === 'function' || kind === 'method' ? bodyWords(d.node, text) : ''
-      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + 1, signature, exported, doc: docOf(d.node, text), body })
+      // a definition that is the whole file ends at its last line, not on the empty line after the final newline
+      const wholeFile = !d.node.parent && d.node.endPosition.column === 0 && d.node.endPosition.row > d.node.startPosition.row
+      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + (wholeFile ? 0 : 1), signature, exported, doc: docOf(d.node, text), body })
       stack.push({ end: d.node.endIndex, qualified, kind, exported })
       ranges.push({ start: d.node.startIndex, end: d.node.endIndex, qualified })
     }
 
     const refs: Ref[] = []
     const once = new Set<number>()
+    // in languages whose queries read a signature as a call (`f(x) = ...`, `(defn f [x])`), a name that is being defined is not a call
+    const defNames = LANGS[lang].ownTags ? new Set(defs.map(d => d.at)) : null
     for (const r of rawRefs) {
       const at = r.name.startIndex
       if (once.has(at)) continue // two tag patterns can see the same call
       once.add(at)
+      if (defNames?.has(at) || ignored.has(at)) continue
       let from: string | null = null
       let best = Infinity
       for (const g of ranges) {
@@ -288,7 +313,7 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
           from = g.qualified
         }
       }
-      refs.push({ name: r.name.text, receiver: receiverOf(r.name, text), line: r.name.startPosition.row + 1, from, kind: r.kind })
+      refs.push({ name: r.name.text, receiver: r.receiver ? oneLine(r.receiver.text, 80) : r.bare ? null : receiverOf(r.name, text), line: r.name.startPosition.row + 1, from, kind: r.kind })
     }
 
     return { syms, refs, imps: extractImports(lang, tree.rootNode) }
