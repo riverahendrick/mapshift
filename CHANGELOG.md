@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4 (2026-11-18)
+
+- 🔍 `mapshift setup --check` lists the coding agents on the computer that don't have Mapshift yet; `mapshift update` points them out too, and running `mapshift setup` again adds it only where it is missing.
+- 🤝 In Claude Code, `/mapshift setup` adds Mapshift to the other coding agents on the computer, and the add-on says once a day when it finds one without it.
+- 🧩 Codex 0.170 and newer get a `$mapshift` skill, since they no longer read custom prompts (older Codex keeps `/prompts:mapshift`).
+- 🩹 agy's status line works on Windows: agy passed its quotes to the command prompt in a form it could not read.
+- 🧮 The cost self-check in Claude Code no longer reports a gap after an app restart.
+
 ## 0.1.3 (2026-11-18)
 
 - 🧭 Smarter search: the map now follows the call graph around the best word matches, so the function that ties them together (the entry point that calls every matched helper) ranks second instead of getting lost below them. The best word match keeps first place.

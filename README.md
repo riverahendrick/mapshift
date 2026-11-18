@@ -46,7 +46,7 @@ You need [Node.js](https://nodejs.org) 22.13 or newer. Then run one line:
 npx mapshift@latest setup
 ```
 
-Setup finds the coding agents on your computer, shows exactly which files it will change, backs each one up, and asks before changing anything. Open a new chat in your agent and it is ready.
+Setup finds **every** coding agent on your computer (Codex, Gemini CLI, Antigravity, Grok, Cursor, VS Code, Windsurf, Claude Code and [the rest below](#what-you-get-in-each-agent)), shows exactly which files it will change, backs each one up, and asks before changing anything. Restart your agents and they are ready.
 
 **Claude Code** gets the full experience (live model switching and a dashboard) as an add-on. In a terminal session:
 
@@ -56,13 +56,16 @@ Setup finds the coding agents on your computer, shows exactly which files it wil
 
 In the desktop app, click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `riverahendrick/mapshift`, then **Add plugin**.
 
+**Installed a new coding agent later?** Run `mapshift setup` again: it adds Mapshift only where it is missing. `mapshift setup --check` lists the agents that still need it, and `mapshift update` points them out too. In Claude Code, `/mapshift setup` does the same, and the add-on tells you once a day when it finds an agent without Mapshift.
+
 <details>
 <summary><b>For AI agents:</b> install Mapshift for the person you work with</summary>
 
 1. Check Node.js is 22.13 or newer: `node --version`.
 2. Run `npx mapshift@latest setup --yes`. It installs a lasting copy and wires up every supported agent it finds.
 3. If you are Claude Code, also run `claude plugin marketplace add riverahendrick/mapshift` and `claude plugin install mapshift@mapshift`.
-4. Tell the person to open a new chat, and that `mapshift uninstall` removes everything again.
+4. Run `mapshift setup --check` and confirm it says every coding agent found has Mapshift.
+5. Tell the person to restart their agents, and that `mapshift uninstall` removes everything again.
 
 </details>
 
@@ -208,7 +211,7 @@ The measured rows come from a sealed benchmark against Graft 0.29.0: 120 questio
 
 | Command | What it does |
 |---|---|
-| `mapshift setup` | Add Mapshift to your coding agents (`--dry-run` to preview, `--yes` to skip the question) |
+| `mapshift setup` | Add Mapshift to every coding agent it finds (`--dry-run` to preview, `--yes` to skip the question, `--check` to list the agents that still need it) |
 | `mapshift report` | Map, savings and limits as text |
 | `mapshift ui` | The dashboard right in the terminal (also opens when you run `mapshift` alone) |
 | `mapshift dash` | Open the dashboard in your browser |
@@ -223,7 +226,7 @@ The measured rows come from a sealed benchmark against Graft 0.29.0: 120 questio
 | `mapshift map search <text>` | Every matching line (`--regex`, `--case`, `--path <folder>`) |
 | `mapshift route "<request>"` | Which model and effort a request needs |
 
-In Claude Code, `/mapshift` opens the dashboard, `/mapshift auto`, `quality`, `saver`, `manual` or `off` switch modes, and `/mapshift map on` or `map off` turns the map's starting points on or off.
+In Claude Code, `/mapshift` opens the dashboard, `/mapshift auto`, `quality`, `saver`, `manual` or `off` switch modes, and `/mapshift map on` or `map off` turns the map's starting points on or off. `/mapshift setup` adds Mapshift to the other coding agents on the computer.
 
 ---
 
