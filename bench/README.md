@@ -268,3 +268,201 @@ By question kind (all repos):
 | name | graft | 7/9 (78%) | 7/9 (78%) | 1017 | 0 |
 | callers | mapshift | 9/9 (100%) | 9/9 (100%) | 52 | 0 |
 | callers | graft | 9/9 (100%) | 9/9 (100%) | 121 | 0 |
+
+## Held-out benchmark (blind questions)
+
+Mapshift was tuned against the questions used above. This section uses a second set, `heldout/`.
+
+- **Who wrote the questions:** the side that maintains Mapshift, before this run.
+- **Tuning claim:** that side states the set was never used for tuning. This was not verified. The files first appear in commit `07a37ca`, the same commit as the Mapshift build tested here.
+- **Disclosure:** before the scored run, both tools were tried by hand while checking output formats, on 8 of the 64 questions: json-agent-3, json-callers-1, chi-dev-3, chi-callers-1, axios-dev-2, axios-callers-2, httpx-dev-6 and httpx-callers-1. The matching rule was written after seeing that output. One example: the decision that a containing class does not count was made after both tools returned `LineDecoder` for httpx-dev-6. No question or accepted answer was changed.
+
+Every table here comes from `results/heldout.json` and `results/heldout-agents.json`, and was printed by `node bench/report.mjs --heldout`.
+
+### Method
+
+- **Repositories:** four, pinned in `heldout/repos.json`. None of them is in the tuning set.
+
+  | Repo | Language | Commit |
+  |---|---|---|
+  | axios/axios | JavaScript | `c0d4c900515a55bd1e258eee16adb25c404d56ed` |
+  | encode/httpx | Python | `7cff5f79bc78649bbcd3fd9aa7a74c86e0f63016` |
+  | go-chi/chi | Go | `c64ed7d6635f33a8b2feaff7dcfa55677023ac7d` |
+  | serde-rs/json | Rust | `f51fa15a7015c7d02817a46d2db44c899a0016e8` |
+
+- **Questions:** 64 in total, 16 per repository, of four kinds. Each question lists one or more accepted answers as `{file, qualified}`.
+
+  | Kind | Per repository | What the question is |
+  |---|---|---|
+  | developer | 6 | a plain-English question |
+  | agent | 6 | a keyword string, as an agent would type it |
+  | name | 2 | "where is `X` defined" |
+  | callers | 2 | "what calls `X`" |
+
+- **Commands:** the same as in the first benchmark.
+
+  | Question kind | Mapshift | Graft |
+  |---|---|---|
+  | developer, agent, name | `mapshift map find "<q>" --limit 3` | `graft ask "<q>" --source -n 3` |
+  | callers | `mapshift map trace <symbol>` | `graft callers <symbol>` |
+
+  Every tool process ran with `DO_NOT_TRACK=1`. Mapshift ran with `MAPSHIFT_HOME` inside the work folder.
+- **Isolation:** each tool got its own fresh clone at the pinned commit. Graft's `graft/` folder, its `.gitignore` edit and its `.ignore` file never reached Mapshift's copy.
+- **Matching:** both tools are scored by one rule, `matches()` in `run-heldout.mjs`. A result counts only if all of these hold:
+  - **Same file:** the file path equals an accepted answer's path.
+  - **Same name:** names are normalised first. This removes Graft's `[dir/]` tag, parameter lists and generics, turns `::` into `.`, and turns a Go receiver `(*T).` into `T.`. The last segments must then be equal. If both names carry a container (a class, receiver or impl type), the containers must be equal too. So `InsertRoute`, `node.InsertRoute` and `(*node).InsertRoute` all match `node.InsertRoute`.
+  - **Overlapping lines, for 12 answers:** for these, the bare name has more than one definition in the file. One example is the four `serialize_f64` in `src/ser.rs`. The result's printed lines must overlap the correct definition. The spans were read from the source and stored in `heldout/spans.json`.
+
+  A whole-file result does not count, and neither does the class that contains the answer. The rule is unit-tested on 19 cases covering both tools' output forms (`node bench/test-heldout-match.mjs`). The tables also give a looser figure, "right file in top 3".
+- **Answer size, latency and build time:** measured the same way as in the first benchmark.
+  - **Answer size:** the characters printed on stdout, divided by 4.
+  - **Latency:** 1 warm-up, then the median of 3 timed runs. Both tools are Node CLIs, so the time includes process start-up.
+  - **Build time:** the median of 3 cold builds. The harness refuses a build that is not cold: Mapshift must report every file as mapped, and Graft must report `0 replayed from cache`.
+- **Agents:** these were real Claude Code headless runs, model sonnet, `--max-turns 8`. They used the same command, the same CLAUDE.md exclusion and the same per-arm strict MCP config as the first benchmark.
+  - **Runs:** one run per task per arm, 12 in total. Which arm ran first alternated by task.
+  - **Repository:** serde-rs/json. axios ships an `AGENTS.md`, which Claude Code's built-in agents-md plugin could load, so it was not used.
+  - **Tasks:** the first three developer and the first three agent questions of `heldout/json.json`, stored in `heldout/agent-tasks.json`. This rule was fixed, and the rubrics written from the source, before any result was read.
+  - **Clean setup:** the first run's `init` event showed one MCP server with its own tools, and no Mapshift or Graft plugin or skill. After the runs, the Graft clone showed only Graft's own `.gitignore` edit and `.ignore` file.
+  - **Judging:** a separate Claude session judged every claim against the pinned source. It worked from a shuffled sheet with the arm labels removed, and with Graft's closing "graft saved ~N tokens" line stripped. It did not open the key. Three of its verdicts were spot-checked against the source. The verdicts are in `results/heldout-agent-verdicts.json`.
+- **Build changed during the run:** `dist/` was rebuilt partway through the retrieval run, at about 01:08 UTC, and the agent runs came after that. The rebuild only changed the version string, from 0.1.1 to 0.1.2. The only source file that differs from commit `07a37ca` is `src/version.ts`. The search code was the same throughout.
+
+### How to reproduce
+
+```sh
+# retrieval: clones from the URLs in heldout/repos.json; --from <dir> uses local clones named axios, httpx, chi, json instead
+node bench/run-heldout.mjs --work <work>
+node bench/run-heldout.mjs --rescore            # re-scores the stored output and runs no tool
+
+# agents
+A="--work <work2> --tasks heldout/agent-tasks.json --repos heldout/repos.json --out results/heldout-agents.json --verdicts results/heldout-agent-verdicts.json"
+node bench/run-agents.mjs $A --smoke
+node bench/run-agents.mjs $A                    # the 12 runs
+node bench/run-agents.mjs $A --blind            # writes <work2>/agents/blind-sheet.json; judge it and write the verdicts file, then:
+node bench/run-agents.mjs $A --summarize
+
+node bench/report.mjs --heldout
+```
+
+### Results: retrieval
+
+Tools: Mapshift 0.1.1 (commit `07a37ca`) and Graft 0.29.0, on Node v24.19.0 and Windows 11 (win32 10.0.26200). Each tool returned its top 3 results. Latency is the median over the questions of each question's median of 3 warm runs. Build time is the median of 3 cold builds.
+
+Overall (64 questions):
+
+| Tool | hit@1 | hit@3 | Right file in top 3 | Median answer tokens | Same, without Graft advice lines | Median latency | Errors | No result parsed |
+|---|---|---|---|---|---|---|---|---|
+| mapshift | 36/64 (56%) | 45/64 (70%) | 57/64 (89%) | 398 | 398 | 443 ms | 0 | 1 |
+| graft | 27/64 (42%) | 33/64 (52%) | 56/64 (88%) | 629.5 | 498.5 | 1809 ms | 0 | 1 |
+
+By question kind (all repos):
+
+| Kind | Tool | hit@1 | hit@3 | Right file in top 3 | Median answer tokens | Same, without advice lines | Median latency |
+|---|---|---|---|---|---|---|---|
+| developer | mapshift | 9/24 (38%) | 13/24 (54%) | 21/24 (88%) | 454.5 | 454.5 | 430 ms |
+| developer | graft | 5/24 (21%) | 6/24 (25%) | 19/24 (79%) | 778 | 646.5 | 1791 ms |
+| agent | mapshift | 12/24 (50%) | 17/24 (71%) | 21/24 (88%) | 382 | 382 | 438 ms |
+| agent | graft | 10/24 (42%) | 14/24 (58%) | 22/24 (92%) | 685 | 553 | 1819 ms |
+| name | mapshift | 8/8 (100%) | 8/8 (100%) | 8/8 (100%) | 358.5 | 358.5 | 462 ms |
+| name | graft | 6/8 (75%) | 6/8 (75%) | 8/8 (100%) | 457 | 325.5 | 1902 ms |
+| callers | mapshift | 7/8 (88%) | 7/8 (88%) | 7/8 (88%) | 58.5 | 58.5 | 434 ms |
+| callers | graft | 6/8 (75%) | 7/8 (88%) | 7/8 (88%) | 148 | 75 | 1541 ms |
+
+By repository:
+
+| Repo | Tool | hit@1 | hit@3 | Median answer tokens | Median latency | Build time (median of 3) | Index size |
+|---|---|---|---|---|---|---|---|
+| axios (javascript) | mapshift | 9/16 (56%) | 11/16 (69%) | 476.5 | 580 ms | 3.4 s | 2904 KB |
+| axios (javascript) | graft | 7/16 (44%) | 10/16 (63%) | 583.5 | 2086 ms | 4.9 s | 7246 KB |
+| httpx (python) | mapshift | 9/16 (56%) | 11/16 (69%) | 352 | 460 ms | 3.0 s | 1500 KB |
+| httpx (python) | graft | 8/16 (50%) | 9/16 (56%) | 944 | 1858 ms | 2.7 s | 3757 KB |
+| chi (go) | mapshift | 9/16 (56%) | 11/16 (69%) | 432 | 433 ms | 1.3 s | 1056 KB |
+| chi (go) | graft | 7/16 (44%) | 8/16 (50%) | 541 | 1823 ms | 2.5 s | 2127 KB |
+| json (rust) | mapshift | 9/16 (56%) | 12/16 (75%) | 338 | 387 ms | 1.4 s | 1528 KB |
+| json (rust) | graft | 5/16 (31%) | 6/16 (38%) | 413 | 1519 ms | 2.3 s | 3518 KB |
+
+- **Single cold builds (ms):**
+
+  | Repo | Mapshift | Graft |
+  |---|---|---|
+  | axios | 3634 / 3362 / 3221 | 4663 / 4895 / 5065 |
+  | httpx | 6603 / 3011 / 1274 | 2943 / 2557 / 2724 |
+  | chi | 1500 / 1268 / 1218 | 2564 / 2496 / 2400 |
+  | json | 4492 / 1373 / 1293 | 2316 / 2385 / 2332 |
+
+  Mapshift's first build was much slower on httpx and on json, so its 3.0 s median for httpx is not a stable figure.
+- **Latency is mostly process start-up.** On the same machine after the run, `graft --version` alone took 1.15 s, and a `graft callers` query took 1.25 to 1.36 s. Graft's latency here, about 1.8 s, is higher than in the first benchmark, where it was about 1.2 s. The machine was not idle during the scored run, since `dist/` was rebuilt partway through it. So chi was run again afterwards on an idle machine with `--repo chi`, and that output was not kept:
+
+| Measure (chi re-run) | Mapshift | Graft |
+|---|---|---|
+| All 16 ranks | identical to the scored run | identical to the scored run |
+| Median latency | 296 ms | 1158 ms |
+| Cold builds (ms) | 950 / 843 / 878 | 1901 / 1654 / 1606 |
+
+The absolute times in the tables above are therefore inflated for both tools, but the ratio held. Start-up does not apply when either tool runs as a long-lived MCP server.
+- **The one "no result parsed" row** is axios-callers-2 (`transformData`), and it is the same row for both tools. Both report no callers. All three calls are written `transformData.call(config, …)`, and neither tool links them.
+- **Per-question ranks** are printed by `node bench/report.mjs --heldout`.
+
+**Every question where Graft found the answer and Mapshift did not** (4; the top 3 results as stored):
+
+| Question | Graft | Mapshift |
+|---|---|---|
+| axios-agent-3 `no_proxy CIDR prefix match ip address bytes` | #1 `shouldBypassProxy` | `normalizeCidrBase`, `normalizeNoProxyHost`, `parseCidrEntry`: the right file, but not `isInSubnet` or `shouldBypassProxy` |
+| chi-dev-3: how the routing tree splits a node on a shared prefix | #1 `InsertRoute` (tree.go:148) | `addChild` (tree.go), `handle`, `Mount` (mux.go) |
+| chi-agent-4 `getMatchedPattern full route template wildcards` | #1 `RoutePattern` (context.go:147) | `Get`, `replaceWildcards` (context.go:163, called by `RoutePattern`), `NewPattern` |
+| httpx-agent-5 `wrap low-level transport errors ConnectTimeout ReadError mapping context manager` | #3 `_load_httpcore_exceptions` | the exception classes `ReadError` and `ConnectTimeout`, and `request_context` |
+
+- **Mapshift-only finds:** there were 16 questions where Mapshift found the answer and Graft did not.
+- **Graft's whole-file results:** in 4 of those 16 (axios-dev-1, axios-name-1, chi-agent-3, chi-agent-6), Graft's top 3 held the right file as a whole-file node instead of the function. This is one reason the two tools are level on "right file in top 3". Graft's caller output can also list a whole file as a caller when the file only imports the function. For axios-callers-1, Graft's first caller is `http.js` (the import on line 3), and its function-level caller there, `dispatchHttpRequest`, is not listed.
+- **Questions neither tool answered:** 15, of which 10 are developer questions. For httpx-dev-6, both tools returned the class `LineDecoder` instead of its `decode` method.
+
+### Results: agents
+
+Agents: 12 runs on serde-rs/json (`f51fa15a7015`), model sonnet (`claude-sonnet-5-5`), max 8 turns.
+
+| Arm | Correct | Avg tool calls | Avg turns | Avg input | Avg cache read | Avg cache write | Avg output | Avg total tokens | Avg cost | Total cost |
+|---|---|---|---|---|---|---|---|---|---|---|
+| mapshift | 6/6 | 1.7 | 2.7 | 5 | 17336 | 3918 | 361 | 21619 | $0.0210 | $0.1261 |
+| graft | 6/6 | 2.0 | 3.0 | 6 | 21953 | 5068 | 449 | 27476 | $0.0270 | $0.1618 |
+
+| Task | Arm | Correct | Tool calls (by name) | Turns | Input | Cache read | Cache write | Output | Cost |
+|---|---|---|---|---|---|---|---|---|---|
+| H1 | graft | yes | 2 (graft_find_all×1, Read×1) | 3 | 6 | 16687 | 9546 | 423 | $0.0441 |
+| H1 | mapshift | yes | 2 (map_search×1, Read×1) | 3 | 6 | 14414 | 7867 | 389 | $0.0368 |
+| H2 | graft | yes | 2 (Grep×2) | 3 | 6 | 21623 | 3351 | 416 | $0.0197 |
+| H2 | mapshift | yes | 1 (map_find×1) | 2 | 4 | 12915 | 2073 | 255 | $0.0121 |
+| H3 | graft | yes | 3 (graft_find_code×1, Grep×1, Read×1) | 4 | 8 | 33576 | 5612 | 669 | $0.0325 |
+| H3 | mapshift | yes | 2 (map_find×1, Read×1) | 3 | 6 | 21292 | 3799 | 487 | $0.0222 |
+| H4 | graft | yes | 2 (graft_find_code×1, Grep×1) | 3 | 6 | 23627 | 3880 | 480 | $0.0227 |
+| H4 | mapshift | yes | 1 (map_find×1) | 2 | 4 | 12908 | 2767 | 200 | $0.0144 |
+| H5 | graft | yes | 2 (graft_find_code×2) | 3 | 6 | 22396 | 4082 | 393 | $0.0225 |
+| H5 | mapshift | yes | 2 (map_find×1, Grep×1) | 3 | 6 | 20977 | 2586 | 379 | $0.0162 |
+| H6 | graft | yes | 1 (graft_find_code×1) | 2 | 4 | 13809 | 3937 | 313 | $0.0203 |
+| H6 | mapshift | yes | 2 (map_find×1, Read×1) | 3 | 6 | 21508 | 4413 | 455 | $0.0244 |
+
+- **H1:** the Mapshift arm ran first, by itself, as the setup check. It is counted, and no run was discarded. H1 was the first task for both arms, so both paid a cold cache write.
+- **H2, Graft arm:** it used no Graft tool, only `Grep` twice. The first `Grep` failed on an unclosed `(` in the pattern.
+- **H5, Mapshift arm:** the answer was correct but thin. The agent said it had not opened the body of `ignore_value`.
+
+### Where each tool is better
+
+**Graft is better at:**
+
+- **The four questions above:** two Go methods (`InsertRoute`, `RoutePattern`) and two keyword searches where it ranked the entry point above helpers.
+- **Finding the right file for agent-style keyword searches:** 22/24 against 21/24, which is a difference of one question.
+- **Same-named callers:** Graft lists them separately, each with its own span and call-site line. For `decode_four_hex_digits`, it shows both `decode_hex_escape` impls. Mapshift prints one line marked `×2`.
+
+**Mapshift is better at:**
+
+- **Exact definitions:** 45/64 in the top 3 against 33/64, and 36 against 27 at rank 1. The largest gaps are on developer questions (13 against 6) and on Rust (12 against 6).
+- **Name lookups:** 8/8 against 6/8.
+- **Smaller answers:** 398 median tokens against 630, or 499 for Graft without its advice lines. For caller questions it is 58.5 against 148.
+- **Faster CLI runs:** 0.44 s against 1.8 s in the scored run, on a busy machine. On the idle re-run of chi it was 0.30 s against 1.16 s. Both figures include process start-up.
+- **Faster cold builds:** on 3 of 4 repositories. Graft was faster on httpx.
+- **A smaller index:** 40 to 50% of Graft's size, kept outside the repository.
+- **Agent cost:** cheaper on 5 of 6 tasks, $0.021 against $0.027 per run.
+
+**Where the two are level:**
+
+- **The right file:** found for 57/64 against 56/64.
+- **Agent correctness:** 6/6 each. Sonnet probably knows serde_json, so this small sample does not separate the tools. With one run per task, the cost difference is an observation, not a significant result.
+- **What neither answers:** 15 of 64 questions, mostly plain-English developer questions.

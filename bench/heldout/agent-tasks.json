@@ -1,0 +1,64 @@
+{
+  "repo": "json",
+  "note": "Held-out agent tasks. Repository chosen before any held-out result was read: serde-rs/json has no AGENTS.md or CLAUDE.md (axios ships an AGENTS.md, which Claude Code's built-in agents-md plugin could load), and its Rust trait impls make same-named methods common, which is a harder case for a code map than httpx or chi. Tasks chosen by a fixed rule: the first three 'developer' and the first three 'agent' questions of heldout/json.json, unchanged in meaning; developer tasks use the question text, agent tasks give the search string as an agent would type it. Accepted answers are the question's answers. Rubrics were written from the source at the pinned commit before any agent run. A run is correct only if its ANSWER line names an accepted definition (file and name) and the explanation states nothing false about it. Runs that stop at the turn limit without an answer are incorrect.",
+  "promptSuffix": "Do not modify any files. Reply in this format: first line `ANSWER: <file path>:<function, or Type::method>`, then at most two sentences explaining how it works.",
+  "tasks": [
+    {
+      "id": "H1",
+      "source": "json-dev-1",
+      "style": "developer",
+      "prompt": "In this repository, after a value has been read, where does the parser check that only whitespace remains in the input?",
+      "accept": [
+        { "file": "src/de.rs", "name": "Deserializer::end" },
+        { "file": "src/de.rs", "name": "from_trait" }
+      ],
+      "rubric": "Must name Deserializer::end (or from_trait, which calls de.end() after deserializing) in src/de.rs. Explanation: end() calls parse_whitespace(); if any non-whitespace byte remains it returns a TrailingCharacters error (peek_error), otherwise Ok. Naming only from_str/from_slice/from_reader is incorrect."
+    },
+    {
+      "id": "H2",
+      "source": "json-dev-2",
+      "style": "developer",
+      "prompt": "In this repository, how does the library follow a slash-separated path such as /a/0/b to reach a nested element of a dynamically typed document?",
+      "accept": [
+        { "file": "src/value/mod.rs", "name": "Value::pointer" },
+        { "file": "src/value/mod.rs", "name": "Value::pointer_mut" }
+      ],
+      "rubric": "Must name Value::pointer (or pointer_mut) in src/value/mod.rs. Explanation: an empty pointer returns the value itself; a pointer not starting with '/' returns None; otherwise it splits on '/', skips the first empty token, unescapes ~1 to / and ~0 to ~, and folds: objects look up the token as a key, arrays parse it as an index with parse_index (which rejects a leading '+' and leading zeros), anything else gives None. Claims that it panics, supports negative indexes or creates missing entries are false."
+    },
+    {
+      "id": "H3",
+      "source": "json-dev-3",
+      "style": "developer",
+      "prompt": "In this repository, while reading a string literal, how is a pair of \\u escapes that together encode one astral-plane character turned into a single code point?",
+      "accept": [{ "file": "src/read.rs", "name": "parse_unicode_escape" }],
+      "rubric": "Must name parse_unicode_escape in src/read.rs. Explanation: it decodes the first \\u with decode_hex_escape; if it is a leading surrogate (0xD800..=0xDBFF) it expects a following \\u with a trailing surrogate (0xDC00..=0xDFFF) and combines them as ((n1 - 0xD800) << 10 | (n2 - 0xDC00)) + 0x10000, then appends it with push_wtf8_codepoint. Unpaired surrogates are an error when validating, and are kept as WTF-8 when not. Naming only decode_hex_escape or parse_escape is incorrect."
+    },
+    {
+      "id": "H4",
+      "source": "json-agent-1",
+      "style": "agent",
+      "prompt": "In this repository, find the code for this search: \"escape control chars quote backslash when writing string\". Where is it implemented?",
+      "accept": [
+        { "file": "src/ser.rs", "name": "format_escaped_str_contents" },
+        { "file": "src/ser.rs", "name": "format_escaped_str" }
+      ],
+      "rubric": "Must name format_escaped_str_contents (or format_escaped_str, which wraps it with begin_string/end_string) in src/ser.rs. Explanation: each byte is looked up in the ESCAPE table; runs of bytes that need no escape are written with write_string_fragment, and escaped bytes are mapped to a CharEscape (quote, backslash, \\b \\t \\n \\f \\r, other control characters as AsciiControl, i.e. \\u00XX) and written with formatter.write_char_escape."
+    },
+    {
+      "id": "H5",
+      "source": "json-agent-2",
+      "style": "agent",
+      "prompt": "In this repository, find the code for this search: \"skip_value discard unknown field without allocating\". Where is it implemented?",
+      "accept": [{ "file": "src/de.rs", "name": "Deserializer::ignore_value" }],
+      "rubric": "Must name Deserializer::ignore_value in src/de.rs. Explanation: it skips one JSON value without building it, iteratively rather than recursively, keeping the stack of enclosing '[' / '{' frames in self.scratch; literals go through parse_ident, numbers through ignore_integer, strings through read.ignore_str. Naming only deserialize_ignored_any or IgnoredAny is incorrect; calling it recursive is false."
+    },
+    {
+      "id": "H6",
+      "source": "json-agent-3",
+      "style": "agent",
+      "prompt": "In this repository, find the code for this search: \"SWAR scan string slice for quote or backslash fast\". Where is it implemented?",
+      "accept": [{ "file": "src/read.rs", "name": "SliceRead::skip_to_escape" }],
+      "rubric": "Must name SliceRead::skip_to_escape in src/read.rs. Explanation: when control characters are allowed it uses memchr2 for '\"' or '\\\\'; otherwise it reads word-sized chunks (u64 or u32) and uses a bit trick (Mycroft's algorithm) to flag any byte below 0x20, '\"' or '\\\\', then finishes the tail with skip_to_escape_slow. Naming only skip_to_escape_slow, parse_str_bytes or memchr is incorrect."
+    }
+  ]
+}

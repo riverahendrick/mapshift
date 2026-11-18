@@ -1,0 +1,17 @@
+{
+  "note": "Line spans at the pinned commits, only for accepted answers whose bare name has more than one definition in its file (counted by a definition-pattern grep of the source, not by either tool). For these, a result must also overlap the span; every other answer is matched by file and name alone. Spans were read from the source: the owning class or impl block is given in 'owner'.",
+  "spans": [
+    { "repo": "httpx", "file": "httpx/_auth.py", "qualified": "DigestAuth._build_auth_header", "start": 255, "end": 302, "owner": "class DigestAuth (other definitions: BasicAuth 139, NetRCAuth 169)" },
+    { "repo": "httpx", "file": "httpx/_client.py", "qualified": "Client._transport_for_url", "start": 760, "end": 770, "owner": "class Client" },
+    { "repo": "httpx", "file": "httpx/_client.py", "qualified": "AsyncClient._transport_for_url", "start": 1474, "end": 1484, "owner": "class AsyncClient" },
+    { "repo": "httpx", "file": "httpx/_decoders.py", "qualified": "LineDecoder.decode", "start": 333, "end": 370, "owner": "class LineDecoder (11 decode methods in the file)" },
+    { "repo": "httpx", "file": "httpx/_multipart.py", "qualified": "FileField.get_length", "start": 171, "end": 185, "owner": "class FileField (DataField.get_length at 105)" },
+    { "repo": "json", "file": "src/ser.rs", "qualified": "MapKeySerializer.serialize_f64", "start": 1042, "end": 1061, "owner": "impl ser::Serializer for MapKeySerializer (other definitions at 169, 1219, 1396)" },
+    { "repo": "json", "file": "src/value/ser.rs", "qualified": "MapKeySerializer.serialize_f64", "start": 540, "end": 546, "owner": "impl serde::Serializer for MapKeySerializer (other definitions at 156, 778, 949)" },
+    { "repo": "json", "file": "src/ser.rs", "qualified": "PrettyFormatter.begin_object_key", "start": 2043, "end": 2049, "owner": "impl Formatter for PrettyFormatter (trait default at 1884)" },
+    { "repo": "json", "file": "src/read.rs", "qualified": "IoRead.decode_hex_escape", "start": 372, "end": 381, "owner": "impl Read for IoRead" },
+    { "repo": "json", "file": "src/read.rs", "qualified": "SliceRead.decode_hex_escape", "start": 648, "end": 662, "owner": "impl Read for SliceRead (other definitions: trait 89, StrRead 764, &mut R 840)" },
+    { "repo": "json", "file": "src/read.rs", "qualified": "IoRead.parse_str_bytes", "start": 222, "end": 253, "owner": "impl IoRead" },
+    { "repo": "json", "file": "src/read.rs", "qualified": "SliceRead.parse_str_bytes", "start": 521, "end": 565, "owner": "impl SliceRead" }
+  ]
+}

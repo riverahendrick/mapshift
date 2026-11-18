@@ -1,0 +1,1371 @@
+{
+  "repo": "json",
+  "commit": "f51fa15a7015c7d02817a46d2db44c899a0016e8",
+  "model": "sonnet",
+  "maxTurns": 8,
+  "runs": [
+    {
+      "task": "H1",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 8170,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0368114,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 14414,
+        "cacheWrite": 7867,
+        "output": 389
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_search",
+          "input": {
+            "pattern": "fn end",
+            "path": "src/de.rs"
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-mapshift\\json\\src\\de.rs",
+            "offset": 140,
+            "limit": 20
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/de.rs:Deserializer::end\n\n`Deserializer::end` (src/de.rs:146) calls `parse_whitespace()` to skip any trailing whitespace. If a non-whitespace character is still there, it returns a `TrailingCharacters` error. Otherwise it returns `Ok(())`.",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__mapshift__map_search": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Deserializer::end (de.rs:146); parse_whitespace, TrailingCharacters error, otherwise Ok(()) all match lines 146-151.",
+      "blindCode": "A01"
+    },
+    {
+      "task": "H1",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 9291,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0440947,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 16687,
+        "cacheWrite": 9546,
+        "output": 423
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_all",
+          "input": {
+            "pattern": "fn end\\(|TrailingCharacters",
+            "in": "src"
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-graft\\json\\src\\de.rs",
+            "offset": 140,
+            "limit": 15
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/de.rs:Deserializer::end\n\n`Deserializer::end` (src/de.rs:146) calls `parse_whitespace()` to skip any whitespace. If a byte is still left, it returns `ErrorCode::TrailingCharacters` through `peek_error`. If the input is exhausted, it returns `Ok(())`.\n\n🌱 graft saved ~48,458 tokens this turn",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_all": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Deserializer::end (de.rs:146); parse_whitespace, ErrorCode::TrailingCharacters via peek_error, Ok(()) at end of input all match.",
+      "blindCode": "A09"
+    },
+    {
+      "task": "H2",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 9289,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0197383,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 21623,
+        "cacheWrite": 3351,
+        "output": 416
+      },
+      "toolCalls": [
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "fn pointer(",
+            "output_mode": "content",
+            "glob": "src/**/*.rs"
+          }
+        },
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "fn pointer(_mut)?\\b",
+            "output_mode": "content",
+            "glob": "src/**/*.rs",
+            "-A": 30
+          }
+        }
+      ],
+      "toolErrors": [
+        {
+          "id": "toolu_01NJZUtb2T9eJABMwR5ung2c",
+          "text": "Search failed — ripgrep rejected the pattern, glob, or file type without searching:\nrg: regex parse error:\n    (?:fn pointer()\n    ^\nerror: unclosed group"
+        }
+      ],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/value/mod.rs:Value::pointer\n\nIt implements JSON Pointer (RFC 6901). An empty string returns the value itself, and any other pointer must start with `/`. It splits on `/`, skips the leading empty segment, and unescapes `~1` to `/` and `~0` to `~` in each token. It then folds over the tokens: an object looks the token up as a key, an array parses it as an index, and any other value gives `None`. `Value::pointer_mut` does the same walk with mutable references.",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "Grep": 2
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Value::pointer; empty pointer returns self, split on '/' skipping first, ~1 and ~0 unescape, object key or array index fold, else None, and pointer_mut mirrors it, all as in mod.rs 779-850.",
+      "blindCode": "A04"
+    },
+    {
+      "task": "H2",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 5800,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.0121415,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 12915,
+        "cacheWrite": 2073,
+        "output": 255
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "Value::pointer JSON pointer lookup",
+            "limit": 3
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/value/mod.rs:Value::pointer\n\nIt returns `self` for an empty pointer and `None` if the pointer doesn't start with `/`. Otherwise it splits on `/`, skips the leading empty segment, and unescapes `~1` to `/` and `~0` to `~` in each token. It then folds over the tokens: an object takes the token as a key, and an array takes it as an index through `parse_index`. `Value::pointer_mut` does the same for mutable access.",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Value::pointer; empty returns self, no leading '/' returns None, split/skip/unescape/fold with parse_index for arrays, pointer_mut analogous; all matches the source.",
+      "blindCode": "A08"
+    },
+    {
+      "task": "H3",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 8020,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.022207200000000003,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 21292,
+        "cacheWrite": 3799,
+        "output": 487
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "decode surrogate pair \\u escapes into single code point in string parsing",
+            "limit": 5
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-mapshift\\json\\src\\read.rs",
+            "offset": 960,
+            "limit": 65
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/read.rs:parse_unicode_escape\n\nAfter reading a leading surrogate (0xD800..=0xDBFF), the function expects a following `\\u` and reads a second hex escape. If that is a trailing surrogate (0xDC00..=0xDFFF), it combines them as `(((n1 - 0xD800) << 10) | (n2 - 0xDC00)) + 0x10000` and pushes the result with `push_wtf8_codepoint`. A lone or mismatched surrogate is an error when `validate` is true, and is accepted as-is for byte strings.",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names parse_unicode_escape; leading/trailing surrogate ranges, combining formula, push_wtf8_codepoint, and error when validate is true versus acceptance when not validating match read.rs 951-1024.",
+      "blindCode": "A10"
+    },
+    {
+      "task": "H3",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 12392,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 4,
+      "costUsd": 0.0325116,
+      "tokens": {
+        "input": 8,
+        "cacheRead": 33576,
+        "cacheWrite": 5612,
+        "output": 669
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "decode surrogate pair \\u escapes into single code point"
+          }
+        },
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "0x10000|0xD800|0xDC00",
+            "path": "<work>\\bench-repos\\agent-graft\\json\\src",
+            "output_mode": "content"
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-graft\\json\\src\\read.rs",
+            "offset": 940,
+            "limit": 95
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/read.rs:parse_unicode_escape\n\nAfter reading the first `\\uXXXX` with `decode_hex_escape`, a leading surrogate (0xD800..=0xDBFF) makes it expect `\\u` and a second hex escape in the trailing range (0xDC00..=0xDFFF). It then combines them at `src/read.rs:1020` as `(((n1 - 0xD800) << 10) | (n2 - 0xDC00)) + 0x10000` and writes the result with `push_wtf8_codepoint`.\n\n🌱 graft saved ~28,184 tokens this turn",
+      "toolCallCount": 3,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1,
+        "Grep": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names parse_unicode_escape; surrogate ranges, the combining formula at read.rs:1020 and push_wtf8_codepoint all match.",
+      "blindCode": "A03"
+    },
+    {
+      "task": "H4",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 9237,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.022694699999999998,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 23627,
+        "cacheWrite": 3880,
+        "output": 480
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "escape control chars quote backslash when writing string",
+            "limit": 5
+          }
+        },
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "fn format_escaped_str_contents|fn format_escaped_str",
+            "path": "src/ser.rs",
+            "output_mode": "content"
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/ser.rs:format_escaped_str_contents\n\n`format_escaped_str_contents` (src/ser.rs:2079) scans the string bytes and looks each one up in an escape table. It writes unescaped runs unchanged. For bytes that need escaping (control characters, `\"`, `\\`), it calls `Formatter::write_char_escape` (src/ser.rs:1766), which emits `\\\"`, `\\\\`, `\\n` and similar, or `\\u00XX` for other control bytes. `format_escaped_str` (src/ser.rs:2069) wraps this with the surrounding quotes.\n\n🌱 graft saved ~40,138 tokens this turn",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1,
+        "Grep": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names format_escaped_str_contents (ser.rs:2079) and also write_char_escape (1766) and format_escaped_str (2069); line numbers and the escape outputs (\\\" \\\\ \\n, \\u00XX) are accurate.",
+      "blindCode": "A07"
+    },
+    {
+      "task": "H4",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 5782,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.014366799999999999,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 12908,
+        "cacheWrite": 2767,
+        "output": 200
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "escape control chars quote backslash when writing string",
+            "limit": 5
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/ser.rs:format_escaped_str_contents\n\nIt scans the string's bytes and uses an escape table to find `\"`, `\\\\` and control characters (below 0x20). It writes the unescaped runs through `Formatter::write_string_fragment` and the escapes through `Formatter::write_char_escape`.",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names format_escaped_str_contents; ESCAPE table lookup for quote, backslash and control bytes, write_string_fragment for runs and write_char_escape for escapes all match ser.rs 2079-2133.",
+      "blindCode": "A02"
+    },
+    {
+      "task": "H5",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 7601,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0162437,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 20977,
+        "cacheWrite": 2586,
+        "output": 379
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "skip_value discard unknown field without allocating",
+            "limit": 5
+          }
+        },
+        {
+          "name": "Grep",
+          "input": {
+            "pattern": "fn ignore_value|fn ignore_str",
+            "path": "src",
+            "output_mode": "content"
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/de.rs:Deserializer::ignore_value\n\n`ignore_value` (src/de.rs:1102) walks over the next JSON value and discards it. It never builds a `Value` or `String`. For strings it calls the reader's `ignore_str`, for example in src/read.rs:625. That function only advances the index with `skip_to_escape` and doesn't copy bytes into a buffer.\n\nI didn't open `ignore_value` itself, so this comes from the function names and the search results.",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1,
+        "Grep": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Deserializer::ignore_value (de.rs:1102); claims that it builds no Value or String and that ignore_str at read.rs:625 only advances via skip_to_escape are true; it honestly flags that it did not read the function body. Thin answer: the agent said it did not read the body, but nothing it states is false.",
+      "blindCode": "A05"
+    },
+    {
+      "task": "H5",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 8890,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.022509599999999998,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 22396,
+        "cacheWrite": 4082,
+        "output": 393
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "skip_value discard unknown field without allocating (IgnoredAny)"
+          }
+        },
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "ignore_value skip over JSON value without building it",
+            "in": "src/de.rs",
+            "limit": 2
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/de.rs:Deserializer::ignore_value (called from `deserialize_ignored_any`, src/de.rs:1910)\n\n`ignore_value` walks the JSON input and validates it without building a `Value`. It handles nested arrays and objects with an explicit stack of open brackets in `self.scratch`, and it skips strings through `read.ignore_str()`. `deserialize_ignored_any` calls it and then returns `visitor.visit_unit()`, which is how unknown fields get discarded.\n\n🌱 graft saved ~74,047 tokens this turn",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 2
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names Deserializer::ignore_value and deserialize_ignored_any at de.rs:1910 which calls it then visit_unit; explicit stack of open brackets in self.scratch and read.ignore_str() for strings are accurate.",
+      "blindCode": "A11"
+    },
+    {
+      "task": "H6",
+      "arm": "graft",
+      "exitCode": 0,
+      "wallMs": 7973,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__graft__graft_check_freshness",
+          "mcp__graft__graft_file_api",
+          "mcp__graft__graft_find_all",
+          "mcp__graft__graft_find_code",
+          "mcp__graft__graft_repo_map",
+          "mcp__graft__graft_trace_calls"
+        ],
+        "mcpServers": [
+          {
+            "name": "graft",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 2,
+      "costUsd": 0.0202669,
+      "tokens": {
+        "input": 4,
+        "cacheRead": 13809,
+        "cacheWrite": 3937,
+        "output": 313
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__graft__graft_find_code",
+          "input": {
+            "query": "SWAR scan string slice for quote or backslash fast"
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/read.rs:SliceRead::skip_to_escape\n\nWhen control characters are forbidden, it reads the rest of the slice in word-sized chunks (u64, or u32 on 32-bit). It uses a Mycroft-style SWAR zero-byte test to flag any byte that is below 0x20, `\"` or `\\`. It then takes the first flagged byte's index from `trailing_zeros`, and a slow path handles the leftover tail bytes. When control characters are allowed, it just calls `memchr2` for `\"` and `\\`.\n\n🌱 graft saved ~37,732 tokens this turn",
+      "toolCallCount": 1,
+      "toolCallsByName": {
+        "mcp__graft__graft_find_code": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names SliceRead::skip_to_escape; u64/u32 chunks, Mycroft-style test for <0x20, quote and backslash, trailing_zeros index, slow-path tail and memchr2 when control characters are allowed all match read.rs 459-516.",
+      "blindCode": "A06"
+    },
+    {
+      "task": "H6",
+      "arm": "mapshift",
+      "exitCode": 0,
+      "wallMs": 7830,
+      "init": {
+        "model": "claude-sonnet-5-5",
+        "tools": [
+          "Glob",
+          "Grep",
+          "Read",
+          "mcp__mapshift__map_file",
+          "mcp__mapshift__map_find",
+          "mcp__mapshift__map_overview",
+          "mcp__mapshift__map_search",
+          "mcp__mapshift__map_trace"
+        ],
+        "mcpServers": [
+          {
+            "name": "mapshift",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "permissionMode": "default",
+        "slashCommands": 55,
+        "skills": [
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "plugin-authoring"
+        ],
+        "plugins": [
+          {
+            "name": "cc-plugin-agents-md",
+            "path": "builtin",
+            "source": "cc-plugin-agents-md@builtin"
+          },
+          {
+            "name": "cc-plugin-telemetry",
+            "path": "builtin",
+            "source": "cc-plugin-telemetry@builtin"
+          },
+          {
+            "name": "cc-plugin-privacy",
+            "path": "builtin",
+            "source": "cc-plugin-privacy@builtin"
+          },
+          {
+            "name": "cc-plugin-plugin-authoring",
+            "path": "builtin",
+            "source": "cc-plugin-plugin-authoring@builtin"
+          }
+        ]
+      },
+      "subtype": "success",
+      "isError": false,
+      "turns": 3,
+      "costUsd": 0.0243648,
+      "tokens": {
+        "input": 6,
+        "cacheRead": 21508,
+        "cacheWrite": 4413,
+        "output": 455
+      },
+      "toolCalls": [
+        {
+          "name": "mcp__mapshift__map_find",
+          "input": {
+            "query": "SWAR scan string slice for quote or backslash fast",
+            "limit": 5
+          }
+        },
+        {
+          "name": "Read",
+          "input": {
+            "file_path": "<work>\\bench-repos\\agent-mapshift\\json\\src\\read.rs",
+            "offset": 440,
+            "limit": 75
+          }
+        }
+      ],
+      "toolErrors": [],
+      "permissionDenials": [],
+      "answer": "ANSWER: src/read.rs:SliceRead::skip_to_escape\n\nIt reads the rest of the slice in `u64` or `u32` chunks. For each chunk it uses Mycroft-style zero-byte tricks to flag control characters (below 0x20), `\"` and `\\` in one pass. On a hit it takes the lowest set flag bit to find the byte index. The tail bytes are handled by `skip_to_escape_slow`. When control characters are allowed, it calls `memchr2` instead.",
+      "toolCallCount": 2,
+      "toolCallsByName": {
+        "mcp__mapshift__map_find": 1,
+        "Read": 1
+      },
+      "stderr": "",
+      "correct": true,
+      "judgeNote": "Names SliceRead::skip_to_escape; u64/u32 chunks, Mycroft-style flags for control chars, quote and backslash, lowest set bit for index, skip_to_escape_slow for tail, memchr2 when control characters are allowed, all accurate.",
+      "blindCode": "A12"
+    }
+  ],
+  "mcpServers": {
+    "mapshift": {
+      "tools": [
+        "map_find",
+        "map_trace",
+        "map_file",
+        "map_overview",
+        "map_search"
+      ],
+      "toolSchemaChars": 2713
+    },
+    "graft": {
+      "tools": [
+        "graft_find_code",
+        "graft_file_api",
+        "graft_check_freshness",
+        "graft_trace_calls",
+        "graft_find_all",
+        "graft_repo_map"
+      ],
+      "toolSchemaChars": 3341
+    }
+  },
+  "summary": {
+    "mapshift": {
+      "runs": 6,
+      "correct": 6,
+      "avgToolCalls": 1.6666666666666667,
+      "avgTurns": 2.6666666666666665,
+      "avgInputTokens": 5.333333333333333,
+      "avgCacheReadTokens": 17335.666666666668,
+      "avgCacheWriteTokens": 3917.5,
+      "avgOutputTokens": 360.8333333333333,
+      "avgTotalTokens": 21619.333333333332,
+      "avgCostUsd": 0.02102256666666667,
+      "totalCostUsd": 0.1261354,
+      "hitTurnLimit": 0
+    },
+    "graft": {
+      "runs": 6,
+      "correct": 6,
+      "avgToolCalls": 2,
+      "avgTurns": 3,
+      "avgInputTokens": 6,
+      "avgCacheReadTokens": 21953,
+      "avgCacheWriteTokens": 5068,
+      "avgOutputTokens": 449,
+      "avgTotalTokens": 27476,
+      "avgCostUsd": 0.0269693,
+      "totalCostUsd": 0.1618158,
+      "hitTurnLimit": 0
+    }
+  }
+}

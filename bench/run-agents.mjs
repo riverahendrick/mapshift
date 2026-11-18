@@ -7,13 +7,17 @@
 //   node bench/run-agents.mjs --work <dir> --blind             write the answers, shuffled and without arm labels, for judging
 //   node bench/run-agents.mjs --work <dir> --summarize         merge results/agent-verdicts.json into results/agents.json
 import { spawn } from 'node:child_process'
+//   Optional, for other task sets (defaults are the original click run):
+//   --tasks <file> --repos <file> --out <file> --verdicts <file> [--from <dir with a local clone named like the repo>]
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { BENCH, REPOS, WORK, argValue, deepScrub, ensureClone, readJson, run, toolEntries, toolEnv } from './lib.mjs'
 
-const TASKS = readJson(join(BENCH, 'agent-tasks.json'))
-const REPO = REPOS.find(r => r.name === TASKS.repo)
-const OUT = join(BENCH, 'results', 'agents.json')
+const TASKS = readJson(resolve(BENCH, argValue('tasks') ?? 'agent-tasks.json'))
+const repoList = argValue('repos') ? [readJson(resolve(BENCH, argValue('repos')))].map(j => (Array.isArray(j) ? j : j.repos))[0] : REPOS
+const REPO = (r => (r && argValue('from') && existsSync(join(argValue('from'), r.name, '.git')) ? { ...r, url: resolve(argValue('from'), r.name) } : r))(repoList.find(r => r.name === TASKS.repo))
+const OUT = resolve(BENCH, argValue('out') ?? join('results', 'agents.json'))
+const VERDICTS = resolve(BENCH, argValue('verdicts') ?? join('results', 'agent-verdicts.json'))
 const AG = join(WORK, 'agents')
 const MAPSHIFT_HOME = join(WORK, 'mapshift-home', 'agents')
 const MODEL = 'sonnet'
@@ -207,7 +211,9 @@ function blind() {
     const code = `A${String(i + 1).padStart(2, '0')}`
     key[code] = { task: r.task, arm: r.arm }
     const task = TASKS.tasks.find(t => t.id === r.task)
-    return { code, task: r.task, prompt: task.prompt, accept: task.accept, rubric: task.rubric, stoppedBy: r.subtype, answer: r.answer }
+    // Graft's tool output asks the agent to end with a "graft saved ~N tokens" line; it is dropped here (sheet only) so the arm is less recognisable
+    const answer = typeof r.answer === 'string' ? r.answer.split(/\r?\n/).filter(l => !/graft saved|tokens saved/i.test(l)).join('\n').trim() : r.answer
+    return { code, task: r.task, prompt: task.prompt, accept: task.accept, rubric: task.rubric, stoppedBy: r.subtype, answer }
   })
   mkdirSync(AG, { recursive: true })
   writeFileSync(join(AG, 'blind-sheet.json'), JSON.stringify(sheet.sort((a, b) => a.task.localeCompare(b.task)), null, 2))
@@ -217,7 +223,7 @@ function blind() {
 
 function summarize() {
   const data = load()
-  const verdicts = readJson(join(BENCH, 'results', 'agent-verdicts.json')).verdicts
+  const verdicts = readJson(VERDICTS).verdicts
   const key = readJson(join(AG, 'blind-key.json'))
   for (const [code, v] of Object.entries(verdicts)) {
     const k = key[code]

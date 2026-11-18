@@ -4,6 +4,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { platform, release } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { BENCH, REPOS, WORK, argValue, dirSize, ensureClone, median, readJson, run, scrub, tokens, toolEntries, toolEnv } from './lib.mjs'
 
 const BUILDS = Number(argValue('builds') ?? 3)
@@ -265,7 +266,9 @@ async function main() {
   printSummary(out, file)
 }
 
-main().catch(err => {
-  console.error(err)
-  process.exitCode = 1
-})
+// only when run directly: run-heldout.mjs imports the parsers above without starting this benchmark
+if (import.meta.url === pathToFileURL(process.argv[1]).href)
+  main().catch(err => {
+    console.error(err)
+    process.exitCode = 1
+  })

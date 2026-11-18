@@ -1,0 +1,53 @@
+{
+  "note": "Judged from the blind sheet (answers shuffled, arm labels removed, Graft's \"graft saved ~N tokens\" closing line stripped) by a separate Claude Sonnet judge session that read the pinned source and did not open the key. The orchestrator spot-checked A05, A07 and A11 against the source and agreed. Judge note: Each answer was checked against the pinned serde_json source (de.rs, read.rs, ser.rs, value/mod.rs); an answer counted as correct only if it named an accepted definition and every stated detail and cited line number matched the code.",
+  "verdicts": {
+    "A01": {
+      "correct": true,
+      "note": "Names Deserializer::end (de.rs:146); parse_whitespace, TrailingCharacters error, otherwise Ok(()) all match lines 146-151."
+    },
+    "A02": {
+      "correct": true,
+      "note": "Names format_escaped_str_contents; ESCAPE table lookup for quote, backslash and control bytes, write_string_fragment for runs and write_char_escape for escapes all match ser.rs 2079-2133."
+    },
+    "A03": {
+      "correct": true,
+      "note": "Names parse_unicode_escape; surrogate ranges, the combining formula at read.rs:1020 and push_wtf8_codepoint all match."
+    },
+    "A04": {
+      "correct": true,
+      "note": "Names Value::pointer; empty pointer returns self, split on '/' skipping first, ~1 and ~0 unescape, object key or array index fold, else None, and pointer_mut mirrors it, all as in mod.rs 779-850."
+    },
+    "A05": {
+      "correct": true,
+      "note": "Names Deserializer::ignore_value (de.rs:1102); claims that it builds no Value or String and that ignore_str at read.rs:625 only advances via skip_to_escape are true; it honestly flags that it did not read the function body. Thin answer: the agent said it did not read the body, but nothing it states is false."
+    },
+    "A06": {
+      "correct": true,
+      "note": "Names SliceRead::skip_to_escape; u64/u32 chunks, Mycroft-style test for <0x20, quote and backslash, trailing_zeros index, slow-path tail and memchr2 when control characters are allowed all match read.rs 459-516."
+    },
+    "A07": {
+      "correct": true,
+      "note": "Names format_escaped_str_contents (ser.rs:2079) and also write_char_escape (1766) and format_escaped_str (2069); line numbers and the escape outputs (\\\" \\\\ \\n, \\u00XX) are accurate."
+    },
+    "A08": {
+      "correct": true,
+      "note": "Names Value::pointer; empty returns self, no leading '/' returns None, split/skip/unescape/fold with parse_index for arrays, pointer_mut analogous; all matches the source."
+    },
+    "A09": {
+      "correct": true,
+      "note": "Names Deserializer::end (de.rs:146); parse_whitespace, ErrorCode::TrailingCharacters via peek_error, Ok(()) at end of input all match."
+    },
+    "A10": {
+      "correct": true,
+      "note": "Names parse_unicode_escape; leading/trailing surrogate ranges, combining formula, push_wtf8_codepoint, and error when validate is true versus acceptance when not validating match read.rs 951-1024."
+    },
+    "A11": {
+      "correct": true,
+      "note": "Names Deserializer::ignore_value and deserialize_ignored_any at de.rs:1910 which calls it then visit_unit; explicit stack of open brackets in self.scratch and read.ignore_str() for strings are accurate."
+    },
+    "A12": {
+      "correct": true,
+      "note": "Names SliceRead::skip_to_escape; u64/u32 chunks, Mycroft-style flags for control chars, quote and backslash, lowest set bit for index, skip_to_escape_slow for tail, memchr2 when control characters are allowed, all accurate."
+    }
+  }
+}
