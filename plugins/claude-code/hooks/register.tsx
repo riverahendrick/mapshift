@@ -89,6 +89,8 @@ const substituted: Record<string, number> = {} // family asked for -> times anot
 let unavailable: Family[] = []
 let limited: Limited = {} // models at their usage limit, until they reset
 let lastSent: Family | null = null // the model the main conversation's last request went to
+let engineSeen = -1 // Claude Code's own session total at the last turn; it drops back to $0 after an app restart
+let oursAtEngineStart = 0 // this chat's own total when Claude Code's total last started counting
 /** Every model that cannot be used now: not served on this account, or at its usage limit. */
 const outNow = (now: number): Family[] => [...new Set([...unavailable, ...limitedNow(limited, now)])]
 const alerted = new Set<string>() // limit alerts already shown, per window, line and reset
@@ -742,7 +744,13 @@ export const register: Register = on => {
       const top = Object.entries(tp.counts).sort((a, b) => b[1] - a[1]).slice(0, 12)
       log(now, { k: 'tools', turn: row.n, map: Object.entries(tp.counts).filter(([n]) => isMapTool(n)).reduce((a, [, c]) => a + c, 0), counts: Object.fromEntries(top) })
       log(now, { k: 'turn', turn: row.n, steps: row.steps, tools: row.tools, errors: tp.errors, edited: tp.edited, seconds, usd: row.usd, baseUsd: row.baseUsd, cacheSaved: tp.acc.cacheSaved })
-      log(now, { k: 'totals', sessionUsd: tt.session.usd, sessionBaseUsd: tt.session.baseUsd, sessionCacheSaved: tt.session.cacheSavedUsd, turns: tt.session.turns, engineUsd })
+      // Claude Code's own total starts again at $0 when the app restarts, while this chat's total carries on when
+      // the chat resumes: the self-check compares the two only over the stretch both have counted
+      if (typeof engineUsd === 'number') {
+        if (engineSeen < 0 || engineUsd < engineSeen - 0.001) oursAtEngineStart = tt.session.usd - engineUsd
+        engineSeen = engineUsd
+      }
+      log(now, { k: 'totals', sessionUsd: tt.session.usd - oursAtEngineStart, sessionBaseUsd: tt.session.baseUsd, sessionCacheSaved: tt.session.cacheSavedUsd, turns: tt.session.turns, engineUsd })
       await flushAudit($)
       const v = verifyAudit(audit, PRICES)
       await update($, healthA, () => ({ ok: v.ok, checkedAt: now, ...v.stats, problemLines: v.problemLines.slice(0, 3).map(l => l.slice(0, 140)), unavailable: outNow(now) }))
