@@ -1,11 +1,11 @@
 // Every coding agent Mapshift can be added to: how to tell it is installed, and what setup writes for it.
 // Only personal (user-level) settings are written, never a project's or a team's files.
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { mdFence, tomlArray, tomlFence, tomlString } from '../setup/blocks.ts'
 import { shellLine, which, type Env, type Runtime, type Targets } from '../setup/env.ts'
 import type { AgentId, Piece } from '../setup/pieces.ts'
-import { codexPrompt, geminiCommand, grokRules, instructionLines, skill } from './content.ts'
+import { codexPrompt, geminiCommand, grokRules, instructionLines, kiroSteering, skill } from './content.ts'
 
 export type AgentDef = {
   id: AgentId
@@ -50,15 +50,45 @@ function tomlMcp(agent: AgentId, path: string, rt: Runtime): Piece {
   }
 }
 
-/** A JSON MCP server entry, for agents whose settings are JSON (Gemini CLI, Antigravity, Cursor). */
-const jsonMcp = (agent: AgentId, path: string, rt: Runtime): Piece => ({
+/** The one server entry every agent gets: this Node running `mapshift mcp`. */
+const stdio = (rt: Runtime) => ({ command: rt.node, args: [rt.script, 'mcp'] })
+
+/** A JSON MCP server entry, for agents whose settings are JSON (Gemini CLI, Antigravity, Cursor and most others). */
+const jsonMcp = (agent: AgentId, path: string, rt: Runtime, o: { key?: string[]; value?: unknown } = {}): Piece => ({
   agent,
   label: 'MCP server',
   path,
   kind: 'json',
-  key: ['mcpServers', 'mapshift'],
-  value: { command: rt.node, args: [rt.script, 'mcp'] },
+  key: o.key ?? ['mcpServers', 'mapshift'],
+  value: o.value ?? stdio(rt),
 })
+
+/** The map advice, as a marked block inside the agent's own instructions file. */
+const mdRules = (agent: AgentId, path: string): Piece => ({
+  agent,
+  label: 'Instructions',
+  path,
+  kind: 'block',
+  format: 'md',
+  fence: mdFence(),
+  lines: instructionLines({ helpers: false }),
+})
+
+/** opencode reads `opencode.jsonc` or `opencode.json`; an existing one is used, a new file is `.jsonc` (what opencode makes itself). */
+function opencodeConfig(t: Targets): string {
+  const jsonc = join(t.opencode, 'opencode.jsonc')
+  const json = join(t.opencode, 'opencode.json')
+  return existsSync(jsonc) ? jsonc : existsSync(json) ? json : jsonc
+}
+
+/** `~/.copilot` alone proves little: VS Code's Copilot extension leaves an `ide` folder there. Anything else means the CLI ran. */
+function copilotFootprint(dir: string): boolean {
+  try {
+    return readdirSync(dir).some(e => e !== 'ide')
+  } catch {
+    return false
+  }
+}
 
 const geminiRules = (agent: AgentId, t: Targets): Piece => ({
   agent,
@@ -152,6 +182,119 @@ export const AGENTS: AgentDef[] = [
       { agent: 'cursor', label: 'Skill', path: join(t.cursor, 'skills', 'mapshift', 'SKILL.md'), kind: 'file', content: skill(rt, 'cursor') },
     ],
     next: 'Beta: restart Cursor and check that Settings → MCP lists "mapshift". Ask for the mapshift skill to see the report.',
+  },
+  {
+    id: 'windsurf',
+    label: 'Windsurf',
+    detect: (t, env) => existsSync(t.windsurf) || !!which('windsurf', env),
+    pieces: (t, rt) => [jsonMcp('windsurf', join(t.windsurf, 'mcp_config.json'), rt)],
+    next: 'Restart Windsurf, or refresh its MCP list, and check that "mapshift" shows there.',
+  },
+  {
+    id: 'vscode',
+    label: 'VS Code (Copilot agent mode)',
+    detect: (t, env) => existsSync(t.vscode) || !!which('code', env),
+    pieces: (t, rt) => [jsonMcp('vscode', join(t.vscode, 'mcp.json'), rt, { key: ['servers', 'mapshift'], value: { type: 'stdio', ...stdio(rt) } })],
+    next: 'Restart VS Code, run "MCP: List Servers" and start "mapshift" (VS Code asks once to trust it). Use Copilot Chat in Agent mode.',
+  },
+  {
+    id: 'copilot',
+    label: 'GitHub Copilot CLI',
+    detect: (t, env) => copilotFootprint(t.copilot) || !!which('copilot', env),
+    pieces: (t, rt) => [jsonMcp('copilot', join(t.copilot, 'mcp-config.json'), rt, { value: { type: 'local', ...stdio(rt), tools: ['*'] } })],
+    next: 'Restart Copilot CLI; /mcp lists "mapshift".',
+  },
+  {
+    id: 'opencode',
+    label: 'opencode',
+    beta: true,
+    detect: (t, env) => existsSync(t.opencode) || !!which('opencode', env),
+    pieces: (t, rt) => [
+      jsonMcp('opencode', opencodeConfig(t), rt, { key: ['mcp', 'servers', 'mapshift'], value: { type: 'local', command: [rt.node, rt.script, 'mcp'] } }),
+      mdRules('opencode', join(t.opencode, 'AGENTS.md')),
+    ],
+    next: 'Beta: restart opencode (version 2 or newer, which keeps servers under "mcp.servers"). A config file with comments is left alone: add the server by hand then.',
+  },
+  {
+    id: 'kiro',
+    label: 'Kiro',
+    beta: true,
+    detect: (t, env) => existsSync(t.kiro) || !!which('kiro', env) || !!which('kiro-cli', env),
+    pieces: (t, rt) => [
+      jsonMcp('kiro', join(t.kiro, 'settings', 'mcp.json'), rt),
+      { agent: 'kiro', label: 'Steering', path: join(t.kiro, 'steering', 'mapshift.md'), kind: 'file', content: kiroSteering() },
+    ],
+    next: 'Beta: restart Kiro. Kiro IDE ships with MCP off: turn it on in Settings (search "MCP"). Kiro CLI needs nothing more.',
+  },
+  {
+    id: 'qwen',
+    label: 'Qwen Code',
+    beta: true,
+    detect: (t, env) => existsSync(t.qwen) || !!which('qwen', env),
+    pieces: (t, rt) => [jsonMcp('qwen', join(t.qwen, 'settings.json'), rt), mdRules('qwen', join(t.qwen, 'QWEN.md'))],
+    next: 'Beta: restart Qwen Code; /mcp lists "mapshift". A settings.json with comments is left alone: add the server by hand then.',
+  },
+  {
+    id: 'claude-desktop',
+    label: 'Claude Desktop',
+    detect: t => existsSync(t.claudeDesktop),
+    pieces: (t, rt) => [jsonMcp('claude-desktop', join(t.claudeDesktop, 'claude_desktop_config.json'), rt)],
+    next: 'Quit Claude Desktop completely (also from the tray) and open it again; "mapshift" shows under connectors.',
+  },
+  {
+    id: 'hermes',
+    label: 'Hermes',
+    beta: true,
+    detect: (t, env) => existsSync(t.hermes) || !!which('hermes', env),
+    pieces: (t, rt) => [
+      {
+        agent: 'hermes',
+        label: 'MCP server',
+        path: join(t.hermes, 'config.yaml'),
+        kind: 'block',
+        format: 'yaml',
+        fence: tomlFence('mcp'),
+        guard: '^(#.*|mcp_servers:|  mapshift:|    command: .*|    args: .*)$',
+        conflicts: [{ re: /^\s*["']?mcp_servers["']?\s*:/m, why: 'this file already has an "mcp_servers" section; add mapshift under it by hand' }],
+        lines: [ADDED_LINE, 'mcp_servers:', '  mapshift:', `    command: ${JSON.stringify(rt.node)}`, `    args: [${[rt.script, 'mcp'].map(a => JSON.stringify(a)).join(', ')}]`],
+      },
+    ],
+    next: 'Beta: start a new Hermes session. If the file already had an "mcp_servers" section, setup left it alone and said so.',
+  },
+  {
+    id: 'droid',
+    label: 'Factory Droid',
+    beta: true,
+    detect: (t, env) => existsSync(t.factory) || !!which('droid', env),
+    pieces: (t, rt) => [jsonMcp('droid', join(t.factory, 'mcp.json'), rt), mdRules('droid', join(t.factory, 'AGENTS.md'))],
+    next: 'Beta: Droid reloads mcp.json by itself; check that /mcp lists "mapshift".',
+  },
+  {
+    id: 'kimi',
+    label: 'Kimi Code',
+    detect: (t, env) => existsSync(t.kimi) || !!which('kimi', env),
+    pieces: (t, rt) => [jsonMcp('kimi', join(t.kimi, 'mcp.json'), rt), mdRules('kimi', join(t.kimi, 'AGENTS.md'))],
+    next: 'Start a new Kimi Code session: a server added mid-session only joins later ones.',
+  },
+  {
+    id: 'qoder',
+    label: 'Qoder CLI',
+    beta: true,
+    detect: (t, env) => existsSync(t.qoder) || !!which('qodercli', env),
+    pieces: (t, rt) => [jsonMcp('qoder', join(t.qoder, 'settings.json'), rt)],
+    next: 'Beta: restart the Qoder CLI. The Qoder IDE keeps servers in Settings > MCP; add it there by hand. A settings.json with comments is left alone.',
+  },
+  {
+    id: 'pi',
+    label: 'Pi',
+    beta: true,
+    detect: t => existsSync(t.pi),
+    pieces: (t, rt) => [
+      // "direct" declares the tools to the model; Pi's default (codemode) only lets scripts call them
+      jsonMcp('pi', join(t.pi, 'mcp.json'), rt, { value: { ...stdio(rt), exposure: 'direct' } }),
+      mdRules('pi', join(t.pi, 'AGENTS.md')),
+    ],
+    next: 'Beta: run /reload in Pi, or restart it.',
   },
   {
     id: 'claude',
