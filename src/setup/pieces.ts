@@ -1,17 +1,35 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { foreignTomlLines, outside, removeBlock, upsertBlock, type Fence } from './blocks.ts'
+import { foreignTomlLines, outside, removeBlock, upsertBlock, yamlBlockForeign, type Fence } from './blocks.ts'
 import type { Targets } from './env.ts'
 import { getAt, isStrictJson, removeMember, setMember } from './json-edit.ts'
 
-export type AgentId = 'codex' | 'gemini' | 'agy' | 'grok' | 'cursor' | 'claude'
+export type AgentId =
+  | 'codex'
+  | 'gemini'
+  | 'agy'
+  | 'grok'
+  | 'cursor'
+  | 'claude'
+  | 'windsurf'
+  | 'vscode'
+  | 'copilot'
+  | 'opencode'
+  | 'kiro'
+  | 'qwen'
+  | 'claude-desktop'
+  | 'hermes'
+  | 'droid'
+  | 'kimi'
+  | 'qoder'
+  | 'pi'
 
 /** Files Mapshift creates whole carry this word, so it never deletes or overwrites a file it did not write. */
 export const MANAGED = 'mapshift:managed'
 
 /** One change setup makes in one file. */
 export type Piece = { agent: AgentId; label: string; path: string } & (
-  | { kind: 'block'; format: 'md' | 'toml'; fence: Fence; lines: string[]; own?: string[]; conflicts?: { re: RegExp; why: string }[] }
+  | { kind: 'block'; format: 'md' | 'toml' | 'yaml'; fence: Fence; lines: string[]; own?: string[]; guard?: string; conflicts?: { re: RegExp; why: string }[] }
   | { kind: 'json'; key: string[]; value: unknown; replaceIf?: (old: unknown) => boolean }
   | { kind: 'file'; content: string }
 )
@@ -23,9 +41,11 @@ export type Rec = {
   path: string
   agents: AgentId[]
   label: string
-  format?: 'md' | 'toml'
+  format?: 'md' | 'toml' | 'yaml'
   fence?: Fence
   own?: string[]
+  /** For YAML blocks: a pattern (source text) every line inside the block must match; see yamlBlockForeign. */
+  guard?: string
   key?: string[]
   /** What was put before an appended block. */
   sep?: string
@@ -55,6 +75,9 @@ export function applyPiece(p: Piece, text: string | null, prev: Rec | undefined)
       const rest = outside(text, p.fence)
       const hit = p.conflicts.find(c => c.re.test(rest))
       if (hit) return { text, action: 'skip', reason: hit.why }
+    }
+    if (text !== null && p.guard && yamlBlockForeign(text, p.fence, new RegExp(p.guard))) {
+      return { text, action: 'skip', reason: "lines were added inside or right after Mapshift's block; left as is (edit that part by hand)" }
     }
     const r = upsertBlock(text, p.fence, p.lines, p.format === 'toml' ? foreignTomlLines(p.own ?? []) : undefined)
     if (r.text === text) return { text, action: 'same' }
@@ -86,6 +109,9 @@ export function applyPiece(p: Piece, text: string | null, prev: Rec | undefined)
 /** Takes one recorded change out of a file's text. Returns null when the file should be deleted. */
 export function removeRec(r: Rec, text: string): { text: string | null; note?: string } {
   if (r.kind === 'block') {
+    if (r.guard && yamlBlockForeign(text, r.fence!, new RegExp(r.guard))) {
+      return { text, note: `${r.path} has lines next to Mapshift's block, so it was left in place; remove the marked block by hand` }
+    }
     const out = removeBlock(text, r.fence!, r.sep, r.format === 'toml' ? foreignTomlLines(r.own ?? []) : undefined)
     return { text: r.created && out.trim() === '' ? null : out }
   }

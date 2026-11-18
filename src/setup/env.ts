@@ -16,21 +16,62 @@ export type Targets = {
   grok: string
   cursor: string
   claude: string
+  /** Windsurf's folder (`~/.codeium/windsurf`). */
+  windsurf: string
+  kiro: string
+  qwen: string
+  /** Factory Droid's folder (`~/.factory`). */
+  factory: string
+  kimi: string
+  qoder: string
+  /** Pi's agent folder (`~/.pi/agent`). */
+  pi: string
+  /** GitHub Copilot CLI's folder. */
+  copilot: string
+  /** opencode's folder: `$XDG_CONFIG_HOME/opencode` or `~/.config/opencode`, on every system. */
+  opencode: string
+  hermes: string
+  /** VS Code's `User` folder, where its user-level `mcp.json` lives. */
+  vscode: string
+  /** Claude Desktop's folder, where `claude_desktop_config.json` lives. */
+  claudeDesktop: string
   /** Where Mapshift keeps its setup record and backups for this home. */
   mapshift: string
 }
 
 export type Env = Record<string, string | undefined>
 
-export function targets(o: { home?: string; env?: Env } = {}): Targets {
+/**
+ * The folder desktop apps keep their settings in: `%APPDATA%` on Windows, `~/Library/Application Support`
+ * on macOS, `$XDG_CONFIG_HOME` or `~/.config` elsewhere. An explicit home never reads the real environment.
+ */
+export function appConfigRoot(home: string, env: Env, platform: NodeJS.Platform, explicit: boolean): string {
+  const pick = (name: string) => (explicit ? undefined : env[name]?.trim() || undefined)
+  if (platform === 'win32') return resolve(pick('APPDATA') ?? join(home, 'AppData', 'Roaming'))
+  if (platform === 'darwin') return join(home, 'Library', 'Application Support')
+  return resolve(pick('XDG_CONFIG_HOME') ?? join(home, '.config'))
+}
+
+export function targets(o: { home?: string; env?: Env; platform?: NodeJS.Platform } = {}): Targets {
   const env = o.env ?? process.env
+  const platform = o.platform ?? process.platform
   const explicit = !!o.home
   const home = resolve(o.home ?? homedir())
   const fromEnv = (name: string, fallback: string) => {
-    const v = env[name]?.trim()
+    let v = env[name]?.trim()
+    if (v === '~' || v?.startsWith('~/') || v?.startsWith('~\\')) v = join(home, v.slice(1))
     return !explicit && v ? resolve(v) : fallback
   }
   const custom = env.MAPSHIFT_HOME?.trim()
+  const apps = appConfigRoot(home, env, platform, explicit)
+  const xdgRaw = env.XDG_CONFIG_HOME?.trim()
+  const xdg = !explicit && xdgRaw ? resolve(xdgRaw) : join(home, '.config')
+  const localApp = !explicit && env.LOCALAPPDATA?.trim() ? resolve(env.LOCALAPPDATA.trim()) : join(home, 'AppData', 'Local')
+  // Hermes keeps its home in %LOCALAPPDATA%\hermes on Windows installs; ~/.hermes is the documented default.
+  const hermesDefault =
+    platform === 'win32' && !existsSync(join(home, '.hermes', 'config.yaml')) && existsSync(join(localApp, 'hermes', 'config.yaml'))
+      ? join(localApp, 'hermes')
+      : join(home, '.hermes')
   return {
     home,
     explicit,
@@ -39,6 +80,18 @@ export function targets(o: { home?: string; env?: Env } = {}): Targets {
     grok: fromEnv('GROK_HOME', join(home, '.grok')),
     cursor: join(home, '.cursor'),
     claude: join(home, '.claude'),
+    windsurf: join(home, '.codeium', 'windsurf'),
+    kiro: join(home, '.kiro'),
+    qwen: fromEnv('QWEN_HOME', join(home, '.qwen')),
+    factory: join(home, '.factory'),
+    kimi: fromEnv('KIMI_CODE_HOME', join(home, '.kimi-code')),
+    qoder: fromEnv('QODER_CONFIG_DIR', join(home, '.qoder')),
+    pi: fromEnv('PI_CODING_AGENT_DIR', join(home, '.pi', 'agent')),
+    copilot: fromEnv('COPILOT_HOME', join(home, '.copilot')),
+    opencode: join(xdg, 'opencode'),
+    hermes: fromEnv('HERMES_HOME', hermesDefault),
+    vscode: join(apps, 'Code', 'User'),
+    claudeDesktop: join(apps, 'Claude'),
     mapshift: custom ? resolve(custom) : join(home, '.mapshift'),
   }
 }

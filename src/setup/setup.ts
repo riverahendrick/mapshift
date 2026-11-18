@@ -93,7 +93,7 @@ function execute(c: Ctx, pieces: Piece[], prev: Rec[], write: boolean): RunResul
       ...base,
       ...step.rec,
       agents: [...new Set([...base.agents, p.agent])],
-      ...(p.kind === 'block' ? { format: p.format, fence: p.fence, own: p.own } : {}),
+      ...(p.kind === 'block' ? { format: p.format, fence: p.fence, own: p.own, guard: p.guard } : {}),
       ...(p.kind === 'json' ? { key: p.key } : {}),
     })
   }

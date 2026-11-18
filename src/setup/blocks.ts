@@ -74,6 +74,19 @@ export function removeBlock(text: string, f: Fence, sep = '', keep: (inner: stri
   return text.slice(0, from) + tail + text.slice(b.to)
 }
 
+/**
+ * YAML has no way to keep someone else's lines apart from ours inside a block that opens a section
+ * (`mcp_servers:`). So a block is left alone, and says so, when a line inside it does not match `own`, or when an
+ * indented line follows its end marker (a child someone added to the section after us).
+ */
+export function yamlBlockForeign(text: string, f: Fence, own: RegExp): boolean {
+  const b = findBlock(text, f)
+  if (!b) return false
+  if (b.inner.split(/\r?\n/).some(l => l.trim() !== '' && !own.test(l))) return true
+  const next = text.slice(b.to).split(/\r?\n/)[0] ?? ''
+  return /^[ \t]+\S/.test(next) && !/^[ \t]*#/.test(next)
+}
+
 // ---- TOML specifics
 
 const headerRe = /^\s*\[\[?\s*([^\]]+?)\s*\]\]?\s*(#.*)?$/

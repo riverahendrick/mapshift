@@ -58,6 +58,11 @@ export function skill(rt: Runtime, agent: 'agy' | 'grok' | 'cursor'): string {
   return `${front.join('\n')}\n<!-- ${ADDED} -->\n\n# Mapshift report\n\n${reportSteps(rt, agent)}${extra}\n`
 }
 
+/** Kiro loads every Markdown file in ~/.kiro/steering; front matter must come first, so the marker sits below it. */
+export function kiroSteering(): string {
+  return `---\ninclusion: always\n---\n<!-- ${ADDED} -->\n${instructionLines({ helpers: false }).join('\n')}\n`
+}
+
 /** Grok reads every Markdown file in ~/.grok/rules, so the instructions get a file of their own there. */
 export function grokRules(): string {
   return `<!-- ${ADDED} -->\n${instructionLines({ helpers: true }).join('\n')}\n`
