@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildNow, openMap } from '../src/map/indexer.ts'
-import { fileApi, find, LIMITS, overview, search, terms, trace } from '../src/map/query.ts'
+import { fileApi, find, LIMITS, overview, personalizedRank, search, terms, trace } from '../src/map/query.ts'
 import { makeRepo } from './helpers.ts'
 
 const FILES = {
@@ -52,6 +52,53 @@ test('find: the exact name ranks first, source above tests, with callers, calls 
     const none = find(store, r.root, 'zzzqqq')
     assert.match(none.text, /no matches/)
     assert.deepEqual(none.files, [])
+  } finally {
+    r.cleanup()
+  }
+})
+
+test('the walk with restart gathers mass at the node that ties the seeds together', () => {
+  // three seeds, each linked only to the hub (4); an isolated seed (5) keeps its own share only
+  const adjacency = new Map<number, number[]>([
+    [1, [4]],
+    [2, [4]],
+    [3, [4]],
+    [4, [1, 2, 3]],
+  ])
+  const pr = personalizedRank(new Map([[1, 1], [2, 0.8], [3, 0.6], [5, 1]]), adjacency)
+  assert.equal(pr.get(4), 1, 'the hub is the centre')
+  assert.ok((pr.get(5) ?? 0) < 1 && (pr.get(5) ?? 0) > 0)
+  assert.equal(personalizedRank(new Map(), adjacency).size, 0)
+})
+
+test('find: the function that calls every matched helper moves up to second place, the best match stays first', async () => {
+  const r = makeRepo({
+    // three helpers that match the question in their comments, and the entry point that calls them all,
+    // which matches only two of its words itself: on words alone it ranks last
+    'src/cidr.js': [
+      ['splitEntry', 'cidr prefix mask bits: split one entry'],
+      ['maskOf', 'cidr prefix mask bits: the mask of an entry, from its prefix length'],
+      ['bitsFor', 'cidr prefix mask bits: the bits of a host address'],
+    ]
+      .map(([n, doc]) => `/** ${doc} */\nexport function ${n}(value) { return value.split('/') }\n`)
+      .join('') + `
+// checks the cidr prefix list
+export function shouldSkip(host, entries) {
+  return entries.some(e => splitEntry(e) && maskOf(e) && bitsFor(host))
+}
+`,
+    // strong word matches wired to nothing: on words alone they all rank above the entry point
+    'src/labels.js': ['cidrPrefixLabel', 'maskBitsText', 'prefixMaskNote', 'cidrBitsName', 'prefixBitsTitle', 'maskCidrCaption']
+      .map(n => `/** cidr prefix mask bits */\nexport function ${n}(x) { return x }\n`)
+      .join(''),
+  })
+  try {
+    await buildNow(r.root)
+    const store = openMap(r.root)
+    const order = [...find(store, r.root, 'cidr prefix mask bits', { limit: 6 }).text.matchAll(/### \d\. (\S+)/g)].map(m => m[1])
+    assert.equal(order.indexOf('shouldSkip'), 1, `entry point second: ${order.join(', ')}`)
+    // an exact name is never reordered
+    assert.match(find(store, r.root, 'maskBitsText').text, /### 1\. maskBitsText/)
   } finally {
     r.cleanup()
   }

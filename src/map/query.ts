@@ -263,6 +263,84 @@ export function nameFit(qt: QueryTerm[], name: string): number {
 const RERANK = { floor: 0.2, power: 2, nameFit: 0.5, pool: 300, depth: 60 }
 
 /**
+ * The call graph's say in the order. A walk with restart (personalized PageRank) starts from the `seeds` best
+ * candidates, each weighted by its text score, and moves along call links in both directions. The definition
+ * that ties the matched code together (the entry point calling every matched helper) ends up at the walk's
+ * centre. When that centre is a function or method the question also matches in words (`minText` of the best
+ * score) but the text order left it below third place, it is moved to second place. The best text match keeps
+ * first place, so the walk can add the right entry point but never push out a clear answer.
+ */
+export const WALK = { seeds: 40, alpha: 0.25, iters: 20, minText: 0.2, minCentre: 0.9 }
+
+/**
+ * A walk with restart over an undirected graph: `seeds` are restart weights, `adjacency` the neighbours of
+ * each node. Returns each reached node's share, scaled so the largest is 1.
+ */
+export function personalizedRank(seeds: Map<number, number>, adjacency: Map<number, number[]>, o: { alpha: number; iters: number } = WALK): Map<number, number> {
+  let total = 0
+  for (const w of seeds.values()) if (w > 0) total += w
+  if (total <= 0) return new Map()
+  const restart = new Map<number, number>()
+  for (const [id, w] of seeds) if (w > 0) restart.set(id, w / total)
+  let rank = new Map(restart)
+  for (let i = 0; i < o.iters; i++) {
+    const next = new Map<number, number>()
+    for (const [id, r] of restart) next.set(id, o.alpha * r)
+    let dangling = 0
+    for (const [id, mass] of rank) {
+      const nbrs = adjacency.get(id)
+      if (!nbrs?.length) {
+        dangling += mass
+        continue
+      }
+      const share = ((1 - o.alpha) * mass) / nbrs.length
+      for (const nb of nbrs) next.set(nb, (next.get(nb) ?? 0) + share)
+    }
+    // mass with nowhere to go returns to the seeds, as a restart would
+    if (dangling > 0) for (const [id, r] of restart) next.set(id, (next.get(id) ?? 0) + (1 - o.alpha) * dangling * r)
+    rank = next
+  }
+  let max = 0
+  for (const v of rank.values()) if (v > max) max = v
+  const out = new Map<number, number>()
+  if (max > 0) for (const [id, v] of rank) out.set(id, v / max)
+  return out
+}
+
+/** The call graph's centre of the best candidates, when it should move up to second place (see WALK). */
+function graphCentre(store: Store, scored: Map<number, Hit>): number | undefined {
+  const top = [...scored.values()].sort((a, b) => b.score - a.score).slice(0, WALK.seeds)
+  const max = top[0]?.score ?? 0
+  if (top.length < 4 || !(max > 0)) return undefined
+  const seeds = new Map(top.map(h => [h.id, h.score / max]))
+  const ids = [...seeds.keys()]
+  const marks = ids.map(() => '?').join(',')
+  // one hop of call links around the seeds; ambiguous links (a name with several possible targets) are left out
+  const edges = store
+    .sql(`SELECT DISTINCT src, dst FROM edges WHERE src IS NOT NULL AND src != dst AND confidence != 'ambiguous' AND (src IN (${marks}) OR dst IN (${marks}))`)
+    .all(...ids, ...ids) as { src: number; dst: number }[]
+  if (!edges.length) return undefined
+  const adjacency = new Map<number, number[]>()
+  const link = (a: number, b: number) => {
+    const l = adjacency.get(a)
+    if (l) l.push(b)
+    else adjacency.set(a, [b])
+  }
+  for (const e of edges) {
+    link(e.src, e.dst)
+    link(e.dst, e.src)
+  }
+  const pr = personalizedRank(seeds, adjacency)
+  let centre: Hit | undefined
+  for (const h of top) {
+    if ((h.kind !== 'function' && h.kind !== 'method') || TESTY.test(h.path) || h.score / max < WALK.minText) continue
+    if ((pr.get(h.id) ?? 0) > (centre ? (pr.get(centre.id) ?? 0) : 0)) centre = h
+  }
+  if (!centre || (pr.get(centre.id) ?? 0) < WALK.minCentre || top.indexOf(centre) <= 2) return undefined
+  return centre.id
+}
+
+/**
  * Same-name definitions in one file (overload stubs, a getter and its setter) are listed once first, the
  * longest one (the implementation) in place of the group; the others follow every distinct definition.
  */
@@ -355,8 +433,14 @@ export function find(store: Store, root: string, q: string, opts: { limit?: numb
       h.score *= Math.pow(RERANK.floor + coverage(qt, text), RERANK.power) * (1 + RERANK.nameFit * nameFit(qt, h.name))
     }
   }
+  // exact names asked for stay where they are; a question in words is reordered by the call graph
+  const exact = [...scored.values()].some(h => nameSet.has(h.name) || nameSet.has(h.qualified))
+  const centre = qt.length > 1 && !exact ? graphCentre(store, scored) : undefined
 
-  const hits = distinctFirst([...scored.values()].sort((a, b) => b.score - a.score)).slice(0, limit)
+  const ranked = distinctFirst([...scored.values()].sort((a, b) => b.score - a.score))
+  const at = centre === undefined ? -1 : ranked.findIndex(h => h.id === centre)
+  if (at > 1) ranked.splice(1, 0, ...ranked.splice(at, 1))
+  const hits = ranked.slice(0, limit)
   const head = notices(st)
   if (!hits.length) {
     return { text: [...head, `Map · no matches for "${q}". Try other words, a function or class name, or map_search for exact text.`].join('\n'), files: [] }
