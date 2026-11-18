@@ -56,6 +56,16 @@ test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry',
     assert.match(res.result.content[0].text, /### 1\. checkout · function · src\/cart\.ts:2/)
     assert.match(res.result.content[0].text, /Calls: save \(src\/store\.ts:1\)/)
 
+    // several questions in one call: one answer each, under its own heading, files put together
+    const both = await s.call('tools/call', { name: 'map_find', arguments: { queries: ['checkout', 'save', 'save'] } })
+    assert.equal(both.result.isError, false)
+    assert.match(both.result.content[0].text, /^## checkout\n[\s\S]*\n## save\n/)
+    assert.equal(both.result.content[0].text.split('## save').length, 2, 'a repeated question is answered once')
+    const outlines = await s.call('tools/call', { name: 'map_file', arguments: { paths: ['src/cart.ts', 'src/store.ts'] } })
+    assert.match(outlines.result.content[0].text, /## src\/cart\.ts[\s\S]*## src\/store\.ts/)
+    const traces = await s.call('tools/call', { name: 'map_trace', arguments: { symbols: ['save'] } })
+    assert.doesNotMatch(traces.result.content[0].text, /^## /, 'one item reads exactly as before')
+
     const bad = await s.call('tools/call', { name: 'map_find', arguments: {} })
     assert.equal(bad.result.isError, true)
     const unknown = await s.call('no/such/method')
@@ -66,7 +76,7 @@ test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry',
   }
   const logs = readdirSync(join(r.home, 'logs'))
   const lines = readFileSync(join(r.home, 'logs', logs[0]!), 'utf8').trim().split('\n').map(l => JSON.parse(l))
-  const entry = lines.filter(l => l.tool === 'map_find' && l.files?.length).at(-1)
+  const entry = lines.find(l => l.tool === 'map_find' && l.files?.length) // the first full answer: the single question
   assert.equal(entry.agent, 'test-agent')
   assert.deepEqual(entry.files.map((f: { path: string }) => f.path), ['src/cart.ts'])
   assert.ok(entry.answerTokens > 0)
