@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.5 (2026-11-18)
+
+- 🧺 Several questions in one call: `map_find`, `map_trace` and `map_file` take a list. In real agent runs that halved the turns (16 to 8) and cut tool calls from 13 to 5, with every answer still right. Still five tools, so nothing extra loads into each chat.
+- 🧪 `mapshift code-mode on|off|status` turns on Claude Code's experimental Code Mode only after checking it can run on the computer, says what changes, and takes it out again with `off` or `mapshift uninstall`.
+
 ## 0.1.4 (2026-11-18)
 
 - 🔄 Mapshift keeps itself up to date: every 3 days, when an agent starts it, it checks npm for a new version in the background and installs it, along with the Claude Code add-on. `mapshift auto-update off` turns it off, and `mapshift auto-update status` shows the last check. The request carries nothing about you or your code.

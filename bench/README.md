@@ -521,3 +521,18 @@ Tables printed by `node bench/report.mjs --heldout --set sealed-bench` from `res
 - **hono's build time varied widely:** 46.8, 62.5 and 11.3 s for three identical cold builds, so the machine was not quiet for all of them.
 - **Development numbers after tuning (not blind):** on the held-out set, Mapshift 0.1.3 puts the right code first on 37 of 64 questions and in the top 3 on 50, against 36 and 45 for 0.1.1. These are development numbers; the sealed results above, measured after the tuning on questions it never saw, are the ones to rely on.
 - **No agent runs** were made on this set; the earlier agent runs above still stand.
+## Several questions in one call (2026-11-18)
+
+`map_find`, `map_trace` and `map_file` take a list since 0.1.5. To see whether that helps, the same three tasks ran once with Mapshift 0.1.4 (one question per call) and once with 0.1.5. Each task asks for four things in one project. Setup: Claude Code headless (`claude -p`, model sonnet, 12 turns at most), only Mapshift's tools plus Read, Grep and Glob, no personal settings or CLAUDE.md, and the first arm alternated by task.
+
+| Task | Tool calls, 0.1.4 → 0.1.5 | Turns | Output tokens | Cost |
+|---|---|---|---|---|
+| httpx (Python) | 5 → 3 | 6 → 4 | 948 → 719 | $0.032 → $0.030 |
+| chi (Go) | 4 → 1 | 5 → 2 | 903 → 462 | $0.025 → $0.029 |
+| axios (JavaScript) | 4 → 1 | 5 → 2 | 781 → 571 | $0.030 → $0.027 |
+| **Total** | **13 → 5** | **16 → 8** | **2,632 → 1,752** | **$0.087 → $0.086** |
+
+- **Correctness:** all 12 items correct in both arms, checked against the source.
+- **Batching:** the agent used a list in every 0.1.5 run without being told to beyond the tool descriptions.
+- **Cost:** about the same here. These were one-question chats, where most of the cost is the fixed start of a chat. In a long conversation every turn re-reads the conversation so far, so half the turns is where the saving shows. These six runs do not measure that.
+- **Not measured:** speed was about equal (32 s against 35 s in total), and six runs are too few for a firm number.

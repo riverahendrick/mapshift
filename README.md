@@ -88,6 +88,8 @@ In the desktop app, click **+** next to the prompt box, then **Plugins**, **Add 
 
 Claude Code lets an add-on change the model on every request, so routing there is fully automatic. The other agents do not allow that today. There Mapshift advises instead: its instructions ask the agent to hand routine side work to lighter helpers where the agent has them, and `/mapshift` shows which model and effort the last request needed. If an agent adds a way to switch models, Mapshift will use it.
 
+**Code Mode (Claude Code, optional).** Claude Code has an experimental mode in which Claude writes a short program that makes several tool calls in one step: fewer round trips and less output to read. It works only in terminal sessions (not the Desktop app, VS Code or `claude -p`), needs Claude Code 2.1.323 or newer, and a chat started in it can only be resumed with it on. `mapshift code-mode status` checks whether it can run on your computer and why not, `mapshift code-mode on` turns it on only when it can, and `mapshift code-mode off` or `mapshift uninstall` takes it out again. Mapshift never turns it on by itself.
+
 ---
 
 ## Dashboards
@@ -127,7 +129,7 @@ The same numbers in three places. All of them read local files only.
 - **Gives starting points (Claude Code).** With each prompt, the agent gets the few places the request is clearly about: location, signature and callers. When the map has no clear answer, nothing is added.
 - **Works on its own.** Turning model switching off leaves the map running. `/mapshift map off` turns the map's starting points off too, and `/mapshift map on` brings them back.
 
-Agents get five tools:
+Agents get five tools. `map_find`, `map_trace` and `map_file` also take a list, so an agent that needs several things asks for all of them in one call instead of one call each:
 
 | Tool | What it answers |
 |---|---|
@@ -218,6 +220,7 @@ The measured rows come from a sealed benchmark against Graft 0.29.0: 120 questio
 | `mapshift off` / `on` | Pause Mapshift in every agent, or bring it back |
 | `mapshift update` | Get the newest version now, and update the Claude Code add-on too (`--check` to only look) |
 | `mapshift auto-update on` / `off` | Update by itself every 3 days (on by default; `status` shows the last check) |
+| `mapshift code-mode on` / `off` | Claude Code's experimental Code Mode, turned on only after checking it can run on this computer (`status` explains) |
 | `mapshift uninstall` | Take out everything setup added |
 | `mapshift map build` | Build or update the map of this project |
 | `mapshift map find <words>` | Find code by plain words or by name |
