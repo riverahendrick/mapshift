@@ -2,9 +2,11 @@
 // Held-out retrieval benchmark: 64 blind questions (heldout/*.json) on four repositories, Mapshift against Graft.
 // Usage: node bench/run-heldout.mjs --work <dir> [--from <dir with local clones named axios, httpx, chi, json>] [--repo chi] [--builds 3] [--runs 3]
 //        node bench/run-heldout.mjs --rescore     scores the stored outputs again (runs no tool)
+//        --set <folder> reads another question set (repos.json, spans.json, <repo>.json) from that folder, and
+//        writes results/<folder name>.json; the matching rule below is the same for every set.
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { platform, release } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { BENCH, WORK, argValue, dirSize, ensureClone, median, readJson, run, scrub, tokens, toolEntries, toolEnv } from './lib.mjs'
 import { parseGraftAsk, parseGraftCallers, parseMapshiftFind, parseMapshiftTrace } from './run-retrieval.mjs'
@@ -14,8 +16,9 @@ const RUNS = Number(argValue('runs') ?? 3)
 const LIMIT = 3
 const only = argValue('repo')
 const FROM = argValue('from')
-const HELD = join(BENCH, 'heldout')
-const OUT = join(BENCH, 'results', only ? `heldout-${only}.json` : 'heldout.json')
+const HELD = argValue('set') ? resolve(argValue('set')) : join(BENCH, 'heldout')
+const SET = argValue('set') ? basename(HELD) : 'heldout'
+const OUT = join(BENCH, 'results', only ? `${SET}-${only}.json` : `${SET}.json`)
 const KINDS = ['developer', 'agent', 'name', 'callers']
 const REPOS = readJson(join(HELD, 'repos.json'))
 const SPANS = readJson(join(HELD, 'spans.json')).spans

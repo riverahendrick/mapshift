@@ -8,16 +8,18 @@ const pct = (a, b) => `${a}/${b} (${Math.round((100 * a) / b)}%)`
 const kb = b => `${(b / 1024).toFixed(0)} KB`
 const sec = ms => `${(ms / 1000).toFixed(1)} s`
 
-// `node bench/report.mjs --heldout` prints the held-out tables (results/heldout.json, results/heldout-agents.json) instead
+// `node bench/report.mjs --heldout` prints the held-out tables (results/heldout.json, results/heldout-agents.json) instead;
+// `--heldout --set sealed` prints them for another question set's results (results/sealed.json)
 const HELDOUT = process.argv.includes('--heldout')
+const SET = process.argv.includes('--set') ? process.argv[process.argv.indexOf('--set') + 1] : 'heldout'
 if (HELDOUT) heldout()
 
 function heldout() {
   const ms = v => `${Math.round(v)} ms`
-  const h = readJson(join(BENCH, 'results', 'heldout.json'))
+  const h = readJson(join(BENCH, 'results', `${SET}.json`))
   const tools = ['mapshift', 'graft']
   console.log(`Tools: Mapshift ${h.tools.mapshift}, Graft ${h.tools.graft}. Node ${h.machine.node}, ${h.machine.os}. Top ${h.settings.limit} results; latency is the median over questions of each question's median of ${h.settings.timedRuns} warm runs; build time is the median of ${h.settings.builds} cold builds.\n`)
-  console.log('Overall (64 questions):\n')
+  console.log(`Overall (${h.overall.mapshift.questions} questions):\n`)
   console.log('| Tool | hit@1 | hit@3 | Right file in top 3 | Median answer tokens | Same, without Graft advice lines | Median latency | Errors | No result parsed |')
   console.log('|---|---|---|---|---|---|---|---|---|')
   for (const t of tools) {
