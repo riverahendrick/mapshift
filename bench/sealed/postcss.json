@@ -1,0 +1,239 @@
+[
+  {
+    "id": "postcss-developer-1",
+    "kind": "developer",
+    "question": "Where does the parser raise a syntax error when two declarations are written back to back without a separating semicolon?",
+    "answers": [
+      {
+        "file": "lib/parser.js",
+        "qualified": "Parser.checkMissedSemicolon"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-2",
+    "kind": "developer",
+    "question": "Where is the stack-based traversal of every descendant of a container implemented, stopping early when the callback returns false and tolerating nodes inserted or removed mid-traversal?",
+    "answers": [
+      {
+        "file": "lib/container.js",
+        "qualified": "Container.walk"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-3",
+    "kind": "developer",
+    "question": "When no plugins and no custom parser, stringifier or syntax option are configured, which method hands back a lightweight result object instead of the full plugin-running one?",
+    "answers": [
+      {
+        "file": "lib/processor.js",
+        "qualified": "Processor.process"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-4",
+    "kind": "developer",
+    "question": "Where does the source map generator turn a source file location into one relative to the output stylesheet's directory, unless absolute locations were requested, memoizing the result?",
+    "answers": [
+      {
+        "file": "lib/map-generator.js",
+        "qualified": "MapGenerator.path"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-5",
+    "kind": "developer",
+    "question": "Where is a referenced source map file read from disk, refusing anything that does not end in .map or that resolves outside the stylesheet's own folder?",
+    "answers": [
+      {
+        "file": "lib/previous-map.js",
+        "qualified": "PreviousMap.loadFile"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-6",
+    "kind": "developer",
+    "question": "How does the input convert a character offset into a line and column, using a binary search over the starting offsets of each line?",
+    "answers": [
+      {
+        "file": "lib/input.js",
+        "qualified": "Input.fromOffset"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-7",
+    "kind": "developer",
+    "question": "Where does the lazy result react to a failure thrown by a plugin, attaching the plugin name to syntax problems and printing a hint when the plugin was built for a different PostCSS version than the one running?",
+    "answers": [
+      {
+        "file": "lib/lazy-result.js",
+        "qualified": "LazyResult.handleError"
+      }
+    ]
+  },
+  {
+    "id": "postcss-developer-8",
+    "kind": "developer",
+    "question": "Where is a node tree converted into a plain serializable object using a work queue instead of recursion, replacing each input with a numeric id and listing the inputs once at the top?",
+    "answers": [
+      {
+        "file": "lib/node.js",
+        "qualified": "Node.toJSON"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-1",
+    "kind": "agent",
+    "question": "deep copy tree explicit stack constructor skip proxyCache preserve source parent",
+    "answers": [
+      {
+        "file": "lib/node.js",
+        "qualified": "cloneNode"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-2",
+    "kind": "agent",
+    "question": "sanitize angle bracket style tag comment opener css output builder chunks",
+    "answers": [
+      {
+        "file": "lib/stringify.js",
+        "qualified": "SafeStringifier.escapeHTML"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-3",
+    "kind": "agent",
+    "question": "unmatched opening bracket error offset range token",
+    "answers": [
+      {
+        "file": "lib/parser.js",
+        "qualified": "Parser.unclosedBracket"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-4",
+    "kind": "agent",
+    "question": "plugin visitor listeners event filter selector Once OnceExit registration",
+    "answers": [
+      {
+        "file": "lib/lazy-result.js",
+        "qualified": "LazyResult.prepareVisitors"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-5",
+    "kind": "agent",
+    "question": "embed original source text into generated map once per input file",
+    "answers": [
+      {
+        "file": "lib/map-generator.js",
+        "qualified": "MapGenerator.setSourcesContent"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-6",
+    "kind": "agent",
+    "question": "proxy handler wrap callbacks child toProxy each every some",
+    "answers": [
+      {
+        "file": "lib/container.js",
+        "qualified": "Container.getProxyProcessor"
+      }
+    ]
+  },
+  {
+    "id": "postcss-agent-7",
+    "kind": "agent",
+    "question": "infer formatting style from existing nodes raws own detect cache floating child fallback defaults",
+    "answers": [
+      {
+        "file": "lib/stringifier.js",
+        "qualified": "Stringifier.raw"
+      }
+    ]
+  },
+  {
+    "id": "postcss-name-1",
+    "kind": "name",
+    "question": "Where is `SafeStringifier` defined?",
+    "symbol": "SafeStringifier",
+    "answers": [
+      {
+        "file": "lib/stringify.js",
+        "qualified": "SafeStringifier"
+      }
+    ]
+  },
+  {
+    "id": "postcss-name-2",
+    "kind": "name",
+    "question": "Where is `hydrateInputs` defined?",
+    "symbol": "hydrateInputs",
+    "answers": [
+      {
+        "file": "lib/fromJSON.js",
+        "qualified": "hydrateInputs"
+      }
+    ]
+  },
+  {
+    "id": "postcss-name-3",
+    "kind": "name",
+    "question": "Where is `markTreeDirty` defined?",
+    "symbol": "markTreeDirty",
+    "answers": [
+      {
+        "file": "lib/container.js",
+        "qualified": "markTreeDirty"
+      }
+    ]
+  },
+  {
+    "id": "postcss-callers-1",
+    "kind": "callers",
+    "question": "What calls `sourceOffset`?",
+    "symbol": "sourceOffset",
+    "answers": [
+      {
+        "file": "lib/node.js",
+        "qualified": "Node.positionBy"
+      },
+      {
+        "file": "lib/node.js",
+        "qualified": "Node.positionInside"
+      },
+      {
+        "file": "lib/node.js",
+        "qualified": "Node.rangeBy"
+      }
+    ]
+  },
+  {
+    "id": "postcss-callers-2",
+    "kind": "callers",
+    "question": "What calls `pushBody`?",
+    "symbol": "pushBody",
+    "answers": [
+      {
+        "file": "lib/stringifier.js",
+        "qualified": "pushBlock"
+      },
+      {
+        "file": "lib/stringifier.js",
+        "qualified": "Stringifier.body"
+      }
+    ]
+  }
+]

@@ -1,0 +1,239 @@
+[
+  {
+    "id": "echo-developer-1",
+    "kind": "developer",
+    "question": "Where is a handler's returned error turned into a JSON reply with a status code taken from the error, doing nothing when the response was already sent and sending an empty body when the request method is HEAD?",
+    "answers": [
+      {
+        "file": "echo.go",
+        "qualified": "DefaultHTTPErrorHandler"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-2",
+    "kind": "developer",
+    "question": "Where does the router decide, while backing up from a catch-all node, whether some earlier path parameter that ended at a colon can still be retried with a different split point?",
+    "answers": [
+      {
+        "file": "router.go",
+        "qualified": "hasPendingInlineVerbSplit"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-3",
+    "kind": "developer",
+    "question": "Where is the client address chosen from the forwarded-for header by walking the list from the right and returning the nearest entry that is not a trusted proxy?",
+    "answers": [
+      {
+        "file": "ip.go",
+        "qualified": "ExtractIPFromXFFHeader"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-4",
+    "kind": "developer",
+    "question": "Where does the framework's response wrapper ignore a second attempt to send the status line, run the registered pre-write callbacks, and then mark the response as sent?",
+    "answers": [
+      {
+        "file": "response.go",
+        "qualified": "Response.WriteHeader"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-5",
+    "kind": "developer",
+    "question": "Where does the in-memory rate limiter lazily create a token bucket for a client identifier and trigger the purge of long-idle clients?",
+    "answers": [
+      {
+        "file": "middleware/rate_limiter.go",
+        "qualified": "RateLimiterMemoryStore.allow"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-6",
+    "kind": "developer",
+    "question": "Where is a URL built from a route's path pattern by filling in placeholders with the supplied values, leaving a visible placeholder when a value is missing?",
+    "answers": [
+      {
+        "file": "route.go",
+        "qualified": "RouteInfo.Reverse"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-7",
+    "kind": "developer",
+    "question": "Where are collected request values copied into a destination struct's fields according to field tags, allowing a few map destination types and descending into untagged nested structs?",
+    "answers": [
+      {
+        "file": "bind.go",
+        "qualified": "bindData"
+      }
+    ]
+  },
+  {
+    "id": "echo-developer-8",
+    "kind": "developer",
+    "question": "Where is the Content-Length for a rewritten HEAD request computed from the number of bytes the GET handler would have produced, with the after-write hooks then fired on the underlying response?",
+    "answers": [
+      {
+        "file": "response.go",
+        "qualified": "headResponseWriter.commit"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-1",
+    "kind": "agent",
+    "question": "loopback link-local private net extra ranges contains ip checker",
+    "answers": [
+      {
+        "file": "ip.go",
+        "qualified": "ipChecker.trust"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-2",
+    "kind": "agent",
+    "question": "csrf sec-fetch-site same-origin cross-site trusted origins allow func",
+    "answers": [
+      {
+        "file": "middleware/csrf.go",
+        "qualified": "CSRFConfig.checkSecFetchSiteRequest"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-3",
+    "kind": "agent",
+    "question": "authority check strip www prefix empty colon dot leading percent escape location header",
+    "answers": [
+      {
+        "file": "middleware/redirect.go",
+        "qualified": "isValidRedirectHost"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-4",
+    "kind": "agent",
+    "question": "extract values cookie name limit missing error source",
+    "answers": [
+      {
+        "file": "middleware/extractor.go",
+        "qualified": "valuesFromCookie"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-5",
+    "kind": "agent",
+    "question": "folder index page html template read entries human readable size content-type",
+    "answers": [
+      {
+        "file": "middleware/static.go",
+        "qualified": "listDir"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-6",
+    "kind": "agent",
+    "question": "adapt std handler decorator into framework chain request pattern path values response",
+    "answers": [
+      {
+        "file": "echo.go",
+        "qualified": "WrapMiddleware"
+      }
+    ]
+  },
+  {
+    "id": "echo-agent-7",
+    "kind": "agent",
+    "question": "shutdown context timeout wait done server shutdown error callback",
+    "answers": [
+      {
+        "file": "server.go",
+        "qualified": "gracefulShutdown"
+      }
+    ]
+  },
+  {
+    "id": "echo-name-1",
+    "kind": "name",
+    "question": "Where is `delayedStatusWriter` defined?",
+    "symbol": "delayedStatusWriter",
+    "answers": [
+      {
+        "file": "response.go",
+        "qualified": "delayedStatusWriter"
+      }
+    ]
+  },
+  {
+    "id": "echo-name-2",
+    "kind": "name",
+    "question": "Where is `ipChecker` defined?",
+    "symbol": "ipChecker",
+    "answers": [
+      {
+        "file": "ip.go",
+        "qualified": "ipChecker"
+      }
+    ]
+  },
+  {
+    "id": "echo-name-3",
+    "kind": "name",
+    "question": "Where is `DefaultBinder` defined?",
+    "symbol": "DefaultBinder",
+    "answers": [
+      {
+        "file": "bind.go",
+        "qualified": "DefaultBinder"
+      }
+    ]
+  },
+  {
+    "id": "echo-callers-1",
+    "kind": "callers",
+    "question": "What calls `normalizePathSlash`?",
+    "symbol": "normalizePathSlash",
+    "answers": [
+      {
+        "file": "router.go",
+        "qualified": "DefaultRouter.Remove"
+      },
+      {
+        "file": "router.go",
+        "qualified": "DefaultRouter.Add"
+      }
+    ]
+  },
+  {
+    "id": "echo-callers-2",
+    "kind": "callers",
+    "question": "What calls `createExtractors`?",
+    "symbol": "createExtractors",
+    "answers": [
+      {
+        "file": "middleware/extractor.go",
+        "qualified": "CreateExtractors"
+      },
+      {
+        "file": "middleware/csrf.go",
+        "qualified": "CSRFConfig.ToMiddleware"
+      },
+      {
+        "file": "middleware/key_auth.go",
+        "qualified": "KeyAuthConfig.ToMiddleware"
+      }
+    ]
+  }
+]

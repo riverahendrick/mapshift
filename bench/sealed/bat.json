@@ -1,0 +1,235 @@
+[
+  {
+    "id": "bat-developer-1",
+    "kind": "developer",
+    "question": "Where is the command-line value that selects which lines to print, such as a start, an end, a count after, a count before, or a context size, turned into lower and upper bounds?",
+    "answers": [
+      {
+        "file": "src/line_range.rs",
+        "qualified": "LineRange.parse_range"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-2",
+    "kind": "developer",
+    "question": "Where are tab characters replaced by spaces up to the next tab stop while text inside terminal escape sequences is left untouched?",
+    "answers": [
+      {
+        "file": "src/preprocessor.rs",
+        "qualified": "expand_tabs"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-3",
+    "kind": "developer",
+    "question": "Where is the grammar for an input chosen: an explicitly requested language first, then the file path (retrying with the symlink-resolved path), then the first line of content, and finally a fallback name?",
+    "answers": [
+      {
+        "file": "src/assets.rs",
+        "qualified": "HighlightingAssets.get_syntax"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-4",
+    "kind": "developer",
+    "question": "Where is the external paging program spawned, adding colour-passthrough and quit-if-one-screen flags depending on the less version and the wrapping mode?",
+    "answers": [
+      {
+        "file": "src/output.rs",
+        "qualified": "OutputType.try_pager"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-5",
+    "kind": "developer",
+    "question": "Where is the paging command chosen from the config value and the two environment variables, replacing unsuitable pagers that came from the generic variable with less?",
+    "answers": [
+      {
+        "file": "src/pager.rs",
+        "qualified": "get_pager"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-6",
+    "kind": "developer",
+    "question": "Where is an input run through the user-configured preview command from the environment, falling back to the original file when that command produces nothing or fails, and wiring the optional cleanup command?",
+    "answers": [
+      {
+        "file": "src/lessopen.rs",
+        "qualified": "LessOpenPreprocessor.open"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-7",
+    "kind": "developer",
+    "question": "Where is a file name tested against the configured glob-to-language mappings, also trying the bare file name and a Windows-simplified path, and retried after dropping an ignored suffix such as a trailing tilde?",
+    "answers": [
+      {
+        "file": "src/syntax_mapping.rs",
+        "qualified": "SyntaxMapping.get_syntax_for"
+      }
+    ]
+  },
+  {
+    "id": "bat-developer-8",
+    "kind": "developer",
+    "question": "Where are version-control diff hunks translated into per-line markers for added, modified, and removed-above or removed-below lines?",
+    "answers": [
+      {
+        "file": "src/diff.rs",
+        "qualified": "collect_changes_from_hunks"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-1",
+    "kind": "agent",
+    "question": "remove backspace bold underline emulation characters line column",
+    "answers": [
+      {
+        "file": "src/preprocessor.rs",
+        "qualified": "strip_overstrike"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-2",
+    "kind": "agent",
+    "question": "theme dark light color scheme fallback default and_then unwrap_or ThemeResult",
+    "answers": [
+      {
+        "file": "src/theme.rs",
+        "qualified": "choose_theme_opt"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-3",
+    "kind": "agent",
+    "question": "pager program output prefix numeric release digits usize busybox",
+    "answers": [
+      {
+        "file": "src/less.rs",
+        "qualified": "parse_less_version"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-4",
+    "kind": "agent",
+    "question": "gutter marker added removed above below modified line changes continuation cached none",
+    "answers": [
+      {
+        "file": "src/decorations.rs",
+        "qualified": "LineChangesDecoration.generate"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-5",
+    "kind": "agent",
+    "question": "build cache first run custom themes syntaxes exist no cache warn fall back",
+    "answers": [
+      {
+        "file": "src/bin/bat/assets.rs",
+        "qualified": "ensure_cache_built"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-6",
+    "kind": "agent",
+    "question": "glob matcher case insensitive literal separator compile",
+    "answers": [
+      {
+        "file": "src/syntax_mapping.rs",
+        "qualified": "make_glob_matcher"
+      }
+    ]
+  },
+  {
+    "id": "bat-agent-7",
+    "kind": "agent",
+    "question": "hyperlink escape sequence clear empty id href attributes",
+    "answers": [
+      {
+        "file": "src/vscreen.rs",
+        "qualified": "Attributes.update_with_hyperlink"
+      }
+    ]
+  },
+  {
+    "id": "bat-name-1",
+    "kind": "name",
+    "question": "Where is `LessOpenPreprocessor` defined?",
+    "symbol": "LessOpenPreprocessor",
+    "answers": [
+      {
+        "file": "src/lessopen.rs",
+        "qualified": "LessOpenPreprocessor"
+      }
+    ]
+  },
+  {
+    "id": "bat-name-2",
+    "kind": "name",
+    "question": "Where is `EscapeSequenceOffsetsIterator` defined?",
+    "symbol": "EscapeSequenceOffsetsIterator",
+    "answers": [
+      {
+        "file": "src/vscreen.rs",
+        "qualified": "EscapeSequenceOffsetsIterator"
+      }
+    ]
+  },
+  {
+    "id": "bat-name-3",
+    "kind": "name",
+    "question": "Where is `BuiltinPager` defined?",
+    "symbol": "BuiltinPager",
+    "answers": [
+      {
+        "file": "src/output.rs",
+        "qualified": "BuiltinPager"
+      }
+    ]
+  },
+  {
+    "id": "bat-callers-1",
+    "kind": "callers",
+    "question": "What calls `shell_quote`?",
+    "symbol": "shell_quote",
+    "answers": [
+      {
+        "file": "src/lessopen.rs",
+        "qualified": "shell_substitute"
+      },
+      {
+        "file": "src/lessopen.rs",
+        "qualified": "shell_substitute_two"
+      }
+    ]
+  },
+  {
+    "id": "bat-callers-2",
+    "kind": "callers",
+    "question": "What calls `read_utf16_line`?",
+    "symbol": "read_utf16_line",
+    "answers": [
+      {
+        "file": "src/input.rs",
+        "qualified": "InputReader.try_new"
+      },
+      {
+        "file": "src/input.rs",
+        "qualified": "InputReader.read_line"
+      }
+    ]
+  }
+]

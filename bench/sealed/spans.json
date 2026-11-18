@@ -1,0 +1,74 @@
+{
+  "spans": [
+    {
+      "repo": "hono",
+      "file": "src/request.ts",
+      "qualified": "HonoRequest.header",
+      "start": 182,
+      "end": 195
+    },
+    {
+      "repo": "hono",
+      "file": "src/jsx/base.ts",
+      "qualified": "JSXNode.toStringToBuffer",
+      "start": 318,
+      "end": 362
+    },
+    {
+      "repo": "werkzeug",
+      "file": "src/werkzeug/datastructures/accept.py",
+      "qualified": "Accept.best_match",
+      "start": 197,
+      "end": 231
+    },
+    {
+      "repo": "werkzeug",
+      "file": "src/werkzeug/_reloader.py",
+      "qualified": "StatReloaderLoop.run_step",
+      "start": 240,
+      "end": 254
+    },
+    {
+      "repo": "echo",
+      "file": "response.go",
+      "qualified": "Response.WriteHeader",
+      "start": 50,
+      "end": 61
+    },
+    {
+      "repo": "echo",
+      "file": "route.go",
+      "qualified": "RouteInfo.Reverse",
+      "start": 83,
+      "end": 109
+    },
+    {
+      "repo": "echo",
+      "file": "router.go",
+      "qualified": "DefaultRouter.Remove",
+      "start": 391,
+      "end": 487
+    },
+    {
+      "repo": "echo",
+      "file": "router.go",
+      "qualified": "DefaultRouter.Add",
+      "start": 510,
+      "end": 587
+    },
+    {
+      "repo": "bat",
+      "file": "src/decorations.rs",
+      "qualified": "LineChangesDecoration.generate",
+      "start": 112,
+      "end": 131
+    },
+    {
+      "repo": "bat",
+      "file": "src/bin/bat/assets.rs",
+      "qualified": "ensure_cache_built",
+      "start": 72,
+      "end": 93
+    }
+  ]
+}

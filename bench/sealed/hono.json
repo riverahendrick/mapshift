@@ -1,0 +1,239 @@
+[
+  {
+    "id": "hono-developer-1",
+    "kind": "developer",
+    "question": "Where does the router that wraps several candidate routers try each one in turn, skipping any that reject a route, and then lock in the first one that works?",
+    "answers": [
+      {
+        "file": "src/router/smart-router/router.ts",
+        "qualified": "SmartRouter.match"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-2",
+    "kind": "developer",
+    "question": "Where are route patterns containing regex quantifier groups protected with temporary placeholder marks before the path is split into tokens for the regular-expression router's tree?",
+    "answers": [
+      {
+        "file": "src/router/reg-exp-router/trie.ts",
+        "qualified": "Trie.insert"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-3",
+    "kind": "developer",
+    "question": "Where does the request wrapper return the value of a named HTTP request field, or an object holding all of them when no name is given?",
+    "answers": [
+      {
+        "file": "src/request.ts",
+        "qualified": "HonoRequest.header"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-4",
+    "kind": "developer",
+    "question": "Where does the app attach a foreign request handler under a path prefix, rewriting the incoming request so the mounted application sees URLs relative to the prefix?",
+    "answers": [
+      {
+        "file": "src/hono-base.ts",
+        "qualified": "Hono.mount"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-5",
+    "kind": "developer",
+    "question": "Where does an element node write its opening tag, attributes, raw inner HTML or self-closing form, and children into the output buffer?",
+    "answers": [
+      {
+        "file": "src/jsx/base.ts",
+        "qualified": "JSXNode.toStringToBuffer"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-6",
+    "kind": "developer",
+    "question": "Where are the content security policy directive objects turned into header text, converting camel-cased names to dashed ones and deferring function-valued entries to per-request callbacks?",
+    "answers": [
+      {
+        "file": "src/middleware/secure-headers/secure-headers.ts",
+        "qualified": "getCSPDirectives"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-7",
+    "kind": "developer",
+    "question": "Where does the trie-based router walk the path segments level by level, matching static children, wildcards and regex-constrained parameters, and finally order the collected handlers by registration order?",
+    "answers": [
+      {
+        "file": "src/router/trie-router/node.ts",
+        "qualified": "Node.search"
+      }
+    ]
+  },
+  {
+    "id": "hono-developer-8",
+    "kind": "developer",
+    "question": "Where is the single combined regular expression for all registered routes finalized, replacing handler and parameter markers with capture-group indexes and returning the two lookup tables?",
+    "answers": [
+      {
+        "file": "src/router/reg-exp-router/trie.ts",
+        "qualified": "Trie.buildRegExp"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-1",
+    "kind": "agent",
+    "question": "sort route keys literal pattern label wildcard comparator regex string",
+    "answers": [
+      {
+        "file": "src/router/reg-exp-router/node.ts",
+        "qualified": "compareKey"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-2",
+    "kind": "agent",
+    "question": "empty capture marker PATH_ERROR tokens children varIndex paramMap",
+    "answers": [
+      {
+        "file": "src/router/reg-exp-router/node.ts",
+        "qualified": "Node.insert"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-3",
+    "kind": "agent",
+    "question": "server-sent event data lines event id retry message newline",
+    "answers": [
+      {
+        "file": "src/helper/streaming/sse.ts",
+        "qualified": "SSEStreamingApi.writeSSE"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-4",
+    "kind": "agent",
+    "question": "extractable private key jwk kty crv rsa elliptic key_ops verify",
+    "answers": [
+      {
+        "file": "src/utils/jwt/jws.ts",
+        "qualified": "exportPublicJwkFrom"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-5",
+    "kind": "agent",
+    "question": "json regex content-type header fallback text body parse",
+    "answers": [
+      {
+        "file": "src/client/fetch-result-please.ts",
+        "qualified": "detectResponseType"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-6",
+    "kind": "agent",
+    "question": "store detected locale in cookie when option includes cookie swallow set errors debug log",
+    "answers": [
+      {
+        "file": "src/middleware/language/language.ts",
+        "qualified": "cacheLanguage"
+      }
+    ]
+  },
+  {
+    "id": "hono-agent-7",
+    "kind": "agent",
+    "question": "release writer lock pipeTo body preventClose preventAbort stream",
+    "answers": [
+      {
+        "file": "src/utils/stream.ts",
+        "qualified": "StreamingApi.pipe"
+      }
+    ]
+  },
+  {
+    "id": "hono-name-1",
+    "kind": "name",
+    "question": "Where is `SSEStreamingApi` defined?",
+    "symbol": "SSEStreamingApi",
+    "answers": [
+      {
+        "file": "src/helper/streaming/sse.ts",
+        "qualified": "SSEStreamingApi"
+      }
+    ]
+  },
+  {
+    "id": "hono-name-2",
+    "kind": "name",
+    "question": "Where is `convertFormDataToBodyData` defined?",
+    "symbol": "convertFormDataToBodyData",
+    "answers": [
+      {
+        "file": "src/utils/body.ts",
+        "qualified": "convertFormDataToBodyData"
+      }
+    ]
+  },
+  {
+    "id": "hono-name-3",
+    "kind": "name",
+    "question": "Where is `HTTPException` defined?",
+    "symbol": "HTTPException",
+    "answers": [
+      {
+        "file": "src/http-exception.ts",
+        "qualified": "HTTPException"
+      }
+    ]
+  },
+  {
+    "id": "hono-callers-1",
+    "kind": "callers",
+    "question": "What calls `checkOptionalParameter`?",
+    "symbol": "checkOptionalParameter",
+    "answers": [
+      {
+        "file": "src/router/linear-router/router.ts",
+        "qualified": "LinearRouter.add"
+      },
+      {
+        "file": "src/router/reg-exp-router/router.ts",
+        "qualified": "RegExpRouter.add"
+      },
+      {
+        "file": "src/router/trie-router/router.ts",
+        "qualified": "TrieRouter.add"
+      }
+    ]
+  },
+  {
+    "id": "hono-callers-2",
+    "kind": "callers",
+    "question": "What calls `isRawRequest`?",
+    "symbol": "isRawRequest",
+    "answers": [
+      {
+        "file": "src/utils/body.ts",
+        "qualified": "parseBody"
+      },
+      {
+        "file": "src/utils/body.ts",
+        "qualified": "parseFormData"
+      }
+    ]
+  }
+]

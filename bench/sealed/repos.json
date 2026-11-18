@@ -1,0 +1,38 @@
+[
+  {
+    "name": "postcss",
+    "lang": "javascript",
+    "url": "https://github.com/postcss/postcss.git",
+    "commit": "b6316e5d61e5cc26c32d050eeb8d856cb410d8be"
+  },
+  {
+    "name": "hono",
+    "lang": "typescript",
+    "url": "https://github.com/honojs/hono.git",
+    "commit": "676c8f80fcafc49e6e74c847a8f0d9c44cc7faee"
+  },
+  {
+    "name": "rich",
+    "lang": "python",
+    "url": "https://github.com/Textualize/rich.git",
+    "commit": "3a109ccdffe5b2d0e30684a304fbd388e99ce57b"
+  },
+  {
+    "name": "werkzeug",
+    "lang": "python",
+    "url": "https://github.com/pallets/werkzeug.git",
+    "commit": "0f43c6ebd426039e4b99ec22535c2c8a2ec2f69f"
+  },
+  {
+    "name": "echo",
+    "lang": "go",
+    "url": "https://github.com/labstack/echo.git",
+    "commit": "f275a6b1109ee90f288b51a5e2a6fcc617491255"
+  },
+  {
+    "name": "bat",
+    "lang": "rust",
+    "url": "https://github.com/sharkdp/bat.git",
+    "commit": "fbd9a416e85fa39de9c5f434575e281de560b698"
+  }
+]

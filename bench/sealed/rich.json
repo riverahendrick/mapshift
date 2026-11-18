@@ -1,0 +1,243 @@
+[
+  {
+    "id": "rich-developer-1",
+    "kind": "developer",
+    "question": "Where is a total amount of space shared out between edges that have fixed sizes, proportional weights and minimum sizes, redoing the calculation whenever a minimum turns out to be violated?",
+    "answers": [
+      {
+        "file": "rich/_ratio.py",
+        "qualified": "ratio_resolve"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-2",
+    "kind": "developer",
+    "question": "Where is a string containing bracketed style tags converted into styled text, complaining when a closing tag has no matching opening tag and attaching callback metadata for tags starting with an at sign?",
+    "answers": [
+      {
+        "file": "rich/markup.py",
+        "qualified": "render"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-3",
+    "kind": "developer",
+    "question": "Where is a piece of styled text cut at a list of character offsets into separate pieces, with each style span redistributed to the right pieces using a binary search?",
+    "answers": [
+      {
+        "file": "rich/text.py",
+        "qualified": "Text.divide"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-4",
+    "kind": "developer",
+    "question": "Where is a long string folded into chunks that each fit a terminal cell width, treating wide characters as two cells and keeping grapheme clusters together?",
+    "answers": [
+      {
+        "file": "rich/cells.py",
+        "qualified": "chop_cells"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-5",
+    "kind": "developer",
+    "question": "Where are the positional arguments given to a print call merged into a single list of things to draw, joining adjacent strings with the separator and wrapping containers and dataclass-like objects in a pretty printer?",
+    "answers": [
+      {
+        "file": "rich/console.py",
+        "qualified": "Console._collect_renderables"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-6",
+    "kind": "developer",
+    "question": "Where is a single line of terminal output containing escape sequences turned into styled text, handling 256-colour and true-colour foreground and background codes as well as hyperlink codes?",
+    "answers": [
+      {
+        "file": "rich/ansi.py",
+        "qualified": "AnsiDecoder.decode_line"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-7",
+    "kind": "developer",
+    "question": "Where are rendered fragments divided at newline characters and each resulting row cut or padded to an exact width, optionally keeping the newline fragment at the end of the row?",
+    "answers": [
+      {
+        "file": "rich/segment.py",
+        "qualified": "Segment.split_and_crop_lines"
+      }
+    ]
+  },
+  {
+    "id": "rich-developer-8",
+    "kind": "developer",
+    "question": "Where is a true-colour value converted to the nearest entry of a smaller palette, treating colours with very low saturation as shades of grey?",
+    "answers": [
+      {
+        "file": "rich/color.py",
+        "qualified": "Color.downgrade"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-1",
+    "kind": "agent",
+    "question": "break segments at newline partition control flag yield line list reset",
+    "answers": [
+      {
+        "file": "rich/segment.py",
+        "qualified": "Segment.split_lines"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-2",
+    "kind": "agent",
+    "question": "split escape sequence text plain sgr osc regex positions yield",
+    "answers": [
+      {
+        "file": "rich/ansi.py",
+        "qualified": "_ansi_tokenize"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-3",
+    "kind": "agent",
+    "question": "pulse animation segments cosine fade foreground background blend",
+    "answers": [
+      {
+        "file": "rich/progress_bar.py",
+        "qualified": "ProgressBar._get_pulse_segments"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-4",
+    "kind": "agent",
+    "question": "tabs to spaces cell position tab size remainder",
+    "answers": [
+      {
+        "file": "rich/text.py",
+        "qualified": "Text.expand_tabs"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-5",
+    "kind": "agent",
+    "question": "region map stack splitter divide children sorted regions",
+    "answers": [
+      {
+        "file": "rich/layout.py",
+        "qualified": "Layout._make_region_map"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-6",
+    "kind": "agent",
+    "question": "shortcode colon names glyph variant selector regex sub codes",
+    "answers": [
+      {
+        "file": "rich/_emoji_replace.py",
+        "qualified": "_emoji_replace"
+      }
+    ]
+  },
+  {
+    "id": "rich-agent-7",
+    "kind": "agent",
+    "question": "lru cache color string hex rgb ansi names triplet",
+    "answers": [
+      {
+        "file": "rich/color.py",
+        "qualified": "Color.parse"
+      }
+    ]
+  },
+  {
+    "id": "rich-name-1",
+    "kind": "name",
+    "question": "Where is `RichHandler` defined?",
+    "symbol": "RichHandler",
+    "answers": [
+      {
+        "file": "rich/logging.py",
+        "qualified": "RichHandler"
+      }
+    ]
+  },
+  {
+    "id": "rich-name-2",
+    "kind": "name",
+    "question": "Where is `ratio_distribute` defined?",
+    "symbol": "ratio_distribute",
+    "answers": [
+      {
+        "file": "rich/_ratio.py",
+        "qualified": "ratio_distribute"
+      }
+    ]
+  },
+  {
+    "id": "rich-name-3",
+    "kind": "name",
+    "question": "Where is `split_graphemes` defined?",
+    "symbol": "split_graphemes",
+    "answers": [
+      {
+        "file": "rich/cells.py",
+        "qualified": "split_graphemes"
+      }
+    ]
+  },
+  {
+    "id": "rich-callers-1",
+    "kind": "callers",
+    "question": "What calls `set_cell_size`?",
+    "symbol": "set_cell_size",
+    "answers": [
+      {
+        "file": "rich/rule.py",
+        "qualified": "Rule.__rich_console__"
+      },
+      {
+        "file": "rich/rule.py",
+        "qualified": "Rule._rule_line"
+      },
+      {
+        "file": "rich/segment.py",
+        "qualified": "Segment.adjust_line_length"
+      },
+      {
+        "file": "rich/text.py",
+        "qualified": "Text.truncate"
+      }
+    ]
+  },
+  {
+    "id": "rich-callers-2",
+    "kind": "callers",
+    "question": "What calls `ratio_reduce`?",
+    "symbol": "ratio_reduce",
+    "answers": [
+      {
+        "file": "rich/table.py",
+        "qualified": "Table._calculate_column_widths"
+      },
+      {
+        "file": "rich/table.py",
+        "qualified": "Table._collapse_widths"
+      }
+    ]
+  }
+]

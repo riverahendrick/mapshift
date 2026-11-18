@@ -466,3 +466,58 @@ Agents: 12 runs on serde-rs/json (`f51fa15a7015`), model sonnet (`claude-sonnet-
 - **The right file:** found for 57/64 against 56/64.
 - **Agent correctness:** 6/6 each. Sonnet probably knows serde_json, so this small sample does not separate the tools. With one run per task, the cost difference is an observation, not a significant result.
 - **What neither answers:** 15 of 64 questions, mostly plain-English developer questions.
+
+## Sealed benchmark (third set, 2026-11-18)
+
+After the held-out run above, Mapshift was tuned on that set's misses, so from here on the held-out set counts as a development set. A third set was written to be blind, sealed by its hash, and run exactly once.
+
+### Method
+
+- **Questions:** 120 on six public repositories, 20 each (8 developer, 7 agent, 3 name, 2 callers), in `sealed/`. None of the repositories was used in any earlier set.
+
+  | Repo | Language | Commit |
+  |---|---|---|
+  | postcss/postcss | JavaScript | `b6316e5d61e5` |
+  | honojs/hono | TypeScript | `676c8f80fcaf` |
+  | Textualize/rich | Python | `3a109ccdffe5` |
+  | pallets/werkzeug | Python | `0f43c6ebd426` |
+  | labstack/echo | Go | `f275a6b1109e` |
+  | sharkdp/bat | Rust | `fbd9a416e85f` |
+
+- **Written blind:** the author worked from the repositories' source only. It never ran either tool and never read Mapshift's search code or any earlier question set.
+- **Sealed:** the SHA-256 of the question files was committed (`sealed/SEALED.md`, commit `79a5499`) before the engine under test was frozen. The files in `sealed/` hash to the same value: SHA-256 over `repos.json`, each repository's file in `repos.json` order, then `spans.json`.
+- **Kept from tuning:** nobody tuning Mapshift read a question or an answer before the run. The repository names were seen once, in a folder listing; nothing was run on those repositories before the scored run.
+- **One run:** Mapshift 0.1.3 (commit `4e79c83`) against Graft 0.29.0, with the same harness, commands and matching rule as the held-out run (`node bench/run-heldout.mjs --set <folder>`). There were no hand queries before the run and no edits to questions, answers or the rule after it.
+
+### Results
+
+Tables printed by `node bench/report.mjs --heldout --set sealed-bench` from `results/sealed-bench.json`.
+
+| Tool | hit@1 | hit@3 | Right file in top 3 | Median answer tokens | Median latency |
+|---|---|---|---|---|---|
+| mapshift | **86/120 (72%)** | **101/120 (84%)** | **114/120 (95%)** | **446.5** | **579 ms** |
+| graft | 59/120 (49%) | 68/120 (57%) | 109/120 (91%) | 827 (695.5 without its advice lines) | 1899 ms |
+
+| Kind | Mapshift hit@1 | Graft hit@1 | Mapshift hit@3 | Graft hit@3 |
+|---|---|---|---|---|
+| developer (48) | **26** | 9 | **35** | 15 |
+| agent (42) | **30** | 22 | **36** | 24 |
+| name (18) | **18** | 16 | **18** | 17 |
+| callers (12) | 12 | 12 | 12 | 12 |
+
+| Repo | Mapshift hit@1 / hit@3 | Graft hit@1 / hit@3 | Build time, Mapshift / Graft (median of 3) | Index size, Mapshift / Graft |
+|---|---|---|---|---|
+| postcss | **12 / 17** | 11 / 13 | **2.2 s** / 4.1 s | **904 KB** / 2,084 KB |
+| hono | **14 / 16** | 9 / 10 | 46.8 s / **10.7 s** | **5,492 KB** / 14,713 KB |
+| rich | **14 / 17** | 10 / 13 | **3.0 s** / 4.6 s | **2,956 KB** / 7,755 KB |
+| werkzeug | **16 / 18** | 11 / 12 | **1.8 s** / 2.7 s | **3,032 KB** / 8,171 KB |
+| echo | **16 / 18** | 11 / 11 | **1.8 s** / 2.6 s | **3,100 KB** / 6,900 KB |
+| bat | **14 / 15** | 7 / 9 | 33.5 s / **12.4 s** | **3,496 KB** / 8,656 KB |
+
+### Notes
+
+- **Where Graft did better:** build time on hono and bat. On caller questions the two tools tied, 12 of 12 each.
+- **bat's build time had a cause, fixed after the run.** Its `tests/syntax-tests/highlighted/` folder holds files of saved terminal colour codes. One of them (46 KB) took 18 of the 33 seconds. Mapshift now lists such files as not mapped, and gives every file a parsing time budget. After the run, the same build took about 6 to 8 s on the same machine. That number is not part of the scored run, and Graft's 12.4 s was not measured again.
+- **hono's build time varied widely:** 46.8, 62.5 and 11.3 s for three identical cold builds, so the machine was not quiet for all of them.
+- **Development numbers after tuning (not blind):** on the held-out set, Mapshift 0.1.3 puts the right code first on 37 of 64 questions and in the top 3 on 50, against 36 and 45 for 0.1.1. These are development numbers; the sealed results above, measured after the tuning on questions it never saw, are the ones to rely on.
+- **No agent runs** were made on this set; the earlier agent runs above still stand.

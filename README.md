@@ -78,6 +78,10 @@ In the desktop app, click **+** next to the prompt box, then **Plugins**, **Add 
 | **Antigravity** (`agy`) | ✅ | 💡 Advice | ✅ Status line, `/mapshift`, and the web dashboard |
 | **Grok CLI** | ✅ | 💡 Advice | ✅ Status line, `/mapshift`, and the web dashboard |
 | **Cursor** (beta) | ✅ | 💡 Advice | Web dashboard |
+| **Windsurf**, **VS Code** (Copilot agent mode), **GitHub Copilot CLI**, **Claude Desktop**, **Kimi Code** | ✅ | 💡 Advice | Web dashboard |
+| **opencode**, **Kiro**, **Qwen Code**, **Hermes**, **Factory Droid**, **Qoder**, **Pi** (all beta) | ✅ | 💡 Advice | Web dashboard |
+
+"Beta" means setup follows the agent's documentation but has not yet been tried on a real install. Setup only ever changes your personal settings, backs each file up first, and leaves alone any file it cannot edit safely (a config with comments, or an older layout), saying so.
 
 Claude Code lets an add-on change the model on every request, so routing there is fully automatic. The other agents do not allow that today. There Mapshift advises instead: its instructions ask the agent to hand routine side work to lighter helpers where the agent has them, and `/mapshift` shows which model and effort the last request needed. If an agent adds a way to switch models, Mapshift will use it.
 
@@ -111,9 +115,10 @@ The same numbers in three places. All of them read local files only.
 
 - **Builds itself.** The first time an agent uses a map tool in a project, the map builds in the background. There is nothing to run and nothing to remember.
 - **Stays fresh.** Before every answer it checks which files changed (size and time, then content) and re-reads only those.
-- **Understands 20 languages:**
-  - Full call and import tracking: TypeScript, JavaScript, Python, Go, Java, Kotlin and C#, plus the scripts inside Vue and Svelte files.
-  - Definitions and calls: Rust, PHP, Dart, Swift, Ruby, Scala, Lua, Elixir, PowerShell, C and C++.
+- **Understands 41 languages**, plus the scripts inside Vue, Svelte and Astro files:
+  - Full call and import tracking: TypeScript, JavaScript, Python, Go, Java, Kotlin and C#.
+  - Definitions and calls: Rust, PHP, Dart, Swift, Ruby, Scala, Lua, Elixir, PowerShell, C, C++, CUDA, Bash and Zsh, Zig, OCaml, Haskell, Julia, Clojure, Nix, Solidity, R, Erlang, Gleam, Perl, Elm, GDScript, Common Lisp, Emacs Lisp, Racket, Scheme, Ada, ReScript, GLSL and Terraform.
+- **Follows the call graph.** A question in words first finds the definitions that match it, then walks the call links around them. The function that ties the matches together (the entry point calling every matched helper) moves up to second place; the best word match keeps first.
 - **Is honest about what it knows.** Every call link is marked: confirmed through an import, a fair guess, or ambiguous. Files it skips (very large, generated, unreadable) are listed by name, never silently missing.
 - **Lives outside your project.** The map is kept in `~/.mapshift/`, so nothing is added to your repository, and all worktrees of a repository share one map.
 - **Gives starting points (Claude Code).** With each prompt, the agent gets the few places the request is clearly about: location, signature and callers. When the map has no clear answer, nothing is added.
@@ -143,6 +148,7 @@ Agents get five tools:
    - Mapshift never moves down on risky work or far-reaching changes.
    - It moves up after failing tests or repeated errors.
    - Your own choice always wins.
+4. **Usage limits.** A model whose usage limit is reached is never asked again until the limit resets, even when it is the model picked in the app. Until then the closest usable model takes over: one step weaker with more thinking effort for small work, one step stronger for hard work. A toast says which model stands in and for how long. When the whole account is at its limit, nothing is rerouted, since no model can help.
 
 There are five modes: ⚡ **Auto** (the default), 💎 **Quality**, 🪙 **Saver**, 🎛️ **Manual** and ⏸️ **Off**. Each project remembers its own mode. **Off** stops model switching only; the map keeps saving tokens.
 
@@ -177,22 +183,24 @@ Two other open-source tools give coding agents a code map: [Trail-code](https://
 | Where the index lives | `~/.mapshift/`, outside the repo | `graft/` and `.trail/` in the repo | `.codegraph/` in the repo |
 | Telemetry | ✅ None | On by default (opt out) | On by default (opt out) |
 | Background process | ✅ None | ✅ None | A daemon per project |
-| Picks the model per request | ✅ Claude Code: automatic. Others: advice | ❌ | ❌ |
+| Picks the model per request | ✅ Claude Code: automatic, and never a model at its usage limit. Others: advice | ❌ | ❌ |
 | Dashboards | ✅ Claude Code panel, terminal, web | Status line, `trail status`, graph viewer | Graph viewer (hidden behind a setting) |
 | Token savings shown | ✅ Whole-file sizes, credited only if the agent did not open those files anyway (Claude Code); an upper bound elsewhere | Whole-file sizes | Not tracked (a benchmark in the README) |
 | Usage limits and cost | ✅ 5-hour and weekly limits, cost with and without | $ saved in the status line | ❌ |
 | Map tools for agents | 5 | 6 | 8 (1 shown by default) |
-| Languages | 18, plus Vue and Svelte | 28, plus Vue, Svelte and Astro | 32 grammars, 41 listed |
-| Agents it sets up | 6 | 13 | 20 |
-| **Measured:** right code first, 64 held-out questions | **36 (56%)** | 27 (42%) | not measured |
-| **Measured:** right code in the top 3 | **45 (70%)** | 33 (52%) | not measured |
-| **Measured:** median answer size | **398 tokens** | 630 tokens | not measured |
-| **Measured:** median time per command-line lookup, start-up included | **0.44 s** (0.30 s idle) | 1.8 s (1.16 s idle) | not measured |
-| **Measured:** index size, four projects | **1.0 to 2.9 MB** | 2.1 to 7.2 MB | not measured |
+| Languages | ✅ 41, plus Vue, Svelte and Astro (42 grammars) | 28, plus Vue, Svelte and Astro | 32 grammars, 41 listed |
+| Agents it sets up | 18 | 13 | 20 |
+| **Measured:** right code first, 120 sealed questions | **86 (72%)** | 59 (49%) | not measured |
+| **Measured:** right code in the top 3 | **101 (84%)** | 68 (57%) | not measured |
+| **Measured:** plain-English questions, right code in the top 3 | **35 of 48** | 15 of 48 | not measured |
+| **Measured:** median answer size | **447 tokens** | 827 tokens | not measured |
+| **Measured:** median time per command-line lookup, start-up included | **0.58 s** | 1.9 s | not measured |
+| **Measured:** index size, six projects | **0.9 to 5.5 MB** | 2.1 to 14.7 MB | not measured |
+| **Measured:** cold build time | Faster on 4 of 6 projects | Faster on 2 of 6 (hono, bat) | not measured |
 
-The measured rows come from a benchmark against Graft 0.29.0 on four public projects in four languages: axios (JavaScript), httpx (Python), chi (Go) and serde_json (Rust). The 64 questions and their answers were written apart from the questions Mapshift was tuned on, and were never used for tuning. Eight of them were tried by hand in both tools while the scoring rule was being written; no question or answer changed afterwards. They mix how a developer asks, how an agent searches, exact names, and "who calls this". Lookup times were measured on a busy machine; the idle figures are from a re-run on one project. Graft found the right *file* about as often (56 against 57). In six real agent runs (Claude Code, Sonnet), both tools led to 6 correct answers out of 6; with Mapshift the agent made fewer tool calls and cost $0.021 per task on average, against $0.027. Every question, answer, loss and caveat is in [bench/README.md](bench/README.md), with the commands to run it yourself.
+The measured rows come from a sealed benchmark against Graft 0.29.0: 120 questions on six public projects (postcss, hono, rich, werkzeug, echo and bat, in JavaScript, TypeScript, Python, Go and Rust). The questions were written from the projects' source by an author who never ran either tool, and their hash was published before the Mapshift version under test was frozen. Nobody tuning Mapshift saw a question before the single scored run. They mix how a developer asks, how an agent searches, exact names, and "who calls this"; on caller questions both tools found all 12. Graft built two of the six maps faster: bat's slow build came from one folder of saved terminal output, which Mapshift now skips (after the run, bat built in about 6 to 8 s against Graft's 12.4 s). Every question, answer, loss and caveat is in [bench/README.md](bench/README.md), with the commands to run it yourself; the questions themselves are in [bench/sealed](bench/sealed).
 
-**Where they are ahead:** CodeGraph covers more languages and agents, detects web framework routes and finds dead code and import cycles. Trail-code shares team learnings through the repository, draws the code graph, posts a change's blast radius on pull requests, and can add exact call links from language servers. If you need one of those, use them; Mapshift's tools work alongside either.
+**Where they are ahead:** CodeGraph sets up more agents (20 against 18), detects web framework routes, and finds dead code and import cycles. Trail-code shares team learnings through the repository, draws the code graph, posts a change's blast radius on pull requests, and can add exact call links from language servers. If you need one of those, use them; Mapshift's tools work alongside either.
 
 ---
 

@@ -1,0 +1,239 @@
+[
+  {
+    "id": "werkzeug-developer-1",
+    "kind": "developer",
+    "question": "Where does the request router follow its compiled path-segment transitions, trying fixed segments before regex-based ones, to find the rule for a domain, path and method, raising a redirect when only a trailing slash is missing?",
+    "answers": [
+      {
+        "file": "src/werkzeug/routing/matcher.py",
+        "qualified": "StateMachineMatcher.match"
+      },
+      {
+        "file": "src/werkzeug/routing/matcher.py",
+        "qualified": "_match"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-2",
+    "kind": "developer",
+    "question": "Where are untrusted path components appended to a trusted base folder, returning nothing when a component is absolute, climbs to a parent, or names a Windows device file?",
+    "answers": [
+      {
+        "file": "src/werkzeug/security.py",
+        "qualified": "safe_join"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-3",
+    "kind": "developer",
+    "question": "Where is a user-supplied upload name reduced to plain ASCII letters, digits and a few punctuation characters, with path separators and whitespace turned into underscores?",
+    "answers": [
+      {
+        "file": "src/werkzeug/utils.py",
+        "qualified": "secure_filename"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-4",
+    "kind": "developer",
+    "question": "Where does the file-watching reloader collapse a set of directories into the minimal set of top-level directories, dropping any directory already covered by a parent?",
+    "answers": [
+      {
+        "file": "src/werkzeug/_reloader.py",
+        "qualified": "_find_common_roots"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-5",
+    "kind": "developer",
+    "question": "Where is a Host header value checked for allowed characters and a valid port, and compared against allowed domains where a leading dot means any subdomain is accepted?",
+    "answers": [
+      {
+        "file": "src/werkzeug/sansio/utils.py",
+        "qualified": "host_is_trusted"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-6",
+    "kind": "developer",
+    "question": "Where does a parsed Accept header choose among the values the server offers, preferring higher quality and then greater specificity, and returning a fallback when nothing is acceptable?",
+    "answers": [
+      {
+        "file": "src/werkzeug/datastructures/accept.py",
+        "qualified": "Accept.best_match"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-7",
+    "kind": "developer",
+    "question": "Where does the incremental multipart body parser advance through preamble, part headers, data and epilogue, raising when more than the allowed number of parts arrives?",
+    "answers": [
+      {
+        "file": "src/werkzeug/sansio/multipart.py",
+        "qualified": "MultipartDecoder.next_event"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-developer-8",
+    "kind": "developer",
+    "question": "Where does the reverse-proxy middleware pick the client's real value out of a comma-separated forwarded header by counting from the end according to how many proxies are trusted?",
+    "answers": [
+      {
+        "file": "src/werkzeug/middleware/proxy_fix.py",
+        "qualified": "ProxyFix._get_real_value"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-1",
+    "kind": "agent",
+    "question": "stat mtimes changed file trigger reload loop step",
+    "answers": [
+      {
+        "file": "src/werkzeug/_reloader.py",
+        "qualified": "StatReloaderLoop.run_step"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-2",
+    "kind": "agent",
+    "question": "debugger html mapping pair key value extended span limit recursive",
+    "answers": [
+      {
+        "file": "src/werkzeug/debug/repr.py",
+        "qualified": "DebugReprGenerator.dict_repr"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-3",
+    "kind": "agent",
+    "question": "seekable first chunk skip start byte iterable range",
+    "answers": [
+      {
+        "file": "src/werkzeug/wsgi.py",
+        "qualified": "_RangeWrapper._first_iteration"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-4",
+    "kind": "agent",
+    "question": "limited stream temp buffer remaining disconnect exhausted",
+    "answers": [
+      {
+        "file": "src/werkzeug/wsgi.py",
+        "qualified": "_LimitedStream.readinto"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-5",
+    "kind": "agent",
+    "question": "scrypt pbkdf2 args hashlib iterations hex salt method",
+    "answers": [
+      {
+        "file": "src/werkzeug/security.py",
+        "qualified": "_hash_internal"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-6",
+    "kind": "agent",
+    "question": "restart subprocess exit code 3 environ run main reloader",
+    "answers": [
+      {
+        "file": "src/werkzeug/_reloader.py",
+        "qualified": "ReloaderLoop.restart_with_reloader"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-agent-7",
+    "kind": "agent",
+    "question": "enough values url generation defaults arguments method suitable",
+    "answers": [
+      {
+        "file": "src/werkzeug/routing/rules.py",
+        "qualified": "Rule.suitable_for"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-name-1",
+    "kind": "name",
+    "question": "Where is `ClosingIterator` defined?",
+    "symbol": "ClosingIterator",
+    "answers": [
+      {
+        "file": "src/werkzeug/wsgi.py",
+        "qualified": "ClosingIterator"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-name-2",
+    "kind": "name",
+    "question": "Where is `DebugFrameSummary` defined?",
+    "symbol": "DebugFrameSummary",
+    "answers": [
+      {
+        "file": "src/werkzeug/debug/tbtools.py",
+        "qualified": "DebugFrameSummary"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-name-3",
+    "kind": "name",
+    "question": "Where is `_codec_error_url_quote` defined?",
+    "symbol": "_codec_error_url_quote",
+    "answers": [
+      {
+        "file": "src/werkzeug/urls.py",
+        "qualified": "_codec_error_url_quote"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-callers-1",
+    "kind": "callers",
+    "question": "What calls `_hash_internal`?",
+    "symbol": "_hash_internal",
+    "answers": [
+      {
+        "file": "src/werkzeug/security.py",
+        "qualified": "generate_password_hash"
+      },
+      {
+        "file": "src/werkzeug/security.py",
+        "qualified": "check_password_hash"
+      }
+    ]
+  },
+  {
+    "id": "werkzeug-callers-2",
+    "kind": "callers",
+    "question": "What calls `_iter_module_paths`?",
+    "symbol": "_iter_module_paths",
+    "answers": [
+      {
+        "file": "src/werkzeug/_reloader.py",
+        "qualified": "_find_stat_paths"
+      },
+      {
+        "file": "src/werkzeug/_reloader.py",
+        "qualified": "_find_watchdog_paths"
+      }
+    ]
+  }
+]
