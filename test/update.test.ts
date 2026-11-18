@@ -24,9 +24,10 @@ function fakeRun(latest: string, installOk = true) {
 test('update: up to date installs nothing', async () => {
   const f = fakeRun('0.1.0')
   const lines: string[] = []
-  assert.equal(await runUpdate({ current: '0.1.0', run: f.run, out: s => lines.push(s), claude: null }), 0)
+  assert.equal(await runUpdate({ current: '0.1.0', run: f.run, out: s => lines.push(s), claude: null, missing: () => [{ label: 'Cursor' }, { label: 'Kiro' }] }), 0)
   assert.ok(!f.calls.some(c => c.includes('install')))
   assert.match(lines.join('\n'), /newest version/)
+  assert.match(lines.join('\n'), /Found without Mapshift: Cursor · Kiro/, 'agents installed since setup are pointed out')
 })
 
 test('update: a newer version is installed, and the Claude Code add-on updated', async () => {

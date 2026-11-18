@@ -9,7 +9,7 @@ import { ago, bad, bold, dim, good, header, n, progress, rows, warn } from './ui
 
 const HELP = `${header('Map your code. Shift to the right model.')}
 ${bold('Get started')}
-  mapshift setup                Add Mapshift to your coding agents  ${dim('(--agents codex,grok · --yes · --dry-run · --home <folder>)')}
+  mapshift setup                Add Mapshift to every coding agent found  ${dim('(--agents codex,grok · --yes · --dry-run · --check)')}
   mapshift report               Map, savings and limits as text  ${dim('(--agent codex · --project <folder>)')}
   mapshift dash                 Open the local dashboard in your browser  ${dim('(--port <n> · --no-open)')}
   mapshift ui                   The dashboard right here in the terminal  ${dim('(--once · --width <n> · --tab map)')}
@@ -108,6 +108,12 @@ async function main(argv: string[]): Promise<number> {
   if (values.help || !cmd || cmd === 'help') {
     console.log(HELP)
     return 0
+  }
+
+  // which agents on this computer still need Mapshift: only reads, so no lasting install is needed first
+  if (cmd === 'setup' && values.check) {
+    const s = await import('../setup/setup.ts')
+    return s.runCheck({ home: opt('home'), json: !!values.json })
   }
 
   if (cmd === 'setup' || cmd === 'off' || cmd === 'on' || cmd === 'uninstall') {

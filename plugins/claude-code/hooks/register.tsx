@@ -334,7 +334,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'mapshift',
-      description: 'Mapshift: open the dashboard, or /mapshift auto|quality|saver|manual|off|map on|map off|use <model> [effort]|flag|status|trace|doctor|help',
+      description: 'Mapshift: open the dashboard, or /mapshift auto|quality|saver|manual|off|map on|map off|setup|use <model> [effort]|flag|status|trace|doctor|help',
     })
     try {
       const saved = (await $.store.get('cfg')) as (Partial<Cfg> & { mode?: string }) | undefined
@@ -376,7 +376,7 @@ export const register: Register = on => {
     try {
       await syncSession($)
       const v = await $.session.version()
-      log(await $.clock.now(), { k: 'session', project: e.cwd, engine: v.version, mod: '0.1.3' })
+      log(await $.clock.now(), { k: 'session', project: e.cwd, engine: v.version, mod: '0.1.4' })
       await flushAudit($)
     } catch (err) {
       void logErr($, 'session.start audit', err)
@@ -389,6 +389,14 @@ export const register: Register = on => {
     void refreshTheme($)
     if (e.isInteractive) void $.ui.open({ id: PANE, title: TITLE })
     void probeProject($, e.cwd)
+    // once a day: coding agents installed since setup (Codex, Cursor, ...) that do not have Mapshift yet
+    void (async () => {
+      const day = today(await $.clock.now())
+      if ((await $.store.get('agentsCheckedOn')) === day) return
+      await $.store.set('agentsCheckedOn', day)
+      const missing = await missingAgentsOf($)
+      if (missing.length) $.ui.toast(`Mapshift: ${missing.map(m => m.label).join(', ')} ${missing.length === 1 ? "doesn't" : "don't"} have Mapshift yet. Type /mapshift setup to add it.`)
+    })().catch(() => undefined)
     return next(e)
   })
 
@@ -1003,6 +1011,14 @@ export const register: Register = on => {
           : 'No requests recorded yet.',
       }
     }
+    if (cmd === 'setup') {
+      // the other coding agents on this computer: only the ones without Mapshift, never Claude Code itself
+      const missing = await missingAgentsOf($)
+      if (!missing.length) return { text: '✅ Every coding agent found on this computer already has Mapshift.' }
+      const out = await runMapshift($, ['setup', '--agents', missing.map(m => m.id).join(','), '--yes'], 180_000)
+      if (!out) return { text: 'Mapshift could not run its setup from here. In a terminal, run: mapshift setup' }
+      return { text: `✅ Mapshift added to ${missing.map(m => m.label).join(', ')}. Restart those agents to load it.\n\n${out.replace(/\x1b\[[\d;]*m/g, '').trim().slice(0, 3000)}` }
+    }
     if (cmd === 'doctor') return { text: await doctor($) }
     if (cmd === 'log') {
       const n = Math.max(1, Math.min(80, Number(a1) || 25))
@@ -1018,6 +1034,7 @@ export const register: Register = on => {
         '  /mapshift                  open the dashboard',
         '  /mapshift auto|quality|saver|manual|off   model switching (Off: your own model picker)',
         '  /mapshift map on|off       the map, on its own: starting points with each prompt',
+        '  /mapshift setup            add Mapshift to the other coding agents on this computer (Codex, Cursor, ...)',
         '  /mapshift use opus high    pick one model and effort (Manual mode)',
         '  /mapshift flag             the last pick was wrong: think harder next',
         '  /mapshift budget 3         most a one-time upgrade may cost before it only recommends',
@@ -1119,6 +1136,17 @@ async function recordStep(
 }
 
 // ---------------------------------------------------------------------- the map's command line
+
+/** The coding agents on this computer without Mapshift yet (`mapshift setup --check --json`); none when that cannot be read. */
+async function missingAgentsOf($: $): Promise<{ id: string; label: string }[]> {
+  const out = await runMapshift($, ['setup', '--check', '--json'], 20_000)
+  try {
+    const j = JSON.parse(out ?? '') as { missing?: { id: string; label: string }[] }
+    return Array.isArray(j.missing) ? j.missing.filter(m => typeof m?.id === 'string' && typeof m?.label === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 /**
  * Runs `mapshift <args>` and returns what it printed, or null. Tries the way that worked last time first,

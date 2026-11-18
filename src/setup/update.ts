@@ -30,8 +30,18 @@ const defaultRun: Run = (exe, args, show) => {
   return { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' }
 }
 
-export async function runUpdate(o: { current: string; check?: boolean; run?: Run; out?: (s: string) => void; claude?: string | null }): Promise<number> {
+export async function runUpdate(o: { current: string; check?: boolean; run?: Run; out?: (s: string) => void; claude?: string | null; missing?: () => { label: string }[] }): Promise<number> {
   const out = o.out ?? ((s: string) => console.log(s))
+  // coding agents installed since the last setup: said once at the end, whatever the update did
+  const newAgents = async () => {
+    let list: { label: string }[] = []
+    try {
+      list = o.missing ? o.missing() : (await import('./setup.ts')).missingAgents()
+    } catch {
+      /* only a hint */
+    }
+    if (list.length) out(`  ${warn('!')} Found without Mapshift: ${list.map(m => m.label).join(' · ')}. Add it to them: ${bold('mapshift setup')}\n`)
+  }
   const run = o.run ?? defaultRun
   out(header('Update'))
   const cli = npmCli()
@@ -51,6 +61,7 @@ export async function runUpdate(o: { current: string; check?: boolean; run?: Run
   }
   if (!newer(latest, o.current)) {
     out(`  ${good('✓')} You have the newest version, ${bold(o.current)}.\n`)
+    await newAgents()
     return 0
   }
   out(`  A new version is out: ${bold(o.current)} → ${bold(latest)}`)
@@ -71,5 +82,6 @@ export async function runUpdate(o: { current: string; check?: boolean; run?: Run
     out(up.status === 0 ? `  ${good('✓')} The Claude Code add-on is updated too.` : `  ${warn('!')} The Claude Code add-on was not updated ${dim('(run: claude plugin update mapshift@mapshift)')}.`)
   }
   out(`\n  Open a new chat to use it. In Claude Code you can also type ${bold('/reload-plugins')}.\n`)
+  await newAgents()
   return 0
 }

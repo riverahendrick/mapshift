@@ -258,6 +258,34 @@ export async function runSetup(o: RunOptions): Promise<number> {
   return 0
 }
 
+/**
+ * The coding agents on this computer that Mapshift is not in yet: found, with something setup would still add.
+ * Claude Code is left out (its own add-on says so), and nothing is listed while Mapshift is paused with
+ * `mapshift off`, since the person chose that.
+ */
+export function missingAgents(o: Pick<RunOptions, 'home' | 'env' | 'rt'> = {}): { id: AgentId; label: string }[] {
+  const c = context({ ...o, out: () => {} })
+  const prev = loadHome(c.t)
+  if (prev?.state === 'off') return []
+  const found = AGENTS.filter(a => a.id !== 'claude' && a.detect(c.t, c.env))
+  const plan = execute(c, found.flatMap(a => a.pieces(c.t, c.rt)), prev?.state === 'on' ? prev.records : [], false)
+  return found.filter(a => plan.outcomes.some(x => x.piece.agent === a.id && x.action === 'add')).map(a => ({ id: a.id, label: a.label }))
+}
+
+/** `mapshift setup --check`: which agents on this computer still need Mapshift, as words or as JSON. */
+export function runCheck(o: RunOptions & { json?: boolean }): number {
+  const c = context(o)
+  const missing = missingAgents(o)
+  if (o.json) {
+    c.out(JSON.stringify({ missing }))
+    return 0
+  }
+  c.out(header('Coding agents without Mapshift'))
+  if (!missing.length) c.out(`  ${good('✓')} Every coding agent found on this computer has Mapshift.\n`)
+  else c.out(`  ${missing.map(m => m.label).join(' · ')}\n\n  Add it to them: ${bold('mapshift setup')}\n`)
+  return 0
+}
+
 function setUpClaude(c: Ctx, o: RunOptions): boolean {
   const cmds = claudeCommands(c.rt)
   const { exe, why } = claudeRunner(c, o)

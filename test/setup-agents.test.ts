@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import { AGENTS } from '../src/agents/registry.ts'
 import { targets, type Targets } from '../src/setup/env.ts'
 import { loadHome } from '../src/setup/pieces.ts'
-import { runOff, runOn, runSetup, runUninstall, type RunOptions } from '../src/setup/setup.ts'
+import { missingAgents, runOff, runOn, runSetup, runUninstall, type RunOptions } from '../src/setup/setup.ts'
 
 // Every test works in a throwaway home; no real agent folder is read or written.
 function sandbox() {
@@ -545,4 +545,22 @@ test('config folders follow each system and each agent\'s own overrides, but nev
   assert.equal(lin.pi, resolve('/p'))
   assert.equal(lin.copilot, resolve('/c'))
   assert.equal(lin.hermes, resolve('/h'))
+})
+
+test('setup --check: agents found without Mapshift are listed, then none after setup, and none while it is off', async () => {
+  const s = sandbox()
+  try {
+    s.put('.codex/config.toml', 'model = "x"\n')
+    s.put('.kiro/settings/mcp.json', '{}\n')
+    const ids = () => missingAgents({ home: s.home, env: s.env }).map(m => m.id).sort()
+    assert.deepEqual(ids(), ['codex', 'kiro'])
+    await runSetup(s.opts({ agents: 'codex', yes: true }))
+    assert.deepEqual(ids(), ['kiro'], 'codex is done; kiro is still waiting')
+    await runSetup(s.opts({ yes: true }))
+    assert.deepEqual(ids(), [])
+    await runOff(s.opts())
+    assert.deepEqual(ids(), [], 'paused on purpose: nothing to point out')
+  } finally {
+    s.cleanup()
+  }
 })
