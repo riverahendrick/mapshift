@@ -1,7 +1,7 @@
 import type { Node, Query } from 'web-tree-sitter'
 import { extractImports } from './imports.ts'
 import { LANGS, type LangId } from './languages.ts'
-import { grammarQuery, parse, queryFor } from './parser.ts'
+import { grammarQuery, parse, parseBudgetMs, ParseTooSlow, queryFor } from './parser.ts'
 import { EXTRA_TAGS, stripDirectives } from './queries.ts'
 import { nameWords } from './store.ts'
 import type { Facts, Ref, Sym, SymKind } from './types.ts'
@@ -271,7 +271,14 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
     const rawRefs: { name: Node; kind: Ref['kind']; bare: boolean; receiver?: Node }[] = []
     const seen = new Set<string>()
     const ignored = new Set<number>()
-    for (const match of query?.matches(tree.rootNode) ?? []) {
+    // reading definitions and calls gets the same time budget as parsing: a tree full of parse errors can
+    // make it run for many seconds, and that file is then listed as not mapped instead
+    const started = performance.now()
+    const budget = parseBudgetMs(text.length)
+    let late = false
+    const matches = query?.matches(tree.rootNode, { progressCallback: (() => (late = performance.now() - started > budget)) as () => void }) ?? []
+    if (late) throw new ParseTooSlow(`reading ${info.label} definitions took over ${Math.round(budget)} ms`)
+    for (const match of matches) {
       // `@ignore` names a symbol that only looks like a call (a parameter list, a `let` binding): no call is read there
       if (info.ownTags) for (const c of match.captures) if (c.name === 'ignore') ignored.add(c.node.startIndex)
       const nameCap = match.captures.find(c => c.name === 'name')

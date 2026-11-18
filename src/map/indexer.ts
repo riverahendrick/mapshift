@@ -5,6 +5,7 @@ import { Worker } from 'node:worker_threads'
 import { mapDbPath, repoDir } from '../core/paths.ts'
 import { MAP_FORMAT } from '../version.ts'
 import { extract } from './extract.ts'
+import { ParseTooSlow } from './parser.ts'
 import { rank, resolve } from './resolve.ts'
 import { listFiles, type Skipped } from './scan.ts'
 import { Store } from './store.ts'
@@ -154,10 +155,16 @@ export async function refresh(root: string, store: Store, onProgress?: (done: nu
         }
         text = text.replaceAll('\u0000', ' ')
       }
+      // colour codes saved from a terminal (a syntax highlighter's test output) are not source code, and they
+      // send a parser into slow error recovery: a 46 KB file of them once took 18 s
+      if ((text.match(/\x1b\[[\d;]*m/g)?.length ?? 0) >= 3) {
+        errors.push({ path: f.path, reason: 'terminal output' })
+        continue
+      }
       try {
         parsed.push({ f, hash, text, facts: await extract(f.lang, text) })
-      } catch {
-        errors.push({ path: f.path, reason: 'parse error' })
+      } catch (err) {
+        errors.push({ path: f.path, reason: err instanceof ParseTooSlow ? 'too slow to read' : 'parse error' })
       }
     }
     store.tx(() => {

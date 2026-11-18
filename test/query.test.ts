@@ -129,6 +129,22 @@ def helper(x):
   }
 })
 
+test('a file of saved terminal colour codes is listed as not mapped, not parsed', async () => {
+  const esc = '\x1b'
+  const r = makeRepo({
+    'src/app.swift': 'func real() { helper() }\nfunc helper() {}\n',
+    'tests/highlighted/test.swift': `${esc}[38;2;1;2;3mfunc${esc}[0m ${esc}[38;2;4;5;6mshown${esc}[0m() {\n${esc}[1m}${esc}[0m\n`,
+  })
+  try {
+    await buildNow(r.root)
+    const store = openMap(r.root)
+    assert.deepEqual(store.skipped(), [{ path: 'tests/highlighted/test.swift', reason: 'terminal output' }])
+    assert.match(find(store, r.root, 'real').text, /### 1\. real/)
+  } finally {
+    r.cleanup()
+  }
+})
+
 test('find keeps answers under the size limit', async () => {
   const many: Record<string, string> = {}
   for (let i = 0; i < 30; i++) many[`src/m${i}.ts`] = `export function handler${i}() {\n${'  step()\n'.repeat(40)}}\nfunction step() {}\n`

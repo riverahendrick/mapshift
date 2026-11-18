@@ -40,8 +40,18 @@ export async function grammarFor(lang: LangId): Promise<Language> {
   return loading
 }
 
+/** A file the parser could not finish in its time budget (see parseBudgetMs): listed as not mapped, never waited on. */
+export class ParseTooSlow extends Error {}
+
+/**
+ * How long one file may take to parse: 2 seconds, plus 4 ms per kilobyte. A normal file takes a small part of
+ * this (a 265 KB library about half a second); text that only looks like code can send a parser into error
+ * recovery for many seconds, and one such file must not hold up the whole map.
+ */
+export const parseBudgetMs = (chars: number): number => 2000 + (4 * chars) / 1024
+
 /** Parses source code. The caller must call `tree.delete()` when done, to free the memory. */
-export async function parse(lang: LangId, source: string): Promise<Tree> {
+export async function parse(lang: LangId, source: string, budgetMs = parseBudgetMs(source.length)): Promise<Tree> {
   const language = await grammarFor(lang)
   const name = LANGS[lang].grammar
   let parser = parsers.get(name)
@@ -50,8 +60,16 @@ export async function parse(lang: LangId, source: string): Promise<Tree> {
     parser.setLanguage(language)
     parsers.set(name, parser)
   }
-  const tree = parser.parse(source)
-  if (!tree) throw new Error(`the ${LANGS[lang].label} parser returned nothing`)
+  const started = performance.now()
+  let late = false
+  // returning true from the progress callback cancels the parse
+  const tree = parser.parse(source, null, { progressCallback: (() => (late = performance.now() - started > budgetMs)) as () => void })
+  if (late || !tree) {
+    tree?.delete()
+    parser.reset() // a cancelled parse would otherwise resume on the next file
+    if (late) throw new ParseTooSlow(`the ${LANGS[lang].label} parser took over ${Math.round(budgetMs)} ms`)
+    throw new Error(`the ${LANGS[lang].label} parser returned nothing`)
+  }
   return tree
 }
 

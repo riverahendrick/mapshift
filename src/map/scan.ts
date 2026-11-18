@@ -4,7 +4,7 @@ import { git, slash } from '../core/paths.ts'
 import { langOf, type LangId } from './languages.ts'
 
 export type FileEntry = { path: string; abs: string; size: number; mtimeMs: number; lang: LangId }
-export type SkipReason = 'too large' | 'generated' | 'parse error' | 'unreadable'
+export type SkipReason = 'too large' | 'generated' | 'parse error' | 'unreadable' | 'terminal output' | 'too slow to read'
 export type Skipped = { path: string; reason: SkipReason }
 
 export const MAX_FILE_BYTES = 1_000_000
