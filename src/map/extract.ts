@@ -237,6 +237,26 @@ function receiverOf(name: Node, source: string, own: boolean): string | null {
 type RawDef = { node: Node; name: string; kind: SymKind; at: number }
 
 /**
+ * Rust: the type an `impl` block is for (`impl<'a> Read<'a> for SliceRead<'a>` → `SliceRead`), so the functions
+ * inside it are named as that type's methods, and two types' methods of one name stay apart.
+ */
+export function implTypeOf(node: Node): string | null {
+  for (let p = node.parent; p; p = p.parent) {
+    if (p.type === 'impl_item') {
+      const text = (p.childForFieldName('type')?.text ?? '')
+        .replace(/<[\s\S]*$/, '')
+        .replace(/^&\s*('\w+\s+)?(mut\s+)?/, '')
+        .replace(/^(dyn|impl)\s+/, '')
+        .trim()
+      const last = text.split('::').pop()?.trim() ?? ''
+      return /^[A-Za-z_]\w*$/.test(last) ? last : null
+    }
+    if (p.type === 'function_item' || p.type === 'mod_item' || p.type === 'trait_item') return null
+  }
+  return null
+}
+
+/**
  * Reads one file: what it defines, what it calls and what it imports. Line numbers count from 1.
  * A file that does not parse cleanly still gives everything the parser could recover.
  */
@@ -283,8 +303,9 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
     for (const d of defs) {
       while (stack.length && stack[stack.length - 1]!.end <= d.node.startIndex) stack.pop()
       const parent = stack[stack.length - 1]
-      const kind: SymKind = d.kind === 'function' && parent && CONTAINERS.has(parent.kind) ? 'method' : d.kind
-      const qualified = parent ? `${parent.qualified}.${d.name}` : d.name
+      const implType = lang === 'rust' && !parent && (d.kind === 'function' || d.kind === 'method') ? implTypeOf(d.node) : null
+      const kind: SymKind = implType || (d.kind === 'function' && parent && CONTAINERS.has(parent.kind)) ? 'method' : d.kind
+      const qualified = parent ? `${parent.qualified}.${d.name}` : implType ? `${implType}.${d.name}` : d.name
       const signature = signatureOf(d.node, text, !!info.ownTags)
       // a member is public when its container is and its own modifiers or naming allow it
       const own = parent && JS_FAMILY.has(lang) ? true : isExported(lang, d.node, d.name, signature)
@@ -321,7 +342,11 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
           from = g.qualified
         }
       }
-      refs.push({ name: r.name.text, receiver: r.receiver ? oneLine(r.receiver.text, 80) : r.bare ? null : receiverOf(r.name, text, !!info.ownTags), line: r.name.startPosition.row + 1, from, kind: r.kind })
+      const ref: Ref = { name: r.name.text, receiver: r.receiver ? oneLine(r.receiver.text, 80) : r.bare ? null : receiverOf(r.name, text, !!info.ownTags), line: r.name.startPosition.row + 1, from, kind: r.kind }
+      // `fn.call(ctx, …)`, `fn.apply(ctx, args)`, `fn.bind(ctx)` call `fn` itself, not a method named `call`
+      const through = JS_FAMILY.has(lang) && /^(call|apply|bind)$/.test(ref.name) ? /^(?:(.+)\.)?([A-Za-z_$][\w$]*)$/.exec(ref.receiver ?? '') : null
+      if (through) Object.assign(ref, { name: through[2]!, receiver: through[1] ?? null })
+      refs.push(ref)
     }
 
     return { syms, refs, imps: extractImports(lang, tree.rootNode) }

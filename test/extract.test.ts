@@ -216,6 +216,43 @@ namespace Shop {
   ])
 })
 
+test('JavaScript: fn.call, fn.apply and fn.bind are calls to fn', async () => {
+  const f = await extract('javascript', 'function run(config) {\n  transformData.call(config, 1)\n  this.hook.apply(this, [])\n  const g = save.bind(null)\n  return g\n}\n')
+  const seen = f.refs.map(r => `${r.receiver ?? ''}|${r.name}|${r.from}`)
+  assert.ok(seen.includes('|transformData|run'), seen.join(' '))
+  assert.ok(seen.includes('this|hook|run'), seen.join(' '))
+  assert.ok(seen.includes('|save|run'), seen.join(' '))
+  assert.ok(!f.refs.some(r => /^(call|apply|bind)$/.test(r.name)))
+})
+
+test('Rust: functions in an impl block are named as methods of its type, trait impls included', async () => {
+  const f = await extract(
+    'rust',
+    `struct SliceRead<'a> { s: &'a [u8] }
+struct StrRead<'a> { s: &'a str }
+trait Read { fn decode(&mut self) -> u16; }
+impl<'a> Read for SliceRead<'a> {
+    fn decode(&mut self) -> u16 { four(1) }
+}
+impl<'a> Read for StrRead<'a> {
+    fn decode(&mut self) -> u16 { four(2) }
+}
+impl<R> Wrapper<R> { pub fn new() -> Self { Wrapper::make() } }
+impl<'de, R> Read for &mut R { fn decode(&mut self) -> u16 { 0 } }
+fn four(x: u16) -> u16 { x }
+`,
+  )
+  assert.equal(sym(f, 'SliceRead.decode')?.kind, 'method')
+  assert.equal(sym(f, 'StrRead.decode')?.kind, 'method')
+  assert.ok(sym(f, 'Wrapper.new'))
+  assert.ok(sym(f, 'R.decode'), 'impl for &mut R')
+  assert.equal(sym(f, 'four')?.kind, 'function', 'a free function keeps its plain name')
+  assert.deepEqual(
+    f.refs.filter(r => r.name === 'four').map(r => r.from),
+    ['SliceRead.decode', 'StrRead.decode'],
+  )
+})
+
 test('broad languages give definitions and calls', async () => {
   const rust = await extract('rust', 'pub fn total() -> i32 { helper() }\nfn helper() -> i32 { 1 }\n')
   assert.equal(sym(rust, 'total')?.exported, true)

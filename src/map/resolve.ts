@@ -55,7 +55,8 @@ class Index {
   idOf = new Map<string, number>()
   langOf = new Map<number, string>()
   byName = new Map<string, S[]>()
-  byFileQualified = new Map<string, number>()
+  /** Every definition with this name in this file, with its lines: several when two types define the same method. */
+  byFileQualified = new Map<string, { id: number; start: number; end: number }[]>()
   imports = new Map<number, I[]>()
   private targetCache = new Map<string, number[]>()
   private filesByDir = new Map<string, number[]>()
@@ -70,11 +71,14 @@ class Index {
       if (list) list.push(f.id)
       else this.filesByDir.set(dir, [f.id])
     }
-    for (const s of store.sql('SELECT id, file_id, name, qualified, kind, exported FROM symbols').all() as S[]) {
+    for (const s of store.sql('SELECT id, file_id, name, qualified, kind, exported, start, end FROM symbols').all() as (S & { start: number; end: number })[]) {
       const list = this.byName.get(s.name)
       if (list) list.push(s)
       else this.byName.set(s.name, [s])
-      this.byFileQualified.set(`${s.file_id}:${s.qualified}`, s.id)
+      const key = `${s.file_id}:${s.qualified}`
+      const same = this.byFileQualified.get(key)
+      if (same) same.push({ id: s.id, start: s.start, end: s.end })
+      else this.byFileQualified.set(key, [{ id: s.id, start: s.start, end: s.end }])
     }
     for (const i of store.sql('SELECT file_id, source, local, imported FROM imports').all() as I[]) {
       const list = this.imports.get(i.file_id)
@@ -89,6 +93,20 @@ class Index {
       if (id !== undefined) return [id]
     }
     return []
+  }
+
+  /**
+   * The definition a call sits in: the one with the call's enclosing name whose lines hold the call, the
+   * narrowest if several do. Two methods of one name in one file (`impl Read for A` and `impl Read for B`)
+   * then each keep their own calls instead of one taking both.
+   */
+  caller(fileId: number, qualified: string, line: number): number | null {
+    const same = this.byFileQualified.get(`${fileId}:${qualified}`)
+    if (!same) return null
+    if (same.length === 1) return same[0]!.id
+    let best: { id: number; start: number; end: number } | null = null
+    for (const s of same) if (s.start <= line && line <= s.end && (!best || s.end - s.start < best.end - best.start)) best = s
+    return (best ?? same[0]!).id
   }
 
   /** The files an import points at, inside this repository. Packages from outside give none. */
@@ -262,7 +280,7 @@ export function resolve(store: Store, scope: { files: number[] | 'all'; names: S
   const add = store.sql('INSERT INTO edges(ref_id, src, src_file, dst, confidence, line) VALUES(?, ?, ?, ?, ?, ?)')
   let count = 0
   for (const r of refs) {
-    const src = r.from_qualified ? (ix.byFileQualified.get(`${r.file_id}:${r.from_qualified}`) ?? null) : null
+    const src = r.from_qualified ? ix.caller(r.file_id, r.from_qualified, r.line) : null
     for (const h of match(ix, r)) {
       if (h.dst === src) continue // a function naming itself, e.g. recursion, adds nothing to the map
       add.run(r.id, src, r.file_id, h.dst, h.confidence, r.line)

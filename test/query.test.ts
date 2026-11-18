@@ -104,6 +104,31 @@ export function shouldSkip(host, entries) {
   }
 })
 
+test('trace: two definitions of one name in one file each keep their own calls', async () => {
+  const r = makeRepo({
+    'pkg/io.py': `import sys
+if sys.platform == "win32":
+    def read():
+        return helper(1)
+else:
+    def read():
+        return helper(2)
+
+def helper(x):
+    return x
+`,
+  })
+  try {
+    await buildNow(r.root)
+    const text = trace(openMap(r.root), r.root, 'helper').text
+    assert.match(text, /- read \(pkg\/io\.py:4\)/)
+    assert.match(text, /- read \(pkg\/io\.py:7\)/)
+    assert.doesNotMatch(text, /×2/)
+  } finally {
+    r.cleanup()
+  }
+})
+
 test('find keeps answers under the size limit', async () => {
   const many: Record<string, string> = {}
   for (let i = 0; i < 30; i++) many[`src/m${i}.ts`] = `export function handler${i}() {\n${'  step()\n'.repeat(40)}}\nfunction step() {}\n`
