@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 (2026-11-17)
+
+- 🖥️ `mapshift ui`: a live dashboard in the terminal, with tabs you can click, bars and gauges. Running `mapshift` on its own opens it.
+- 🔋 The Claude Code panel shows how far each usage limit was stretched: where it would be without Mapshift, and how much longer it lasts at your pace.
+- 🔎 Better search: plain-English and agent-style questions rank the right code higher, and the map now also searches the comments that explain each definition, words inside function bodies, and private class members.
+- 🗺️ The map works on its own: switching model routing off no longer stops it, and `/mapshift map on|off` controls the starting points separately.
+- 🌐 The web dashboard shows Claude Code limits and today's cost next to Codex, and writes your home folder as `~`.
+- 💬 Friendlier terminal answers and clearer errors, for example when `--project` names a folder that does not exist.
+- 📏 A benchmark against Graft on questions written before any tuning, in [bench/README.md](bench/README.md).
+
 ## 0.1.1 (2026-11-17)
 
 - 🎯 Starting points: with every prompt, Claude Code now gets the few places in the code the request is clearly about (location, signature, callers), straight from the map. Nothing is added when the map has no clear answer.

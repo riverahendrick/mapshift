@@ -16,15 +16,21 @@
 
 It runs entirely on your computer. No account, no server, no telemetry. Your code never leaves your machine.
 
+<p align="center">
+  <img src="assets/screens/tui-overview.png" alt="The Mapshift terminal dashboard: the model in use, Claude Code limits, the map and today's savings" width="92%">
+</p>
+
 ---
 
 ## Contents
 
 - [Quick start](#quick-start)
 - [What you get in each agent](#what-you-get-in-each-agent)
+- [Dashboards](#dashboards)
 - [How the map works](#how-the-map-works)
 - [How routing decides](#how-routing-decides)
 - [How the numbers are counted](#how-the-numbers-are-counted)
+- [How it compares](#how-it-compares)
 - [Commands](#commands)
 - [Update, turn off or remove](#update-turn-off-or-remove)
 - [Privacy and safety](#privacy-and-safety)
@@ -77,6 +83,30 @@ Claude Code lets an add-on change the model on every request, so routing there i
 
 ---
 
+## Dashboards
+
+The same numbers in three places. All of them read local files only.
+
+- **In Claude Code:** `/mapshift` opens a panel beside the chat, with the mode, the model in use, gauges for every usage limit, today's savings, and how much further each limit goes because of Mapshift.
+- **In any terminal:** `mapshift ui` (or just `mapshift`) opens a live dashboard. Switch tabs with the arrow keys or a click; `r` refreshes, `q` quits.
+- **In your browser:** `mapshift dash` opens a private page on `127.0.0.1` that only this computer can reach. It follows your light or dark theme.
+
+<p align="center">
+  <img src="assets/screens/tui-activity.png" alt="The terminal dashboard's activity tab: every map lookup and routing choice, newest first" width="49%">
+  <img src="assets/screens/tui-map.png" alt="The terminal dashboard's map tab: lookups by tool, languages and agents" width="49%">
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screens/web-dashboard-dark.png">
+    <img src="assets/screens/web-dashboard-light.png" alt="The web dashboard: map status, Claude Code limit gauges, tokens saved and recent activity" width="92%">
+  </picture>
+</p>
+
+<sub>Screenshots from a short demo on the public <a href="https://github.com/spf13/cobra">cobra</a> repository: three questions on a light model and two on a standard one, all real.</sub>
+
+---
+
 ## How the map works
 
 - **Builds itself.** The first time an agent uses a map tool in a project, the map builds in the background. There is nothing to run and nothing to remember.
@@ -86,6 +116,8 @@ Claude Code lets an add-on change the model on every request, so routing there i
   - Definitions and calls: Rust, PHP, Dart, Swift, Ruby, Scala, Lua, Elixir, PowerShell, C and C++.
 - **Is honest about what it knows.** Every call link is marked: confirmed through an import, a fair guess, or ambiguous. Files it skips (very large, generated, unreadable) are listed by name, never silently missing.
 - **Lives outside your project.** The map is kept in `~/.mapshift/`, so nothing is added to your repository, and all worktrees of a repository share one map.
+- **Gives starting points (Claude Code).** With each prompt, the agent gets the few places the request is clearly about: location, signature and callers. When the map has no clear answer, nothing is added.
+- **Works on its own.** Turning model switching off leaves the map running. `/mapshift map off` turns the map's starting points off too, and `/mapshift map on` brings them back.
 
 Agents get five tools:
 
@@ -96,6 +128,10 @@ Agents get five tools:
 | `map_file` | A file's whole outline in a few lines |
 | `map_overview` | The project at a glance: languages, main folders, entry points, most used code |
 | `map_search` | Every line matching some text, grouped by the function it sits in |
+
+<p align="center">
+  <img src="assets/screens/cli-find.png" alt="mapshift map find answering a plain-English question with the code, its callers and what it calls" width="92%">
+</p>
 
 ---
 
@@ -108,7 +144,7 @@ Agents get five tools:
    - It moves up after failing tests or repeated errors.
    - Your own choice always wins.
 
-There are five modes: ⚡ **Auto** (the default), 💎 **Quality**, 🪙 **Saver**, 🎛️ **Manual** and ⏸️ **Off**. Each project remembers its own mode.
+There are five modes: ⚡ **Auto** (the default), 💎 **Quality**, 🪙 **Saver**, 🎛️ **Manual** and ⏸️ **Off**. Each project remembers its own mode. **Off** stops model switching only; the map keeps saving tokens.
 
 ---
 
@@ -123,9 +159,40 @@ Every number Mapshift shows comes from its local logs, by these rules:
 - **Without Mapshift** means the same requests run on the model you picked yourself, plus the files the map saved the agent from reading.
 - **With Mapshift** is what was actually used.
 - **Model switching** can cost more than it saves when hard work needs a stronger model. Mapshift shows that as it is ("$0.40 more, spent on stronger models for harder work").
+- **Limits stretched (Claude Code):** each limit's use is divided by today's with ÷ without ratio, giving "you'd be at 61% without Mapshift, not 48%". At your pace since the limit reset, the panel also shows how much longer it lasts before it runs out. Limits are counted in usage, which follows cost closely but not exactly, so this is an estimate too.
 - **Estimates:** sizes in tokens are estimated at four characters per token, and dollar values use each provider's list prices. Your plan may cost less, so these are labelled estimates. On a subscription, the limit gauges show what really matters.
 
 `/mapshift trace` in Claude Code shows the inputs behind each decision.
+
+---
+
+## How it compares
+
+Two other open-source tools give coding agents a code map: [Trail-code](https://github.com/trailhq/Trail-Code) (formerly Graft) and [CodeGraph](https://github.com/colbymchenry/codegraph). Both are good projects, MIT like Mapshift. The table below was checked against their source code (Trail-code 0.28.0, CodeGraph 1.6.2) in November 2026.
+
+| | **Mapshift** | **Trail-code** (Graft) | **CodeGraph** |
+|---|---|---|---|
+| First build | ✅ Automatic, on the first question | `trail init` / `graft build` | `codegraph init` |
+| Stays fresh | ✅ Checked before every answer | ✅ Checked before every answer | ✅ File watcher |
+| Where the index lives | `~/.mapshift/`, outside the repo | `graft/` and `.trail/` in the repo | `.codegraph/` in the repo |
+| Telemetry | ✅ None | On by default (opt out) | On by default (opt out) |
+| Background process | ✅ None | ✅ None | A daemon per project |
+| Picks the model per request | ✅ Claude Code: automatic. Others: advice | ❌ | ❌ |
+| Dashboards | ✅ Claude Code panel, terminal, web | Status line, `trail status`, graph viewer | Graph viewer (hidden behind a setting) |
+| Token savings shown | ✅ Measured: credited only when the agent did not open the files anyway | Estimated from whole-file sizes | Not tracked (a benchmark in the README) |
+| Usage limits and cost | ✅ 5-hour and weekly limits, cost with and without | $ saved in the status line | ❌ |
+| Map tools for agents | 5 | 6 | 8 (1 shown by default) |
+| Languages | 20 | 28 | 32 grammars, 41 listed |
+| Agents it sets up | 6 | 13 | 20 |
+| **Measured:** right code first, 64 blind questions | **36 (56%)** | 27 (42%) | not measured |
+| **Measured:** right code in the top 3 | **45 (70%)** | 33 (52%) | not measured |
+| **Measured:** median answer size | **398 tokens** | 630 tokens | not measured |
+| **Measured:** median time per lookup | **0.44 s** | 1.8 s | not measured |
+| **Measured:** index size, four projects | **1.0 to 2.9 MB** | 2.1 to 7.2 MB | not measured |
+
+The measured rows come from a benchmark against Graft 0.29.0 on four public projects in four languages: axios (JavaScript), httpx (Python), chi (Go) and serde_json (Rust). The 64 questions and their answers were written before the run and never used to tune Mapshift. They mix how a developer asks, how an agent searches, exact names, and "who calls this". Graft found the right *file* about as often (56 against 57). In six real agent runs (Claude Code, Sonnet), both tools led to 6 correct answers out of 6; with Mapshift the agent made fewer tool calls and cost $0.021 per task on average, against $0.027. Every question, answer, loss and caveat is in [bench/README.md](bench/README.md), with the commands to run it yourself.
+
+**Where they are ahead:** CodeGraph covers more languages and agents, detects web framework routes and finds dead code and import cycles. Trail-code shares team learnings through the repository, draws the code graph, posts a change's blast radius on pull requests, and can add exact call links from language servers. If you need one of those, use them; Mapshift's tools work alongside either.
 
 ---
 
@@ -135,6 +202,7 @@ Every number Mapshift shows comes from its local logs, by these rules:
 |---|---|
 | `mapshift setup` | Add Mapshift to your coding agents (`--dry-run` to preview, `--yes` to skip the question) |
 | `mapshift report` | Map, savings and limits as text |
+| `mapshift ui` | The dashboard right in the terminal (also opens when you run `mapshift` alone) |
 | `mapshift dash` | Open the dashboard in your browser |
 | `mapshift off` / `on` | Pause Mapshift in every agent, or bring it back |
 | `mapshift update` | Get the newest version, and update the Claude Code add-on too (`--check` to only look) |
@@ -142,9 +210,12 @@ Every number Mapshift shows comes from its local logs, by these rules:
 | `mapshift map build` | Build or update the map of this project |
 | `mapshift map find <words>` | Find code by plain words or by name |
 | `mapshift map trace <name>` | Who calls it (`--out`: what it calls, `--impact`: what a change reaches) |
+| `mapshift map file <path>` | A file's outline: every definition and its lines |
+| `mapshift map overview` | The whole project at a glance |
+| `mapshift map search <text>` | Every matching line (`--regex`, `--case`, `--path <folder>`) |
 | `mapshift route "<request>"` | Which model and effort a request needs |
 
-In Claude Code, `/mapshift` opens the dashboard, and `/mapshift auto`, `quality`, `saver`, `manual` or `off` switch modes.
+In Claude Code, `/mapshift` opens the dashboard, `/mapshift auto`, `quality`, `saver`, `manual` or `off` switch modes, and `/mapshift map on` or `map off` turns the map's starting points on or off.
 
 ---
 
