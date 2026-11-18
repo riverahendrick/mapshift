@@ -108,12 +108,14 @@ total items = foldl' add 0 items
     add acc i = acc + helper i
 
 helper :: Int -> Int
+helper 0 = 0
 helper x = x + 1
 
 main :: IO ()
 main = print (total [])
 `,
-    defs: [['Item', 'type', 3, 3], ['Priced', 'interface', 5, 6], ['total', 'function', 9, 11], ['total.add', 'function', 11, 11], ['helper', 'function', 14, 14], ['main', 'function', 17, 17]],
+    // `helper` has two clauses and is still one definition
+    defs: [['Item', 'type', 3, 3], ['Priced', 'interface', 5, 6], ['total', 'function', 9, 11], ['total.add', 'function', 11, 11], ['helper', 'function', 14, 15], ['main', 'function', 18, 18]],
     call: ['helper', 'total.add'],
     link: ['main', 'total'],
   },
@@ -254,13 +256,16 @@ total(Items) ->
 
 helper(X) when X > 0 ->
     other:ping(X),
-    X + 1.
+    X + 1;
+helper(_) ->
+    0.
 
 run() ->
     T = total([]),
     io:format("~p", [T]).
 `,
-    defs: [['cart', 'module', 1, 1], ['item', 'class', 2, 2], ['total', 'function', 4, 5], ['helper', 'function', 7, 9], ['run', 'function', 11, 13]],
+    // `helper` has two clauses and is still one definition
+    defs: [['cart', 'module', 1, 1], ['item', 'class', 2, 2], ['total', 'function', 4, 5], ['helper', 'function', 7, 11], ['run', 'function', 13, 15]],
     call: ['helper', 'total'],
     link: ['run', 'total'],
   },
@@ -680,6 +685,41 @@ test('namespaced and qualified calls go by name; parameter and binding lists are
   assert.deepEqual(lisp.refs.map(r => r.name), ['g'])
   const ml = await extract('ocaml', 'let run x = List.map helper x |> Util.show\n')
   assert.deepEqual(ml.refs.map(r => [r.name, r.receiver]), [['map', null], ['show', null]])
+})
+
+test('a call only reaches code of its own language family; the older language pairs are unchanged', async () => {
+  const r = makeRepo({
+    'deploy.sh': 'build() { echo hi; }\nrun() { build; test; }\n',
+    'app.ts': 'export function build() {}\nexport function test() {}\n',
+    'vars.tf': 'variable "name" {}\n',
+    'main.tf': 'resource "a" "b" {\n  n = var.name\n}\n',
+    'other/main.tf': 'resource "a" "c" {\n  n = var.name\n}\n',
+    'tool.py': 'def name():\n    return 1\n',
+    'Foo.java': 'class Foo { int total() { return 1; } }\n',
+    'run.kt': 'fun run(f: Foo) { f.total() }\n',
+  })
+  try {
+    await buildNow(r.root)
+    const rows = (
+      openMap(r.root)
+        .sql(
+          `SELECT s.qualified AS "from", d.qualified AS "to", sf.path AS sp, df.path AS dp FROM edges e
+           JOIN symbols d ON d.id = e.dst JOIN symbols s ON s.id = e.src
+           JOIN files sf ON sf.id = s.file_id JOIN files df ON df.id = d.file_id`,
+        )
+        .all() as { from: string; to: string; sp: string; dp: string }[]
+    ).map(l => `${l.sp}:${l.from} -> ${l.dp}:${l.to}`)
+    // the shell script calls its own `build`, never the TypeScript one; `test` is a program, not a function it defines
+    assert.ok(rows.includes('deploy.sh:run -> deploy.sh:build'))
+    assert.ok(!rows.some(l => l.startsWith('deploy.sh') && l.includes('app.ts')), rows.join('\n'))
+    // Terraform: `var.name` reaches the variable in its own folder, never a Python function called `name`
+    assert.ok(rows.includes('main.tf:b -> vars.tf:name'))
+    assert.ok(!rows.some(l => l.includes('tool.py')), rows.join('\n'))
+    // Kotlin calling Java is a link the map always made
+    assert.ok(rows.includes('run.kt:run -> Foo.java:Foo.total'), rows.join('\n'))
+  } finally {
+    r.cleanup()
+  }
 })
 
 test('Zig: only pub declarations are exported', async () => {

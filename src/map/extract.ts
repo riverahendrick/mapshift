@@ -122,11 +122,11 @@ const oneLine = (s: string, max = 200): string => {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 
-function signatureOf(def: Node, source: string): string {
+function signatureOf(def: Node, source: string, own: boolean): string {
   const body =
     def.childForFieldName('body') ??
     def.childForFieldName('value')?.childForFieldName('body') ??
-    def.namedChildren.find(c => c && /^(block|body|class_body|declaration_list|field_declaration_list|statement_block|function_body|compound_statement|enum_body|interface_body|object_type)$/.test(c.type)) ??
+    def.namedChildren.find(c => c && ((own && c.type === 'body') || /^(block|class_body|declaration_list|field_declaration_list|statement_block|function_body|compound_statement|enum_body|interface_body|object_type)$/.test(c.type))) ??
     null
   const end = body && body.startIndex > def.startIndex ? body.startIndex : Math.min(def.endIndex, def.startIndex + 240)
   // a definition that is the whole file (a GDScript `class_name`) is named by its first line
@@ -221,7 +221,7 @@ function bodyWords(def: Node, source: string): string {
 }
 
 /** Text before the name inside its parent node: `this.repo` for `this.repo.save`. */
-function receiverOf(name: Node, source: string): string | null {
+function receiverOf(name: Node, source: string, own: boolean): string | null {
   let p = name.parent
   if (p?.type === 'navigation_suffix') p = p.parent // Kotlin: a.b() keeps the receiver one level up
   if (!p || p.startIndex >= name.startIndex) return null
@@ -230,7 +230,7 @@ function receiverOf(name: Node, source: string): string | null {
     .replace(/^new\b\s*/, '') // `new Repo()` is built, not called on anything
     .replace(/(\?\.|!\.|\.|->|::|\?)\s*$/, '')
     .trim()
-  if (!text || /[=;{}]/.test(text) || /^[([]$/.test(text)) return null // a lone opening bracket is a Lisp call, not an object
+  if (!text || /[=;{}]/.test(text) || (own && /^[([]$/.test(text))) return null // in the newer languages a lone opening bracket is a Lisp call, not an object
   return oneLine(text, 80)
 }
 
@@ -270,13 +270,14 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
         if (kind === 'new' && !/new_expression|object_creation|instance_creation|constructor_invocation/.test(role.node.type)) continue
         // `@bare` marks a call whose qualifier is only a namespace (`str/join`, `List.map`): it goes by name alone
         // `@receiver` names the object the call is made on when it is not the text before the name (`player.hit()` in a chain)
-        if (kind) rawRefs.push({ name: nameCap.node, kind, bare: match.captures.some(c => c.name === 'bare'), receiver: match.captures.find(c => c.name === 'receiver')?.node })
+        if (kind) rawRefs.push({ name: nameCap.node, kind, bare: !!info.ownTags && match.captures.some(c => c.name === 'bare'), receiver: info.ownTags ? match.captures.find(c => c.name === 'receiver')?.node : undefined })
       }
     }
 
     // outermost first, so each definition's container is already named when it is reached
     defs.sort((a, b) => a.node.startIndex - b.node.startIndex || b.node.endIndex - a.node.endIndex)
     const syms: Sym[] = []
+    const lastIn = new Map<string, number>() // container -> the last definition made directly inside it
     const stack: { end: number; qualified: string; kind: SymKind; exported: boolean }[] = []
     const ranges: { start: number; end: number; qualified: string }[] = []
     for (const d of defs) {
@@ -284,14 +285,21 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
       const parent = stack[stack.length - 1]
       const kind: SymKind = d.kind === 'function' && parent && CONTAINERS.has(parent.kind) ? 'method' : d.kind
       const qualified = parent ? `${parent.qualified}.${d.name}` : d.name
-      const signature = signatureOf(d.node, text)
+      const signature = signatureOf(d.node, text, !!info.ownTags)
       // a member is public when its container is and its own modifiers or naming allow it
       const own = parent && JS_FAMILY.has(lang) ? true : isExported(lang, d.node, d.name, signature)
       const exported = parent ? parent.exported && own : own
       const body = kind === 'function' || kind === 'method' ? bodyWords(d.node, text) : ''
       // a definition that is the whole file ends at its last line, not on the empty line after the final newline
       const wholeFile = !d.node.parent && d.node.endPosition.column === 0 && d.node.endPosition.row > d.node.startPosition.row
-      syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: d.node.endPosition.row + (wholeFile ? 0 : 1), signature, exported, doc: docOf(d.node, text), body })
+      const endLine = d.node.endPosition.row + (wholeFile ? 0 : 1)
+      const prev = syms[lastIn.get(parent?.qualified ?? '') ?? -1]
+      if (info.clauses && prev && prev.qualified === qualified && prev.kind === kind && (kind === 'function' || kind === 'method')) {
+        prev.end = Math.max(prev.end, endLine) // the next clause of the function just defined: one definition, not one per clause
+      } else {
+        lastIn.set(parent?.qualified ?? '', syms.length)
+        syms.push({ name: d.name, qualified, kind, start: d.node.startPosition.row + 1, end: endLine, signature, exported, doc: docOf(d.node, text), body })
+      }
       stack.push({ end: d.node.endIndex, qualified, kind, exported })
       ranges.push({ start: d.node.startIndex, end: d.node.endIndex, qualified })
     }
@@ -313,7 +321,7 @@ export async function extract(lang: LangId, source: string): Promise<Facts> {
           from = g.qualified
         }
       }
-      refs.push({ name: r.name.text, receiver: r.receiver ? oneLine(r.receiver.text, 80) : r.bare ? null : receiverOf(r.name, text), line: r.name.startPosition.row + 1, from, kind: r.kind })
+      refs.push({ name: r.name.text, receiver: r.receiver ? oneLine(r.receiver.text, 80) : r.bare ? null : receiverOf(r.name, text, !!info.ownTags), line: r.name.startPosition.row + 1, from, kind: r.kind })
     }
 
     return { syms, refs, imps: extractImports(lang, tree.rootNode) }

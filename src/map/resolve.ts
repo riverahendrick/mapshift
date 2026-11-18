@@ -14,9 +14,25 @@ const BUILDS = new Set<SymKind>(['class', 'type', 'interface', 'enum'])
  * Languages where a plain call can only reach the same file or an import: `helper()` in one module
  * never means a `helper` defined in another module that was not imported.
  */
-const MODULE_SCOPED = new Set(['typescript', 'tsx', 'javascript', 'vue', 'svelte', 'astro', 'python'])
+const MODULE_SCOPED = new Set(['typescript', 'tsx', 'javascript', 'vue', 'svelte', 'astro', 'python', 'bash'])
 /** Languages where a plain call also reaches the rest of the same folder (package or namespace). */
-const PACKAGE_SCOPED = new Set(['go', 'java', 'kotlin', 'csharp', 'swift', 'dart', 'scala'])
+const PACKAGE_SCOPED = new Set(['go', 'java', 'kotlin', 'csharp', 'swift', 'dart', 'scala', 'terraform'])
+
+/**
+ * Languages the map reads by name alone (no import reader). A call from or to one of them only reaches
+ * code of its own family, so a shell script's `build` never lands on a TypeScript `build`. Pairs of the
+ * languages that were mapped before this list existed are matched as they always were.
+ */
+const NAME_ONLY = new Set([
+  'bash', 'zig', 'ocaml', 'haskell', 'julia', 'clojure', 'nix', 'solidity', 'r', 'erlang', 'gleam', 'perl', 'elm', 'gdscript',
+  'commonlisp', 'elisp', 'racket', 'scheme', 'ada', 'rescript', 'glsl', 'cuda', 'terraform', 'astro',
+])
+/** Languages that share code: a CUDA file calls C++, an Astro file calls TypeScript. */
+const FAMILY: Record<string, string> = {
+  c: 'c', cpp: 'c', cuda: 'c',
+  typescript: 'js', tsx: 'js', javascript: 'js', vue: 'js', svelte: 'js', astro: 'js',
+}
+const sameFamily = (a: string, b: string): boolean => (!NAME_ONLY.has(a) && !NAME_ONLY.has(b)) || (FAMILY[a] ?? a) === (FAMILY[b] ?? b)
 
 /**
  * Method names every standard library has. A call like `items.find()` or `name.trim()` on an object of
@@ -154,7 +170,8 @@ function match(ix: Index, r: R): Hit[] {
   // `import { save as persist }`: a call to persist() is a call to save()
   const alias = !recv ? imports.find(i => i.local === r.name && i.imported !== '*' && i.imported !== 'default' && i.imported !== r.name) : undefined
   const name = alias ? alias.imported : r.name
-  const all = ix.byName.get(name)
+  const callerLang = ix.langOf.get(r.file_id) ?? ''
+  const all = ix.byName.get(name)?.filter(d => sameFamily(callerLang, ix.langOf.get(d.file_id) ?? ''))
   if (!all?.length) return []
   const defs = r.kind === 'new' ? all.filter(d => BUILDS.has(d.kind)) : all
   if (!defs.length) return []

@@ -58,6 +58,8 @@ export type LangInfo = {
   grammar: string
   /** Use only the queries in `queries.ts`, not the tag file the grammar package ships (which is partial or noisy for some grammars). */
   ownTags?: boolean
+  /** A function is written as one definition per pattern clause (Haskell, Erlang): adjacent clauses of one name are one definition. */
+  clauses?: boolean
   tier: 'deep' | 'broad'
   /** Other grammars' tag queries to add (TypeScript builds on the JavaScript tags). */
   extraTags?: string[]
@@ -90,18 +92,18 @@ export const LANGS: Record<LangId, LangInfo> = {
   bash: { label: 'Shell', exts: ['.sh', '.bash', '.zsh'], grammar: 'bash', ownTags: true, tier: 'broad' },
   zig: { label: 'Zig', exts: ['.zig'], grammar: 'zig', ownTags: true, tier: 'broad' },
   ocaml: { label: 'OCaml', exts: ['.ml'], grammar: 'ocaml', ownTags: true, tier: 'broad' },
-  haskell: { label: 'Haskell', exts: ['.hs'], grammar: 'haskell', ownTags: true, tier: 'broad' },
+  haskell: { label: 'Haskell', exts: ['.hs'], grammar: 'haskell', ownTags: true, clauses: true, tier: 'broad' },
   julia: { label: 'Julia', exts: ['.jl'], grammar: 'julia', ownTags: true, tier: 'broad' },
   clojure: { label: 'Clojure', exts: ['.clj', '.cljs', '.cljc'], grammar: 'clojure', ownTags: true, tier: 'broad' },
   nix: { label: 'Nix', exts: ['.nix'], grammar: 'nix', ownTags: true, tier: 'broad' },
   solidity: { label: 'Solidity', exts: ['.sol'], grammar: 'solidity', ownTags: true, tier: 'broad' },
   r: { label: 'R', exts: ['.r'], grammar: 'r', ownTags: true, tier: 'broad' },
-  erlang: { label: 'Erlang', exts: ['.erl', '.hrl'], grammar: 'erlang', ownTags: true, tier: 'broad' },
+  erlang: { label: 'Erlang', exts: ['.erl', '.hrl'], grammar: 'erlang', ownTags: true, clauses: true, tier: 'broad' },
   gleam: { label: 'Gleam', exts: ['.gleam'], grammar: 'gleam', ownTags: true, tier: 'broad' },
   perl: { label: 'Perl', exts: ['.pl', '.pm'], grammar: 'perl', ownTags: true, tier: 'broad' },
   elm: { label: 'Elm', exts: ['.elm'], grammar: 'elm', ownTags: true, tier: 'broad' },
   gdscript: { label: 'GDScript', exts: ['.gd'], grammar: 'gdscript', ownTags: true, tier: 'broad' },
-  commonlisp: { label: 'Common Lisp', exts: ['.lisp', '.cl', '.lsp', '.asd'], grammar: 'commonlisp', ownTags: true, tier: 'broad' },
+  commonlisp: { label: 'Common Lisp', exts: ['.lisp', '.lsp', '.asd'], grammar: 'commonlisp', ownTags: true, tier: 'broad' },
   elisp: { label: 'Emacs Lisp', exts: ['.el'], grammar: 'elisp', ownTags: true, tier: 'broad' },
   racket: { label: 'Racket', exts: ['.rkt'], grammar: 'racket', ownTags: true, tier: 'broad' },
   scheme: { label: 'Scheme', exts: ['.scm', '.ss', '.sld'], grammar: 'scheme', ownTags: true, tier: 'broad' },
