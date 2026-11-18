@@ -487,7 +487,7 @@ After the held-out run above, Mapshift was tuned on that set's misses, so from h
 - **Written blind:** the author worked from the repositories' source only. It never ran either tool and never read Mapshift's search code or any earlier question set.
 - **Sealed:** the SHA-256 of the question files was committed (`sealed/SEALED.md`, commit `79a5499`) before the engine under test was frozen. The files in `sealed/` hash to the same value: SHA-256 over `repos.json`, each repository's file in `repos.json` order, then `spans.json`.
 - **Kept from tuning:** nobody tuning Mapshift read a question or an answer before the run. The repository names were seen once, in a folder listing; nothing was run on those repositories before the scored run.
-- **One run:** Mapshift 0.1.3 (commit `4e79c83`) against Graft 0.29.0, with the same harness, commands and matching rule as the held-out run (`node bench/run-heldout.mjs --set <folder>`). There were no hand queries before the run and no edits to questions, answers or the rule after it.
+- **One run:** Mapshift 0.1.3 (commit `9688b8e`) against Graft 0.29.0, with the same harness, commands and matching rule as the held-out run (`node bench/run-heldout.mjs --set <folder>`). There were no hand queries before the run and no edits to questions, answers or the rule after it.
 
 ### Results
 
