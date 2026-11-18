@@ -21,6 +21,12 @@ import {
   verifyAudit,
   windowName,
   windowPace,
+  standIn,
+  onLimitFailure,
+  limitsFromWindows,
+  limitedNow,
+  windowFamily,
+  LIMIT_RETRY_MS,
 } from './brain'
 import type { MapInfo } from '../types'
 import type { DecideInput } from './brain'
@@ -389,11 +395,58 @@ test('risky domains get the extended effort budget; ordinary work does not', asy
   expect(plain.effort).toBeUndefined()
 })
 
-test('fail closed: a model the account did not serve is never asked for again', async () => {
+test('fail closed: a model that cannot be used is never asked for; the closest usable one stands in', async () => {
   const p = decide({ ...base, model: 'claude-sonnet-5-5', tier: 'critical', risk: true, ctxTokens: 20_000, unavailable: ['opus'] })
   expect(p.model).toBeUndefined()
   expect(p.family).toBe('sonnet')
-  expect(p.reason).toContain('not being served')
+  expect(p.effort).toBe('max') // one step weaker than wanted, so one step more effort (xhigh → max)
+  expect(p.reason).toContain("Opus can't be used right now")
+})
+
+test('a model at its limit is routed around, even when it is the app model', async () => {
+  // the reported case: the app is on Fable, Fable hit its limit, and requests kept going to Fable
+  const fableOut = { ...base, model: 'claude-fable-5-2', cfg: { ...DEFAULT_CFG, allowFable: true }, unavailable: ['fable' as const] }
+  for (const tier of ['trivial', 'routine', 'complex', 'critical'] as const) {
+    const p = decide({ ...fableOut, tier, ctxTokens: 150_000 })
+    expect(p.family).not.toBe('fable')
+    expect(p.model).toBe(p.family) // an explicit model is sent: the app's own (Fable) must not be used
+    expect(p.switched).toBe(true)
+  }
+  const hard = decide({ ...fableOut, tier: 'critical', risk: true, ctxTokens: 150_000 })
+  expect(hard.family).toBe('opus') // the strongest usable model for critical work
+  // a large cached conversation would normally block a downgrade; leaving a model that is out is not a choice
+  const small = decide({ ...fableOut, tier: 'trivial', edits: false, ctxTokens: 300_000, lowerVotes: 0, turnsSinceSwitch: 0 })
+  expect(small.family).not.toBe('fable')
+  // with every model out there is nothing to choose: the request goes as it was
+  const allOut = decide({ ...fableOut, tier: 'routine', unavailable: ['haiku', 'sonnet', 'opus', 'fable'] })
+  expect(allOut.model).toBeUndefined()
+})
+
+test('stand-ins: small work steps down with more effort, hard work steps up, Fable only when allowed', async () => {
+  expect(standIn('sonnet', ['sonnet'], 'routine', false)).toEqual({ family: 'haiku', effortSteps: 1 })
+  expect(standIn('sonnet', ['sonnet'], 'complex', false)).toEqual({ family: 'opus', effortSteps: 0 })
+  expect(standIn('opus', ['opus'], 'critical', false)).toEqual({ family: 'sonnet', effortSteps: 1 })
+  expect(standIn('opus', ['opus'], 'critical', true)).toEqual({ family: 'fable', effortSteps: 0 })
+  expect(standIn('fable', ['fable', 'opus'], 'critical', true)).toEqual({ family: 'sonnet', effortSteps: 2 })
+  expect(standIn('haiku', ['haiku', 'sonnet', 'opus'], 'routine', false)).toBeNull()
+})
+
+test('usage limits: a refused request puts only its model out, unless the whole account is out', async () => {
+  const reset = NOW + 3 * 3_600_000
+  // an account-wide window is full: no other model can help
+  expect(onLimitFailure('fable', [{ kind: 'five_hour', pct: 100, resetsAt: reset }], NOW)).toBeNull()
+  // the model's own window says when it resets
+  expect(onLimitFailure('fable', [{ kind: 'five_hour', pct: 40, resetsAt: reset }, { kind: 'seven_day_fable', pct: 100, resetsAt: reset }], NOW)).toEqual({ until: reset })
+  // no window for it: out for an hour, then tried again
+  expect(onLimitFailure('opus', [{ kind: 'seven_day', pct: 60, resetsAt: reset }], NOW)).toEqual({ until: NOW + LIMIT_RETRY_MS })
+  expect(windowFamily('seven_day_opus')).toBe('opus')
+  expect(windowFamily('five_hour')).toBeNull()
+  // a model's window at 100% puts it out; under 100% again it is back; a failure is not undone by a window reading
+  let l = limitsFromWindows({}, [{ kind: 'seven_day_opus', pct: 100, resetsAt: reset }], NOW)
+  expect(limitedNow(l, NOW)).toEqual(['opus'])
+  expect(limitedNow(l, reset + 1)).toEqual([])
+  l = limitsFromWindows({ ...l, fable: { until: reset, source: 'failure' } }, [{ kind: 'seven_day_opus', pct: 20, resetsAt: reset }], NOW)
+  expect(limitedNow(l, NOW)).toEqual(['fable'])
 })
 
 test('limit alerts fire once when a line is crossed, not on every reading', async () => {

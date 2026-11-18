@@ -403,8 +403,67 @@ export type DecideInput = {
   prices: Prices
   /** Risky domain of the prompt: gets the extended effort budget. */
   domain?: RiskDomain | null
-  /** Families that were asked for but answered by another model this session: never routed to again. */
+  /**
+   * Families that cannot be used right now: one whose usage limit is reached (until it resets), or one the
+   * account did not serve when asked. Never routed to; the closest usable model stands in (see standIn).
+   */
   unavailable?: Family[]
+}
+
+/** The model family a per-model limit window is for (`seven_day_opus` → opus); null for an account-wide window. */
+export function windowFamily(kind: string): Family | null {
+  const m = /(haiku|sonnet|opus|fable)/i.exec(kind)
+  return m ? (m[1]!.toLowerCase() as Family) : null
+}
+
+/** How long a model counts as out after a limit failure when no window says when it resets; then it is tried again. */
+export const LIMIT_RETRY_MS = 60 * 60_000
+
+/** Models at their usage limit: until when, and whether a failed request or a limit window said so. */
+export type Limited = Partial<Record<Family, { until: number; source: 'failure' | 'window' }>>
+type WindowReading = { kind: string; pct: number; resetsAt: number | null }
+
+/** The models out right now. */
+export function limitedNow(l: Limited, now: number): Family[] {
+  return FAMILIES.filter(f => (l[f]?.until ?? 0) > now)
+}
+
+/**
+ * What a request refused for its usage limit means. When an account-wide window (5-hour, weekly) is full,
+ * every model is out and no other one can help: null. Otherwise only the model that was asked for is out,
+ * until its own window resets, or for LIMIT_RETRY_MS when no window says.
+ */
+export function onLimitFailure(family: Family, windows: readonly WindowReading[], now: number): { until: number } | null {
+  if (windows.some(w => !windowFamily(w.kind) && w.pct >= 100)) return null
+  const own = windows.find(w => windowFamily(w.kind) === family && w.resetsAt !== null && w.resetsAt > now)
+  return { until: own?.resetsAt ?? now + LIMIT_RETRY_MS }
+}
+
+/** A per-model window at 100% puts that model out until it resets; once the window reads under 100% it is usable again. */
+export function limitsFromWindows(l: Limited, windows: readonly WindowReading[], now: number): Limited {
+  const next: Limited = { ...l }
+  for (const w of windows) {
+    const f = windowFamily(w.kind)
+    if (!f) continue
+    if (w.pct >= 100) next[f] = { until: w.resetsAt !== null && w.resetsAt > now ? w.resetsAt : now + LIMIT_RETRY_MS, source: 'window' }
+    else if (next[f]?.source === 'window') delete next[f]
+  }
+  return next
+}
+
+/**
+ * The model to use in place of one that cannot be used now, and how many steps more thinking effort make up
+ * for it. Small work moves one step weaker first (cheaper, with more effort), then stronger; hard work
+ * (complex, critical) moves one step stronger first, then weaker with more effort. Fable is offered only when
+ * `fableOk`. Null when every model is out.
+ */
+export function standIn(f: Family, unavailable: readonly Family[], tier: Tier, fableOk: boolean): { family: Family; effortSteps: number } | null {
+  const usable = (x: Family) => !unavailable.includes(x) && (x !== 'fable' || fableOk)
+  const below = FAMILIES.filter(x => RANK[x] < RANK[f] && usable(x)).sort((a, b) => RANK[b] - RANK[a])
+  const above = FAMILIES.filter(x => RANK[x] > RANK[f] && usable(x)).sort((a, b) => RANK[a] - RANK[b])
+  const weaker = below[0] ? { family: below[0], effortSteps: RANK[f] - RANK[below[0]] } : null
+  const stronger = above[0] ? { family: above[0], effortSteps: 0 } : null
+  return tier === 'complex' || tier === 'critical' ? (stronger ?? weaker) : (weaker ?? stronger)
 }
 
 export type Plan = {
@@ -494,10 +553,16 @@ export function decide(i: DecideInput): Plan {
     why.push(`${i.domain} change: one step more effort`)
   }
   if (i.force?.family) want.family = i.force.family
-  // Fail closed: a model the account did not serve is never asked for again; the app's own model stands in.
-  if (i.unavailable?.includes(want.family) && want.family !== session) {
-    why.push(`${cap(want.family)} is not being served on this account, so ${cap(session)} stays`)
-    want.family = session
+  // Fail closed: a model at its limit (or not served) is never asked for; the closest usable one stands in,
+  // even when it is the app's own model. With every model out there is nothing to choose, so nothing changes.
+  const out = i.unavailable ?? []
+  if (out.includes(want.family)) {
+    const alt = standIn(want.family, out, tier, i.cfg.allowFable || session === 'fable')
+    if (alt) {
+      why.push(`${cap(want.family)} can't be used right now, so ${cap(alt.family)}${alt.effortSteps ? ' with more effort' : ''} stands in`)
+      want.family = alt.family
+      want.effort = bumpEffort(want.effort, alt.effortSteps)
+    }
   }
   if (i.force?.effort) want.effort = i.force.effort
   const forcedModel = !!i.force?.family || manual
@@ -510,7 +575,12 @@ export function decide(i: DecideInput): Plan {
   const premiumTo = (to: Family) =>
     switchPremium({ from: anchor, to, ctx: i.ctxTokens, ledger: i.ledger, now: i.now, ttlMin: i.cfg.ttlMin, prices: i.prices })
 
-  if (RANK[want.family] > RANK[anchor]) {
+  if (out.includes(anchor) && want.family !== anchor && !out.includes(want.family)) {
+    // the model holding the conversation is out: moving is not a choice, so no switch price or vote applies
+    family = want.family
+    switchUsd = premiumTo(want.family)
+    why.push(`moved off ${cap(anchor)}`)
+  } else if (RANK[want.family] > RANK[anchor]) {
     // upgrade: free when small or forced; priced when the context is large
     const premium = premiumTo(want.family)
     if (forcedModel || i.ctxTokens < FREE_UPGRADE_CTX || premium <= switchBudget(i.cfg) || (hold && tier === 'critical')) {

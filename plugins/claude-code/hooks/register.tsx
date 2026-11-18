@@ -14,7 +14,11 @@ import {
   fmtTok,
   fmtUsd,
   hitPct,
+  limitedNow,
+  limitsFromWindows,
   maxEffort,
+  onLimitFailure,
+  standIn,
   maxTier,
   mergeClassifier,
   pace,
@@ -27,7 +31,7 @@ import {
   durationText,
 } from './brain'
 import { crossedLine, formatEvent, growEffort, growth, verifyAudit } from './brain'
-import type { AuditEvent, Force, Ledger, Plan, RateSample, RiskDomain } from './brain'
+import type { AuditEvent, Force, Ledger, Limited, Plan, RateSample, RiskDomain } from './brain'
 import { Band, Pane, bandText, mapLine, modelName, shortWhy } from './ui'
 import type { Act, Data } from './ui'
 import { EMPTY_LIVE, EMPTY_MAP, EMPTY_SNAP, EMPTY_TOTALS, PANE, PROJECT_KEYS, TITLE, asMoney, money, nextTurn, project, projectKey, projectName } from './state'
@@ -82,6 +86,10 @@ let rootDir = ''
 let idleTick: { cancel: () => void } | null = null
 const substituted: Record<string, number> = {} // family asked for -> times another model answered
 let unavailable: Family[] = []
+let limited: Limited = {} // models at their usage limit, until they reset
+let lastSent: Family | null = null // the model the main conversation's last request went to
+/** Every model that cannot be used now: not served on this account, or at its usage limit. */
+const outNow = (now: number): Family[] => [...new Set([...unavailable, ...limitedNow(limited, now)])]
 const alerted = new Set<string>() // limit alerts already shown, per window, line and reset
 // ---- the map: how to start the command line once one way has worked, and what this session read
 let launcher: string[] | null = null
@@ -540,7 +548,7 @@ export const register: Register = on => {
               outTokAvg,
               prices: PRICES,
               domain: tp.pre.domain,
-              unavailable,
+              unavailable: outNow(now),
             })
             const plan = tp.plan
             log(now, {
@@ -608,6 +616,7 @@ export const register: Register = on => {
             eff = grown
           }
           req = { model: plan.model ?? e.model, effort: eff ?? e.effort }
+          lastSent = familyOf(req.model) ?? null
           tp.model = req.model
           tp.effort = String(req.effort ?? 'default')
         }
@@ -735,7 +744,7 @@ export const register: Register = on => {
       log(now, { k: 'totals', sessionUsd: tt.session.usd, sessionBaseUsd: tt.session.baseUsd, sessionCacheSaved: tt.session.cacheSavedUsd, turns: tt.session.turns, engineUsd })
       await flushAudit($)
       const v = verifyAudit(audit, PRICES)
-      await update($, healthA, () => ({ ok: v.ok, checkedAt: now, ...v.stats, problemLines: v.problemLines.slice(0, 3).map(l => l.slice(0, 140)), unavailable }))
+      await update($, healthA, () => ({ ok: v.ok, checkedAt: now, ...v.stats, problemLines: v.problemLines.slice(0, 3).map(l => l.slice(0, 140)), unavailable: outNow(now) }))
     } catch (err) {
       void logErr($, 'turn.complete', err)
     }
@@ -778,12 +787,21 @@ export const register: Register = on => {
         builtIn: e.provider?.plugin === 'engine',
       })
       let why = sp.why
-      if (sp.model && unavailable.includes(sp.model as Family)) why = `${sp.model} is not being served: helper keeps the chat model`
-      else if (sp.model) {
+      const now = await $.clock.now()
+      const out = outNow(now)
+      const asked = familyOf(sp.model)
+      if (sp.model && asked && out.includes(asked)) {
+        // the helper's usual model is at its limit: the closest usable one does the job, or the chat model if none
+        const alt = standIn(asked, out, 'routine', cfg.allowFable || familyOf(e.parentModel) === 'fable')
+        why = alt ? `${cap(asked)} has reached its limit: helper uses ${cap(alt.family)}` : `${cap(asked)} has reached its limit: helper keeps the chat model`
+        if (alt) {
+          model = alt.family
+          routed = true
+        }
+      } else if (sp.model) {
         model = sp.model
         routed = true
       }
-      const now = await $.clock.now()
       log(now, { k: 'subagent', type: e.subagentType, description: e.description.slice(0, 60), model: model ?? 'inherits', routed, why })
       await update($, agentsA, rows =>
         [...rows, { at: now, type: e.subagentType, description: e.description.slice(0, 60), model: model ?? e.parentModel, routed }].slice(-30),
@@ -794,6 +812,38 @@ export const register: Register = on => {
     }
     return routed ? next({ ...e, model }) : next(e)
   })
+
+  // ------------------------------------------------------------------ a request refused for its usage limit
+  // The model it went to is out until its limit resets: every later request (and helper) goes to the closest
+  // usable model instead, at the effort the work needs. When the whole account is out, no model can help.
+  on('classic.StopFailure', async ($, e, next) => {
+    const r = await next(e)
+    try {
+      if (e.error !== 'rate_limit' || !lastSent) return r
+      const now = await $.clock.now()
+      const snap = await read($, snapA)
+      const windows = snap.windows.map(w => ({ kind: w.kind, pct: w.pct, resetsAt: w.resetsAt }))
+      const hit = onLimitFailure(lastSent, windows, now)
+      if (!hit) {
+        log(now, { k: 'limited', family: lastSent, account: true })
+        $.ui.toast('Mapshift: your Claude usage limit is reached for every model. Work can continue after it resets.')
+        return r
+      }
+      limited = { ...limited, [lastSent]: { until: hit.until, source: 'failure' } }
+      const cfg = await read($, cfgA)
+      const alt = standIn(lastSent, outNow(now), lastTier, cfg.allowFable || familyOf(appModel) === 'fable')
+      log(now, { k: 'limited', family: lastSent, until: hit.until, standIn: alt?.family ?? null })
+      await update($, healthA, h => ({ ...h, unavailable: outNow(now) }))
+      $.ui.toast(
+        alt
+          ? `Mapshift: ${modelName(lastSent)} reached its usage limit. For the next ${durationText(hit.until - now)}, work goes to ${modelName(alt.family)}${alt.effortSteps ? ' with more effort' : ''}. Send your message again to continue.`
+          : `Mapshift: ${modelName(lastSent)} reached its usage limit, and no other model is usable now.`,
+      )
+    } catch (err) {
+      void logErr($, 'classic.StopFailure', err)
+    }
+    return r
+  }).catch(() => undefined) // only watches: if it ever fails, the engine handles the failure as it would without it
 
   // ------------------------------------------------------------------ live usage: context, every limit window, pace
   on('session.measure', async ($, e, next) => {
@@ -835,6 +885,8 @@ export const register: Register = on => {
           log(now, { k: 'limit-alert', window: w.name, pct: w.pct, line })
         }
       }
+      // a model's own window at 100% puts it out until the reset; back under 100%, it is usable again
+      limited = limitsFromWindows(limited, windows.map(w => ({ kind: w.kind, pct: w.pct, resetsAt: w.resetsAt })), now)
       if (e.changed.includes('rateLimits')) {
         await save($, 'rate', rate)
         log(now, { k: 'limits', windows: windows.map(w => ({ name: w.name, pct: w.pct, resetsAt: w.resetsAt })), ctxPct: e.context.percent ?? null, engineUsd: e.cost?.usd ?? null })
