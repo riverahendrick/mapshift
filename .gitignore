@@ -14,6 +14,13 @@ Thumbs.db
 .env.*
 .tmp/
 *.patch
+*.local.md
+
+# archives and loose programs (never part of the source)
+*.zip
+*.tar.gz
+*.7z
+*.exe
 
 # editor and assistant tool folders and files (personal, never part of the project)
 .vscode/
