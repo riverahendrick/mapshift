@@ -78,6 +78,9 @@ test('the page uses the fixed limit colours and nonce-only scripts', () => {
   for (const c of ['#3fb950', '#e3b341', '#f85149']) assert.ok(html.includes(c))
   assert.ok(html.includes('<script nonce="abc">'))
   assert.ok(html.includes('prefers-color-scheme: dark'))
+  // limits and money come from Claude Code as well as Codex, the same readings the terminal dashboard shows
+  assert.ok(html.includes("'Claude Code · as of '") && html.includes("'Claude Code today: '"))
+  assert.ok(!html.includes('${'), 'no template text left in the page')
 })
 
 test('the embedded logo is the same as assets/logo.svg', () => {

@@ -37,6 +37,8 @@ section h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; 
 .ring { text-align: center; }
 .ring svg { width: 112px; height: 112px; }
 .ring .label { font-weight: 600; }
+.group + .group { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.group > .muted { margin-top: 6px; }
 .bars { margin-top: 10px; }
 .barline { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; }
 .track { height: 10px; background: var(--track); border-radius: 5px; overflow: hidden; }
@@ -66,8 +68,7 @@ ${LOGO_SVG.replace('<svg ', '<svg aria-hidden="true" ')}
     </div>
   </section>
   <section><h2>Limits</h2>
-    <div class="rings" id="rings"></div>
-    <div class="muted" id="limits-note">No Codex sessions found on this computer.</div>
+    <div id="limits"><div class="muted">Shows after your first request in Claude Code or Codex.</div></div>
   </section>
   <section><h2>Savings</h2>
     <div class="big" id="saved">0</div>
@@ -76,6 +77,7 @@ ${LOGO_SVG.replace('<svg ', '<svg aria-hidden="true" ')}
       <div class="barline"><span>Without map</span><div class="track"><div class="fill" id="bar-without"></div></div><span id="t-without">0</span></div>
       <div class="barline"><span>With map</span><div class="track"><div class="fill" id="bar-with"></div></div><span id="t-with">0</span></div>
     </div>
+    <div class="muted" id="claude-money"></div>
     <div class="muted" id="codex-tokens"></div>
     <div class="muted">Dollar figures appear only where an agent reports what you really paid.</div>
   </section>
@@ -124,9 +126,18 @@ ${LOGO_SVG.replace('<svg ', '<svg aria-hidden="true" ')}
     svg.appendChild(el('text', { x: 56, y: 62, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: 'currentColor' }, p + '%'));
     box.appendChild(svg);
     box.appendChild(el('div', { class: 'label' }, limit.label));
-    box.appendChild(el('div', { class: 'muted' }, limit.reset ? 'fresh window' : resets(limit.resetsAt)));
+    box.appendChild(el('div', { class: 'muted' }, limit.reset ? 'fresh window' : limit.note || resets(limit.resetsAt)));
     return box;
   }
+  function group(title, list) {
+    const g = el('div', { class: 'group' });
+    const r = el('div', { class: 'rings' });
+    for (const l of list) r.appendChild(ring(l));
+    g.appendChild(r);
+    g.appendChild(el('div', { class: 'muted' }, title));
+    return g;
+  }
+  const usd = x => '$' + Number(x || 0).toFixed(2);
   function render(s) {
     $('project').textContent = s.project.name + '  ·  ' + s.project.shown;
     const m = s.map;
@@ -142,15 +153,24 @@ ${LOGO_SVG.replace('<svg ', '<svg aria-hidden="true" ')}
     $('bar-with').style.width = (100 * s.today.withMap / max) + '%';
     $('t-without').textContent = fmt(s.today.withoutMap);
     $('t-with').textContent = fmt(s.today.withMap);
-    const rings = $('rings');
-    rings.replaceChildren();
-    const cx = s.codex;
-    if (cx && cx.limits.length) {
-      for (const l of cx.limits) rings.appendChild(ring(l));
-      $('limits-note').textContent = 'Codex' + (cx.plan ? ' · ' + cx.plan + ' plan' : '') + ' · as of ' + ago(cx.at);
-    } else {
-      $('limits-note').textContent = cx ? 'Codex has not reported its limits yet.' : 'No Codex sessions found on this computer.';
+    const lim = $('limits');
+    lim.replaceChildren();
+    const cl = s.claude && s.claude.limits;
+    if (cl && (cl.windows.length || cl.ctxPct !== null)) {
+      const now = Date.now();
+      const list = cl.windows.map(w => ({ label: w.name, usedPercent: w.pct, reset: w.resetsAt !== null && w.resetsAt <= now, resetsAt: w.resetsAt }));
+      if (cl.ctxPct !== null) list.push({ label: 'This chat', usedPercent: cl.ctxPct, note: 'memory used' });
+      lim.appendChild(group('Claude Code · as of ' + ago(cl.at), list));
     }
+    const cx = s.codex;
+    if (cx && cx.limits.length) lim.appendChild(group('Codex' + (cx.plan ? ' · ' + cx.plan + ' plan' : '') + ' · as of ' + ago(cx.at), cx.limits));
+    if (!lim.children.length) lim.appendChild(el('div', { class: 'muted' }, cx ? 'Codex has not reported its limits yet.' : 'Shows after your first request in Claude Code or Codex.'));
+    const t = s.claude && s.claude.today;
+    const saved = t ? t.baseUsd - t.usd : 0;
+    $('claude-money').textContent = t && t.turns
+      ? 'Claude Code today: ' + usd(t.usd) + ' with Mapshift, ' + usd(t.baseUsd) + ' without, over ' + fmt(t.turns) + ' request' + (t.turns === 1 ? '' : 's')
+        + (saved > 0.004 ? ' · saved ' + usd(saved) : saved < -0.004 ? ' · ' + usd(-saved) + ' more' : '') + '.'
+      : '';
     $('codex-tokens').textContent = cx && cx.today.sessions
       ? 'Codex today: ' + fmt(cx.today.input + cx.today.output) + ' tokens (' + fmt(cx.today.cached) + ' cached) in ' + cx.today.sessions + ' session' + (cx.today.sessions === 1 ? '' : 's') + '.'
       : '';
