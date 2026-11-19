@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6 (2026-11-18)
+
+- 🗺️ Every map answer that spares real reading now says so in one line at the top, so you can see the map working in any agent's log. It counts only the files the answer points at, never the whole project, costs about 25 tokens, and never asks the agent to repeat it.
+
 ## 0.1.5 (2026-11-18)
 
 - 🧺 Several questions in one call: `map_find`, `map_trace` and `map_file` take a list. In real agent runs that halved the turns (16 to 8) and cut tool calls from 13 to 5, with every answer still right. Still five tools, so nothing extra loads into each chat.

@@ -167,6 +167,7 @@ Every number Mapshift shows comes from its local logs, by these rules:
   - A map answer costs its own size.
   - It is credited with the full size of the files it pointed to, but only those the agent did **not** open anyway in that chat.
   - If the agent read them all, the answer saved nothing.
+- **The line on each map answer** ("🗺️ Mapshift: 806 tokens here instead of 2,977 to read that file whole") compares the answer with reading in full only the files it points at, never the whole project. It appears only when the difference is real, costs about 25 tokens, and never asks the agent to repeat it.
 - **Without Mapshift** means the same requests run on the model you picked yourself, plus the files the map saved the agent from reading.
 - **With Mapshift** is what was actually used.
 - **Model switching** can cost more than it saves when hard work needs a stronger model. Mapshift shows that as it is ("$0.40 more, spent on stronger models for harder work").

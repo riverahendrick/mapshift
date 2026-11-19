@@ -150,14 +150,21 @@ export async function callTool(root: string, name: string, args: unknown, agent:
       return { text: `Unknown tool "${name}".`, isError: true }
   }
   const sizes = store.sql('SELECT size FROM files WHERE path = ?')
-  record({
-    kind: 'map',
-    ts: Date.now(),
-    agent,
-    repo: root,
-    tool: name,
-    answerTokens: tokensOf(answer.text.length),
-    files: answer.files.map(path => ({ path, tokens: tokensOf((sizes.get(path) as { size: number } | undefined)?.size ?? 0) })),
-  })
-  return { text: answer.text, isError: false }
+  const files = answer.files.map(path => ({ path, tokens: tokensOf((sizes.get(path) as { size: number } | undefined)?.size ?? 0) }))
+  const out = withSavings(answer.text, files)
+  record({ kind: 'map', ts: Date.now(), agent, repo: root, tool: name, answerTokens: tokensOf(out.length), files })
+  return { text: out, isError: false }
+}
+
+/**
+ * One line at the top of an answer, so the person can see what the map spared: this answer's size against
+ * reading in full only the files it points at (never the whole project). Shown only when that is a real
+ * difference, and with no request to repeat it, which would cost tokens again in every reply.
+ */
+export function withSavings(text: string, files: { tokens: number }[]): string {
+  const whole = files.reduce((s, f) => s + f.tokens, 0)
+  const here = tokensOf(text.length) + 25 // the line itself is about 25 tokens
+  if (whole - here < 500) return text
+  const n = (x: number) => x.toLocaleString('en-US')
+  return `🗺️ Mapshift: ${n(here)} tokens here instead of ${n(whole)} to read ${files.length === 1 ? 'that file' : `those ${files.length} files`} whole\n${text}`
 }

@@ -1,6 +1,6 @@
 {
   "name": "mapshift",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Map your code, shift to the right model. Fewer tokens and lower cost for coding agents, with no loss in quality. 100% local.",
   "keywords": [
     "mcp",

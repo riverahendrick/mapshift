@@ -1,6 +1,6 @@
 {
   "name": "mapshift",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Picks the right model and thinking effort for each request and keeps a code map close at hand, with a live dashboard of limits and savings.",
   "types": "./types/index.d.ts"
 }

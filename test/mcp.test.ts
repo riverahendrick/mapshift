@@ -6,6 +6,7 @@ import { createInterface } from 'node:readline'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { makeRepo } from './helpers.ts'
+import { withSavings } from '../src/mcp/tools.ts'
 
 const MAIN = fileURLToPath(new URL('../src/cli/main.ts', import.meta.url))
 
@@ -28,6 +29,15 @@ function connect(cwd: string, home: string) {
   const notify = (method: string) => child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method })}\n`)
   return { call, notify, close: () => new Promise(done => { child.once('exit', done); child.stdin.end() }) }
 }
+
+test('the savings line counts only the files an answer points at, and only when the difference is real', () => {
+  const big = withSavings('x'.repeat(400), [{ tokens: 3000 }, { tokens: 900 }])
+  assert.match(big, /^🗺️ Mapshift: 125 tokens here instead of 3,900 to read those 2 files whole\n/)
+  assert.match(withSavings('x', [{ tokens: 1200 }]), /to read that file whole/)
+  assert.equal(withSavings('x'.repeat(400), [{ tokens: 400 }]), 'x'.repeat(400), 'too small a difference: no line')
+  assert.equal(withSavings('overview', []), 'overview', 'no files: no claim')
+  assert.doesNotMatch(big, /tell the user|at the end of/i, 'never asks the model to repeat it')
+})
 
 test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry', { timeout: 60_000 }, async () => {
   const r = makeRepo({
