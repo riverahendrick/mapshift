@@ -151,20 +151,31 @@ export async function callTool(root: string, name: string, args: unknown, agent:
   }
   const sizes = store.sql('SELECT size FROM files WHERE path = ?')
   const files = answer.files.map(path => ({ path, tokens: tokensOf((sizes.get(path) as { size: number } | undefined)?.size ?? 0) }))
-  const out = withSavings(answer.text, files)
-  record({ kind: 'map', ts: Date.now(), agent, repo: root, tool: name, answerTokens: tokensOf(out.length), files })
-  return { text: out, isError: false }
+  const out = withSavings(answer.text, files, tallies.get(root))
+  tallies.set(root, out.tally)
+  record({ kind: 'map', ts: Date.now(), agent, repo: root, tool: name, answerTokens: tokensOf(out.text.length), files })
+  return { text: out.text, isError: false }
 }
+
+/** Every answer this server gave for a project so far: their tokens, and what reading their files whole would cost. */
+export type Tally = { here: number; whole: number; answers: number }
+const tallies = new Map<string, Tally>()
 
 /**
  * One line at the top of an answer, so the person can see what the map spared: this answer's size against
- * reading in full only the files it points at (never the whole project). Shown only when that is a real
- * difference, and with no request to repeat it, which would cost tokens again in every reply.
+ * reading in full only the files it points at (never the whole project). From the second answer on, the line
+ * also carries the session's totals, which count every answer (an overview points at no file, so it only adds
+ * cost), so an agent asked to report them can copy one line instead of adding numbers up. Shown only when
+ * this answer's difference is real.
  */
-export function withSavings(text: string, files: { tokens: number }[]): string {
+export function withSavings(text: string, files: { tokens: number }[], prior: Tally = { here: 0, whole: 0, answers: 0 }): { text: string; tally: Tally } {
   const whole = files.reduce((s, f) => s + f.tokens, 0)
-  const here = tokensOf(text.length) + 25 // the line itself is about 25 tokens
-  if (whole - here < 500) return text
+  const later = prior.answers > 0
+  const here = tokensOf(text.length) + (later ? 35 : 25) // the line itself: about 25 tokens, 35 with the totals
+  const shown = whole - here >= 500
+  const tally = { here: prior.here + (shown ? here : tokensOf(text.length)), whole: prior.whole + whole, answers: prior.answers + 1 }
+  if (!shown) return { text, tally }
   const n = (x: number) => x.toLocaleString('en-US')
-  return `🗺️ Mapshift: ${n(here)} tokens here instead of ${n(whole)} to read ${files.length === 1 ? 'that file' : `those ${files.length} files`} whole\n${text}`
+  const totals = later ? ` · this session: ${n(tally.here)} instead of ${n(tally.whole)}` : ''
+  return { text: `🗺️ Mapshift: ${n(here)} tokens here instead of ${n(whole)} to read ${files.length === 1 ? 'that file' : `those ${files.length} files`} whole${totals}\n${text}`, tally }
 }

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { foreignTomlLines, mdFence, removeBlock, tomlFence, tomlString, upsertBlock } from '../src/setup/blocks.ts'
+import { foreignTomlLines, frontMatterEnd, mdFence, removeBlock, tomlFence, tomlString, upsertBlock } from '../src/setup/blocks.ts'
 import { getAt, isStrictJson, removeMember, setMember } from '../src/setup/json-edit.ts'
+import { applyPiece, removeRec, type Piece, type Rec } from '../src/setup/pieces.ts'
 
 const md = mdFence()
 const LINES = ['## Mapshift code map', '- use map_find']
+const REC: Rec = { id: 'x', kind: 'block', path: 'GEMINI.md', agents: ['gemini'], label: 'Instructions' }
 
 test('a Markdown block is appended, replaced in place, and removed to the exact original', () => {
   for (const original of ['', '# My rules\n\nBe kind.\n', '# My rules\n\nNo newline at end', '# CRLF rules\r\n\r\nKeep\r\n']) {
@@ -21,6 +23,32 @@ test('a Markdown block is appended, replaced in place, and removed to the exact 
     assert.ok(c.text.includes('- changed') && !c.text.includes('- use map_find'))
     assert.equal(removeBlock(c.text, md, a.sep), original)
   }
+})
+
+test('a rules block put first goes above everything but front matter, and comes out to the exact original', () => {
+  const piece: Piece = { agent: 'gemini', label: 'Instructions', path: 'GEMINI.md', kind: 'block', format: 'md', fence: md, lines: LINES, top: true }
+  for (const original of ['', '# My rules\n\nUse other-tool FIRST.\n', 'No newline at end', '---\ninclusion: always\n---\nBody\n', '# CRLF\r\n\r\nKeep\r\n']) {
+    const a = applyPiece(piece, original === '' ? null : original, undefined)
+    assert.equal(a.action, 'add')
+    const fm = frontMatterEnd(original)
+    assert.ok(a.text!.slice(fm).startsWith('<!-- mapshift:start -->'), 'the block comes first, after front matter')
+    assert.ok(a.text!.startsWith(original.slice(0, fm)) && a.text!.endsWith(original.slice(fm)), "the person's text is untouched")
+    assert.equal(applyPiece(piece, a.text, { ...REC, ...a.rec }).action, 'same', 'running again changes nothing')
+    const out = removeRec({ ...REC, ...a.rec, fence: md, format: 'md' }, a.text!)
+    assert.equal(out.text ?? '', original)
+  }
+})
+
+test('a block an older setup appended at the end moves to the top, and uninstall still restores the file', () => {
+  const original = '# My rules\n\nUse other-tool FIRST.\n'
+  const old = upsertBlock(original, md, LINES)
+  const piece: Piece = { agent: 'agy', label: 'Instructions', path: 'GEMINI.md', kind: 'block', format: 'md', fence: md, lines: LINES, top: true }
+  const moved = applyPiece(piece, old.text, { ...REC, sep: old.sep })
+  assert.equal(moved.action, 'update')
+  assert.ok(moved.text!.startsWith('<!-- mapshift:start -->'))
+  assert.equal(moved.text!.split('mapshift:start').length, 2, 'moved, not copied')
+  assert.ok(moved.text!.endsWith(original))
+  assert.equal(removeRec({ ...REC, ...moved.rec, fence: md, format: 'md' }, moved.text!).text, original)
 })
 
 test('text a person adds after the block survives removal', () => {

@@ -1,6 +1,6 @@
 import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { foreignTomlLines, outside, removeBlock, upsertBlock, yamlBlockForeign, type Fence } from './blocks.ts'
+import { blockAtTop, findBlock, foreignTomlLines, outside, prependBlock, removeBlock, upsertBlock, yamlBlockForeign, type Fence } from './blocks.ts'
 import type { Targets } from './env.ts'
 import { getAt, isStrictJson, removeMember, setMember } from './json-edit.ts'
 
@@ -29,7 +29,17 @@ export const MANAGED = 'mapshift:managed'
 
 /** One change setup makes in one file. */
 export type Piece = { agent: AgentId; label: string; path: string } & (
-  | { kind: 'block'; format: 'md' | 'toml' | 'yaml'; fence: Fence; lines: string[]; own?: string[]; guard?: string; conflicts?: { re: RegExp; why: string }[] }
+  | {
+      kind: 'block'
+      format: 'md' | 'toml' | 'yaml'
+      fence: Fence
+      lines: string[]
+      own?: string[]
+      guard?: string
+      conflicts?: { re: RegExp; why: string }[]
+      /** Markdown only: the block goes first in the file, and one found further down is moved up. */
+      top?: boolean
+    }
   | { kind: 'json'; key: string[]; value: unknown; replaceIf?: (old: unknown) => boolean; refuseIf?: { test: (whole: unknown) => boolean; why: string } }
   | { kind: 'file'; content: string }
 )
@@ -47,8 +57,9 @@ export type Rec = {
   /** For YAML blocks: a pattern (source text) every line inside the block must match; see yamlBlockForeign. */
   guard?: string
   key?: string[]
-  /** What was put before an appended block. */
+  /** What was put before an appended block, or after one put first (`top`). */
   sep?: string
+  top?: boolean
   createdAt?: number
   emptyInner?: string
   /** The value a JSON setting had before Mapshift replaced it (only ever an empty one). */
@@ -79,9 +90,20 @@ export function applyPiece(p: Piece, text: string | null, prev: Rec | undefined)
     if (text !== null && p.guard && yamlBlockForeign(text, p.fence, new RegExp(p.guard))) {
       return { text, action: 'skip', reason: "lines were added inside or right after Mapshift's block; left as is (edit that part by hand)" }
     }
+    if (p.top && p.format === 'md' && (text === null || !blockAtTop(text, p.fence))) {
+      // first in the file: a new block goes there, and one an older setup appended at the end moves up
+      const had = text !== null && findBlock(text, p.fence) !== null
+      const without = had ? removeBlock(text!, p.fence, prev?.sep ?? '', undefined, prev?.top) : text
+      const r = prependBlock(without, p.fence, p.lines)
+      return { text: r.text, action: had ? 'update' : 'add', rec: { sep: r.sep, top: true, created: prev?.created ?? text === null } }
+    }
     const r = upsertBlock(text, p.fence, p.lines, p.format === 'toml' ? foreignTomlLines(p.own ?? []) : undefined)
     if (r.text === text) return { text, action: 'same' }
-    return { text: r.text, action: r.existed ? 'update' : 'add', rec: { sep: r.existed ? (prev?.sep ?? '') : r.sep, created: prev?.created ?? text === null } }
+    return {
+      text: r.text,
+      action: r.existed ? 'update' : 'add',
+      rec: { sep: r.existed ? (prev?.sep ?? '') : r.sep, created: prev?.created ?? text === null, ...(r.existed && prev?.top ? { top: true } : {}) },
+    }
   }
   if (p.kind === 'json') {
     if (text !== null && text.trim() !== '' && !isStrictJson(text)) {
@@ -114,7 +136,7 @@ export function removeRec(r: Rec, text: string): { text: string | null; note?: s
     if (r.guard && yamlBlockForeign(text, r.fence!, new RegExp(r.guard))) {
       return { text, note: `${r.path} has lines next to Mapshift's block, so it was left in place; remove the marked block by hand` }
     }
-    const out = removeBlock(text, r.fence!, r.sep, r.format === 'toml' ? foreignTomlLines(r.own ?? []) : undefined)
+    const out = removeBlock(text, r.fence!, r.sep, r.format === 'toml' ? foreignTomlLines(r.own ?? []) : undefined, r.top)
     return { text: r.created && out.trim() === '' ? null : out }
   }
   if (r.kind === 'json') {

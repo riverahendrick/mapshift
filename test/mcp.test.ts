@@ -32,11 +32,23 @@ function connect(cwd: string, home: string) {
 
 test('the savings line counts only the files an answer points at, and only when the difference is real', () => {
   const big = withSavings('x'.repeat(400), [{ tokens: 3000 }, { tokens: 900 }])
-  assert.match(big, /^🗺️ Mapshift: 125 tokens here instead of 3,900 to read those 2 files whole\n/)
-  assert.match(withSavings('x', [{ tokens: 1200 }]), /to read that file whole/)
-  assert.equal(withSavings('x'.repeat(400), [{ tokens: 400 }]), 'x'.repeat(400), 'too small a difference: no line')
-  assert.equal(withSavings('overview', []), 'overview', 'no files: no claim')
-  assert.doesNotMatch(big, /tell the user|at the end of/i, 'never asks the model to repeat it')
+  assert.match(big.text, /^🗺️ Mapshift: 125 tokens here instead of 3,900 to read those 2 files whole\n/)
+  assert.doesNotMatch(big.text, /this session/, 'the first answer has no totals: they would only repeat it')
+  assert.match(withSavings('x', [{ tokens: 1200 }]).text, /to read that file whole/)
+  assert.equal(withSavings('x'.repeat(400), [{ tokens: 400 }]).text, 'x'.repeat(400), 'too small a difference: no line')
+  assert.equal(withSavings('overview', []).text, 'overview', 'no files: no claim')
+  assert.doesNotMatch(big.text, /tell the user|at the end of/i, 'the answer never asks the model to repeat it')
+})
+
+test('the session totals add up every answer, an overview only as cost', () => {
+  let t = withSavings('x'.repeat(400), [{ tokens: 3000 }]).tally
+  assert.deepEqual(t, { here: 125, whole: 3000, answers: 1 })
+  t = withSavings('x'.repeat(4000), [], t).tally // an overview: 1,000 tokens, no file spared
+  t = withSavings('y'.repeat(400), [{ tokens: 2000 }], t).tally
+  const third = withSavings('z'.repeat(800), [{ tokens: 5000 }], t)
+  // here: 125 + 1,000 + (100 + 35) + (200 + 35); whole: 3,000 + 0 + 2,000 + 5,000
+  assert.match(third.text, /^🗺️ Mapshift: 235 tokens here instead of 5,000 to read that file whole · this session: 1,495 instead of 10,000\n/)
+  assert.deepEqual(third.tally, { here: 1495, whole: 10000, answers: 4 })
 })
 
 test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry', { timeout: 60_000 }, async () => {

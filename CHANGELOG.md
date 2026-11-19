@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7 (2026-11-18)
+
+- 🥇 Mapshift's section now goes at the top of each agent's rules file (`GEMINI.md`, `AGENTS.md` and the like), above any other code tool's, so agents use the map first. `mapshift setup` moves a section an earlier version put at the bottom, and `mapshift uninstall` still gives the file back exactly as it was.
+- 🧾 Agents end each code task with one line, `Mapshift: USED — <what for>; <figures>` or `Mapshift: NOT USED — <why>`, so you can see the map at work in any agent's chat. The figures are copied from Mapshift's own answers, never estimated.
+- ➕ From the second answer on, an answer's top line also carries the session's totals, counting every answer, so the closing line needs no arithmetic.
+
 ## 0.1.6 (2026-11-18)
 
 - 🗺️ Every map answer that spares real reading now says so in one line at the top, so you can see the map working in any agent's log. It counts only the files the answer points at, never the whole project, costs about 25 tokens, and never asks the agent to repeat it.

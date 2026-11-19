@@ -8,12 +8,13 @@ const ADDED = `${MANAGED}: added by "mapshift setup"; "mapshift uninstall" remov
 /** The instruction block, as lines. `helpers` is for agents that can run helpers on their own model. */
 export function instructionLines(o: { helpers: boolean }): string[] {
   return [
-    '## Mapshift code map',
-    'Mapshift keeps a map of the project you are working in (MCP server "mapshift").',
-    '- Before grepping or opening files to find code, call `map_find`.',
+    '## Mapshift code map: use it first for code questions',
+    'Mapshift keeps a map of the project you are working in (MCP server "mapshift"). Its answers give exact file:line ranges and the code itself, for a fraction of the tokens reading files costs.',
+    '- Before grepping, listing folders or opening files to find code, call `map_find`. Several things to find? Ask for all of them in one call ("queries").',
     '- For one file\'s functions and classes, call `map_file`. Before changing a function, call `map_trace` with direction "impact".',
-    '- Answers include exact file:line ranges and the code, so read a file only for lines the answer did not show.',
+    '- Read a file only for lines the answer did not show.',
     ...(o.helpers ? ['- Give routine side work (searching, summaries, running tests) to a helper on a light, cheap model at low effort when you can choose its model.'] : []),
+    '- End each code task with one line: `Mapshift: USED — <what for>; <tokens: the "this session" figures from the last 🗺️ line, else its first figures, copied exactly>` or `Mapshift: NOT USED — <why>`. Never estimate or invent a number.',
   ]
 }
 

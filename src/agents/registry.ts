@@ -85,6 +85,7 @@ const mdRules = (agent: AgentId, path: string): Piece => ({
   format: 'md',
   fence: mdFence(),
   lines: instructionLines({ helpers: false }),
+  top: true,
 })
 
 /**
@@ -143,6 +144,7 @@ const geminiRules = (agent: AgentId, t: Targets): Piece => ({
   format: 'md',
   fence: mdFence(),
   lines: instructionLines({ helpers: false }),
+  top: true,
 })
 
 /** An empty status line setting (what Antigravity writes by default) may be replaced; a real one never is. */
@@ -159,7 +161,7 @@ export const AGENTS: AgentDef[] = [
     detect: (t, env) => existsSync(t.codex) || !!which('codex', env),
     pieces: (t, rt) => [
       tomlMcp('codex', join(t.codex, 'config.toml'), rt),
-      { agent: 'codex', label: 'Instructions', path: join(t.codex, 'AGENTS.md'), kind: 'block', format: 'md', fence: mdFence(), lines: instructionLines({ helpers: true }) },
+      { agent: 'codex', label: 'Instructions', path: join(t.codex, 'AGENTS.md'), kind: 'block', format: 'md', fence: mdFence(), lines: instructionLines({ helpers: true }), top: true },
       // Codex 0.170 and newer run skills ($mapshift); older versions read custom prompts (/prompts:mapshift)
       { agent: 'codex', label: '$mapshift skill', path: join(t.codex, 'skills', 'mapshift', 'SKILL.md'), kind: 'file', content: skill(rt, 'codex') },
       { agent: 'codex', label: '/prompts:mapshift', path: join(t.codex, 'prompts', 'mapshift.md'), kind: 'file', content: codexPrompt(rt) },

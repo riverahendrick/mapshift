@@ -62,16 +62,47 @@ export function upsertBlock(
   return { text: cur + sep + render(f, lines, eol), sep, existed: false }
 }
 
-/** Removes the block and the separator added with it. Lines that are not ours are kept in its place. */
-export function removeBlock(text: string, f: Fence, sep = '', keep: (inner: string[]) => string[] = () => []): string {
+/**
+ * Removes the block and the separator added with it. Lines that are not ours are kept in its place. `top` says
+ * the block was put first in the file, so its separator is the line break after it instead of before it.
+ */
+export function removeBlock(text: string, f: Fence, sep = '', keep: (inner: string[]) => string[] = () => [], top = false): string {
   const b = findBlock(text, f)
   if (!b) return text
   const eol = eolOf(text)
   const foreign = keep(b.inner.split(/\r?\n/).filter((_, i, a) => i < a.length - 1 || a[i] !== ''))
   const tail = foreign.length ? foreign.join(eol) + eol : ''
   let from = b.from
-  if (!tail && sep && b.to === text.length && text.slice(from - sep.length, from) === sep) from -= sep.length
-  return text.slice(0, from) + tail + text.slice(b.to)
+  let to = b.to
+  if (!tail && sep && top && text.startsWith(sep, to)) to += sep.length
+  else if (!tail && sep && !top && b.to === text.length && text.slice(from - sep.length, from) === sep) from -= sep.length
+  return text.slice(0, from) + tail + text.slice(to)
+}
+
+/** Where a leading front matter section (`---` … `---`) ends; 0 when the file has none. */
+export function frontMatterEnd(text: string): number {
+  const m = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(\r?\n|$)/.exec(text)
+  return m ? m[0].length : 0
+}
+
+/** Whether the block is the first thing in the file, after any front matter and blank lines. */
+export function blockAtTop(text: string, f: Fence): boolean {
+  const b = findBlock(text, f)
+  return !!b && text.slice(frontMatterEnd(text), b.from).trim() === ''
+}
+
+/**
+ * Puts the block first in the file (after any front matter), where an agent reads it before anything else.
+ * `sep` is the blank line put after it, which removeBlock takes away again with `top`.
+ */
+export function prependBlock(text: string | null, f: Fence, lines: string[]): { text: string; sep: string } {
+  const eol = eolOf(text)
+  const cur = text ?? ''
+  const at = frontMatterEnd(cur)
+  const head = cur.slice(0, at)
+  const rest = cur.slice(at)
+  const sep = rest === '' ? '' : eol
+  return { text: (head && !head.endsWith('\n') ? head + eol : head) + render(f, lines, eol) + sep + rest, sep }
 }
 
 /**
