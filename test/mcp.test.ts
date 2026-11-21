@@ -90,6 +90,8 @@ test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry',
 
     const bad = await s.call('tools/call', { name: 'map_find', arguments: {} })
     assert.equal(bad.result.isError, true)
+    const badProj = await s.call('tools/call', { name: 'map_overview', arguments: { project: join(r.root, 'does-not-exist') } })
+    assert.equal(badProj.result.isError, true)
     const unknown = await s.call('no/such/method')
     assert.equal(unknown.error.code, -32601)
     assert.ok((await s.call('ping')).result)
@@ -103,6 +105,27 @@ test('MCP over stdio: handshake, five tools, a real answer, and a ledger entry',
   assert.deepEqual(entry.files.map((f: { path: string }) => f.path), ['src/cart.ts'])
   assert.ok(entry.answerTokens > 0)
   r.cleanup()
+})
+
+test('MCP tools accept optional project path when host cwd is elsewhere', { timeout: 60_000 }, async () => {
+  const empty = makeRepo({ 'README.md': 'no code here\n' })
+  const target = makeRepo({ 'src/billing.ts': 'export function charge(cents: number) { return cents }\n' })
+  const s = connect(empty.root, target.home)
+  try {
+    await s.call('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'antigravity-test', version: '1' } })
+    s.notify('notifications/initialized')
+    let res = await s.call('tools/call', { name: 'map_find', arguments: { query: 'charge', project: target.root } })
+    for (let i = 0; i < 60 && /still being built|% built/.test(res.result?.content?.[0]?.text ?? ''); i++) {
+      await new Promise(r => setTimeout(r, 500))
+      res = await s.call('tools/call', { name: 'map_find', arguments: { query: 'charge', project: target.root } })
+    }
+    assert.equal(res.result.isError, false)
+    assert.match(res.result.content[0].text, /### 1\. charge · function · src\/billing\.ts:1/)
+  } finally {
+    await s.close()
+    empty.cleanup()
+    target.cleanup()
+  }
 })
 
 test('the command line prints status and answers', { timeout: 60_000 }, async () => {

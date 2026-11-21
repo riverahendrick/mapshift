@@ -182,7 +182,11 @@ export const AGENTS: AgentDef[] = [
   {
     id: 'agy',
     label: 'Antigravity (agy)',
-    detect: (t, env) => existsSync(join(t.gemini, 'antigravity-cli')) || !!which('agy', env),
+    detect: (t, env) =>
+      existsSync(join(t.gemini, 'antigravity-cli')) ||
+      existsSync(join(t.gemini, 'antigravity')) ||
+      existsSync(join(t.gemini, 'antigravity-ide')) ||
+      !!which('agy', env),
     pieces: (t, rt) => [
       jsonMcp('agy', join(t.gemini, 'config', 'mcp_config.json'), rt),
       geminiRules('agy', t),

@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/mapshift"><img alt="npm version" src="https://img.shields.io/npm/v/mapshift?color=14b8a6"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-14b8a6"></a>
   <img alt="Node 22.13 or newer" src="https://img.shields.io/badge/node-%E2%89%A522.13-0e7490">
   <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/runs%20on-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-6e7ff3">

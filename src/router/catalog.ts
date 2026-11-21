@@ -45,9 +45,11 @@ export const CATALOG: ModelEntry[] = [
   { id: 'gpt-6-astra', label: 'GPT-6 Astra', provider: 'openai', rank: 'frontier', price: { in: 10, out: 50, read: 1 }, efforts: ALL, checked: DAY, source: OPENAI },
 
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite', provider: 'google', rank: 'light', price: { in: 0.3, out: 2.5, read: 0.03 }, efforts: ALL, checked: DAY, source: GOOGLE },
-  { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen', provider: 'google', rank: 'standard', price: { in: 1.5, out: 7.5, read: 0.075 }, efforts: ALL, checked: DAY, source: GOOGLE },
-  { id: 'gemini-4-argon', label: 'Gemini 4 Argon', provider: 'google', rank: 'strong', price: { in: 2, out: 10, read: 0.1 }, efforts: ALL, checked: DAY, source: GOOGLE },
-  { id: 'gemini-4-carbon', label: 'Gemini 4 Carbon', provider: 'google', rank: 'frontier', price: { in: 2, out: 10, read: 0.1 }, efforts: ALL, checked: DAY, source: GOOGLE, rankJudged: true },
+  { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', provider: 'google', rank: 'light', price: { in: 0.75, out: 3.75, read: 0.0375 }, efforts: ['low', 'medium', 'high'], checked: '2026-11-21', source: GOOGLE },
+  { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen', provider: 'google', rank: 'standard', price: { in: 1.5, out: 7.5, read: 0.075 }, efforts: ALL, checked: '2026-11-21', source: GOOGLE },
+  { id: 'gemini-4-neon', label: 'Gemini 4 Neon', provider: 'google', rank: 'strong', price: { in: 3, out: 15, read: 0.15 }, efforts: ALL, checked: '2026-11-21', source: GOOGLE },
+  { id: 'gemini-4-argon', label: 'Gemini 4 Argon', provider: 'google', rank: 'strong', price: { in: 2, out: 10, read: 0.1 }, efforts: ALL, checked: '2026-11-21', source: GOOGLE },
+  { id: 'gemini-4-carbon', label: 'Gemini 4 Carbon', provider: 'google', rank: 'frontier', price: { in: 2, out: 10, read: 0.1 }, efforts: ALL, checked: '2026-11-21', source: GOOGLE, rankJudged: true },
 
   { id: 'grok-4.3', label: 'Grok 4.3', provider: 'xai', rank: 'light', price: { in: 1.25, out: 2.5, read: 0.2 }, efforts: ['low', 'medium', 'high', 'xhigh'], checked: DAY, source: XAI, rankJudged: true },
   { id: 'grok-build-0.1', label: 'Grok Build', provider: 'xai', rank: 'standard', price: { in: 1, out: 2, read: 0.2 }, efforts: ['low', 'medium', 'high', 'xhigh'], checked: DAY, source: XAI, rankJudged: true },
@@ -74,7 +76,7 @@ export function guessRank(model: string): Rank {
   const has = (...w: string[]) => w.some(x => parts.has(x))
   if (has('nano', 'mini', 'lite', 'haiku', 'luna', 'small', 'tiny')) return 'light'
   if (has('fable', 'astra', 'ultra', 'carbon')) return 'frontier'
-  if (has('opus', 'sol', 'pro', 'argon', 'large')) return 'strong'
+  if (has('opus', 'sol', 'pro', 'argon', 'neon', 'large')) return 'strong'
   return 'standard'
 }
 

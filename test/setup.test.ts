@@ -204,6 +204,8 @@ test('agents are found by their settings folder or on PATH, never in the current
     const found = (env: Record<string, string>) => AGENTS.filter(a => a.detect(t, env)).map(a => a.id)
     assert.deepEqual(found({ PATH: '' }), ['codex'])
     assert.deepEqual(found({ PATH: bin }), ['codex', 'grok'])
+    s.put('.gemini/antigravity/state.json', '{}')
+    assert.ok(found({ PATH: '' }).includes('agy'), 'Antigravity IDE/app folder is detected even without agy CLI')
     assert.equal(which('grok', { PATH: `.${process.platform === 'win32' ? ';' : ':'}relative` }), null, 'relative PATH entries are ignored')
   } finally {
     s.cleanup()

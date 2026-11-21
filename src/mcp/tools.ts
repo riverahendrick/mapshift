@@ -1,4 +1,6 @@
+import { existsSync, statSync } from 'node:fs'
 import { tokensOf, record } from '../core/ledger.ts'
+import { findRepoRoot } from '../core/paths.ts'
 import { ensureFresh, openMap } from '../map/indexer.ts'
 import { fileApi, find, overview, search, trace, type Answer } from '../map/query.ts'
 
@@ -6,6 +8,7 @@ type Schema = { type: 'object'; properties: Record<string, unknown>; required?: 
 export type ToolDef = { name: string; title: string; description: string; inputSchema: Schema }
 
 const str = (description: string) => ({ type: 'string', description })
+const projectProp = str('Optional project folder path when the MCP host does not pass workspace roots (defaults to server root)')
 
 export const TOOLS: ToolDef[] = [
   {
@@ -19,6 +22,7 @@ export const TOOLS: ToolDef[] = [
         query: str('What to find, e.g. "where are payments refunded" or "CartService.total"'),
         queries: { type: 'array', items: { type: 'string' }, maxItems: 8, description: 'Several things to find at once, instead of "query"' },
         limit: { type: 'number', description: 'How many results each, 1-15 (default 6; 3 with "queries")' },
+        project: projectProp,
       },
       additionalProperties: false,
     },
@@ -35,6 +39,7 @@ export const TOOLS: ToolDef[] = [
         symbols: { type: 'array', items: { type: 'string' }, maxItems: 8, description: 'Several names at once, instead of "symbol"' },
         direction: { type: 'string', enum: ['in', 'out', 'impact'], description: 'Default "in"' },
         depth: { type: 'number', description: 'How many steps to follow, 1-6' },
+        project: projectProp,
       },
       additionalProperties: false,
     },
@@ -45,7 +50,11 @@ export const TOOLS: ToolDef[] = [
     description: "A file's whole API in a few lines: every class, function and method with its line range and signature. Far cheaper than reading the file. Pass several in \"paths\" for all of them in one call.",
     inputSchema: {
       type: 'object',
-      properties: { path: str('The file, relative to the project, or its end like "cart.ts"'), paths: { type: 'array', items: { type: 'string' }, maxItems: 8, description: 'Several files at once, instead of "path"' } },
+      properties: {
+        path: str('The file, relative to the project, or its end like "cart.ts"'),
+        paths: { type: 'array', items: { type: 'string' }, maxItems: 8, description: 'Several files at once, instead of "path"' },
+        project: projectProp,
+      },
       additionalProperties: false,
     },
   },
@@ -53,7 +62,7 @@ export const TOOLS: ToolDef[] = [
     name: 'map_overview',
     title: 'Project overview',
     description: 'A first look at the project: languages, main folders, likely entry points and the most used definitions. Use once at the start of unfamiliar work.',
-    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    inputSchema: { type: 'object', properties: { project: projectProp }, additionalProperties: false },
   },
   {
     name: 'map_search',
@@ -66,6 +75,7 @@ export const TOOLS: ToolDef[] = [
         regex: { type: 'boolean', description: 'Treat the pattern as a regular expression (default false)' },
         case_sensitive: { type: 'boolean', description: 'Default false' },
         path: str('Only search under this folder or file'),
+        project: projectProp,
       },
       required: ['pattern'],
       additionalProperties: false,
@@ -110,6 +120,13 @@ function joined(parts: { label: string; answer: Answer }[], dropped: number): An
 
 /** Runs one tool against the project's map, fresh to the second, and records what it cost and pointed at. */
 export async function callTool(root: string, name: string, args: unknown, agent: string): Promise<{ text: string; isError: boolean }> {
+  const projectArg = text(args, 'project').trim()
+  if (projectArg) {
+    if (!existsSync(projectArg) || !statSync(projectArg).isDirectory()) {
+      return { text: `Project folder not found: ${projectArg}`, isError: true }
+    }
+    root = findRepoRoot(projectArg)
+  }
   await ensureFresh(root, 2000)
   const store = openMap(root)
   let answer: Answer

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.riverahendrick/mapshift",
+  "title": "Mapshift",
+  "description": "100% local code map MCP server for 41 languages — fewer tokens for coding agents, zero telemetry.",
+  "version": "0.1.8",
+  "websiteUrl": "https://github.com/riverahendrick/mapshift#readme",
+  "repository": {
+    "url": "https://github.com/riverahendrick/mapshift",
+    "source": "github",
+    "id": "1461436820"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "mapshift",
+      "version": "0.1.8",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}
