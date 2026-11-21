@@ -1,6 +1,7 @@
 {
   "name": "mapshift",
-  "version": "0.1.7",
+  "version": "0.1.8",
+  "mcpName": "io.github.riverahendrick/mapshift",
   "description": "Map your code, shift to the right model. Fewer tokens and lower cost for coding agents, with no loss in quality. 100% local.",
   "keywords": [
     "mcp",
@@ -10,6 +11,7 @@
     "coding-agent",
     "model-routing",
     "token-savings",
+    "antigravity",
     "codex",
     "gemini",
     "grok",

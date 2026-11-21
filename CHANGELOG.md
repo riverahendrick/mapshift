@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.8 (2026-11-21)
+
+- 📁 All five MCP tools now accept an optional `project` folder path, so hosts that do not pass workspace roots (such as Antigravity) can still query any repository cleanly.
+- 🪐 `mapshift setup` now detects Antigravity IDE and Antigravity 2.0 (`~/.gemini/antigravity` and `~/.gemini/antigravity-ide`) even when the `agy` CLI is not installed.
+- 🤖 Added Gemini 4 Neon (with `low` through `xhigh`/`max` effort levels) and Gemini 3.8 Flash to the Google model catalog alongside Flash-Lite, Hydrogen, Argon and Carbon.
+- 📦 Added `server.json` and `mcpName` metadata for Official MCP Registry publishing.
+
 ## 0.1.7 (2026-11-18)
 
 - 🥇 Mapshift's section now goes at the top of each agent's rules file (`GEMINI.md`, `AGENTS.md` and the like), above any other code tool's, so agents use the map first. `mapshift setup` moves a section an earlier version put at the bottom, and `mapshift uninstall` still gives the file back exactly as it was.
